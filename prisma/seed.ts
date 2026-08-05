@@ -1,0 +1,254 @@
+import * as genshindb from "genshin-db";
+import { prisma } from "../src/lib/prisma";
+import { Element, WeaponType } from "../src/generated/prisma/enums";
+
+// ---------------------------------------------------------------------------
+// StatType: fixed canonical vocabulary, not sourced from genshin-db.
+// ---------------------------------------------------------------------------
+
+const STAT_TYPE_NAMES = [
+  "HP",
+  "ATK",
+  "DEF",
+  "HP%",
+  "ATK%",
+  "DEF%",
+  "Elemental Mastery",
+  "Energy Recharge%",
+  "Crit Rate%",
+  "Crit DMG%",
+  "Healing Bonus%",
+  "Physical DMG Bonus%",
+  "Pyro DMG Bonus%",
+  "Hydro DMG Bonus%",
+  "Electro DMG Bonus%",
+  "Cryo DMG Bonus%",
+  "Anemo DMG Bonus%",
+  "Geo DMG Bonus%",
+  "Dendro DMG Bonus%",
+] as const;
+
+type StatTypeName = (typeof STAT_TYPE_NAMES)[number];
+
+// Maps genshin-db's FIGHT_PROP_* keys (used for weapon secondary stats) to
+// our StatType.name values.
+const FIGHT_PROP_TO_STAT_TYPE: Record<string, StatTypeName> = {
+  FIGHT_PROP_ATTACK_PERCENT: "ATK%",
+  FIGHT_PROP_CHARGE_EFFICIENCY: "Energy Recharge%",
+  FIGHT_PROP_CRITICAL: "Crit Rate%",
+  FIGHT_PROP_CRITICAL_HURT: "Crit DMG%",
+  FIGHT_PROP_DEFENSE_PERCENT: "DEF%",
+  FIGHT_PROP_ELEC_ADD_HURT: "Electro DMG Bonus%",
+  FIGHT_PROP_ELEMENT_MASTERY: "Elemental Mastery",
+  FIGHT_PROP_FIRE_ADD_HURT: "Pyro DMG Bonus%",
+  FIGHT_PROP_GRASS_ADD_HURT: "Dendro DMG Bonus%",
+  FIGHT_PROP_HEAL_ADD: "Healing Bonus%",
+  FIGHT_PROP_HP_PERCENT: "HP%",
+  FIGHT_PROP_ICE_ADD_HURT: "Cryo DMG Bonus%",
+  FIGHT_PROP_PHYSICAL_ADD_HURT: "Physical DMG Bonus%",
+  FIGHT_PROP_ROCK_ADD_HURT: "Geo DMG Bonus%",
+  FIGHT_PROP_WATER_ADD_HURT: "Hydro DMG Bonus%",
+  FIGHT_PROP_WIND_ADD_HURT: "Anemo DMG Bonus%",
+};
+
+const ELEMENT_TYPE_MAP: Record<string, Element> = {
+  ELEMENT_PYRO: Element.Pyro,
+  ELEMENT_HYDRO: Element.Hydro,
+  ELEMENT_ELECTRO: Element.Electro,
+  ELEMENT_CRYO: Element.Cryo,
+  ELEMENT_ANEMO: Element.Anemo,
+  ELEMENT_GEO: Element.Geo,
+  ELEMENT_DENDRO: Element.Dendro,
+};
+
+const WEAPON_TYPE_MAP: Record<string, WeaponType> = {
+  WEAPON_SWORD_ONE_HAND: WeaponType.Sword,
+  WEAPON_CLAYMORE: WeaponType.Claymore,
+  WEAPON_POLE: WeaponType.Polearm,
+  WEAPON_BOW: WeaponType.Bow,
+  WEAPON_CATALYST: WeaponType.Catalyst,
+};
+
+// genshin-db has no per-vision breakdown for the Traveler (Aether/Lumine both
+// come back with elementType ELEMENT_NONE) — seeded manually instead. Gender
+// is cosmetic only and not tracked in the schema, so each vision is one row.
+// All 6 rows share exclusivityGroup "traveler" so only one can ever be in a
+// team/roster at a time, matching how the character actually plays. If a
+// field is ever sourced from genshin-db's per-gender data (e.g. an icon),
+// default to the female variant (Lumine).
+const TRAVELER_VISIONS: Element[] = [
+  Element.Anemo,
+  Element.Geo,
+  Element.Electro,
+  Element.Dendro,
+  Element.Hydro,
+  Element.Pyro,
+];
+const TRAVELER_EXCLUSIVITY_GROUP = "traveler";
+
+// Non-playable / placeholder entries that show up in genshin-db's characters
+// folder but aren't real playable characters.
+const EXCLUDED_CHARACTER_NAMES = new Set(["Aether", "Lumine", "Manekin", "Manekina"]);
+
+// No meaningful build relevance at these rarities — excluded from seeding.
+const MIN_WEAPON_RARITY = 3;
+const MIN_ARTIFACT_SET_RARITY = 4;
+
+// ---------------------------------------------------------------------------
+
+async function seedStatTypes() {
+  const statTypeIds = new Map<StatTypeName, number>();
+  for (const name of STAT_TYPE_NAMES) {
+    const statType = await prisma.statType.upsert({
+      where: { name },
+      create: { name },
+      update: {},
+    });
+    statTypeIds.set(name, statType.id);
+  }
+  console.log(`Seeded ${statTypeIds.size} stat types`);
+  return statTypeIds;
+}
+
+async function seedCharacters() {
+  const characters = genshindb.characters("names", {
+    matchCategories: true,
+    verboseCategories: true,
+  });
+
+  let count = 0;
+  for (const character of characters) {
+    if (EXCLUDED_CHARACTER_NAMES.has(character.name)) continue;
+
+    const element = ELEMENT_TYPE_MAP[character.elementType];
+    const weaponType = WEAPON_TYPE_MAP[character.weaponType];
+    if (!element || !weaponType) {
+      console.warn(
+        `Skipping character "${character.name}": unmapped elementType/weaponType (${character.elementType}/${character.weaponType})`
+      );
+      continue;
+    }
+
+    await prisma.character.upsert({
+      where: { name: character.name },
+      create: { name: character.name, element, weaponType, rarity: character.rarity, exclusivityGroup: null },
+      update: { element, weaponType, rarity: character.rarity },
+    });
+    count++;
+  }
+
+  for (const element of TRAVELER_VISIONS) {
+    const name = `Traveler (${element})`;
+    await prisma.character.upsert({
+      where: { name },
+      create: {
+        name,
+        element,
+        weaponType: WeaponType.Sword,
+        rarity: 5,
+        exclusivityGroup: TRAVELER_EXCLUSIVITY_GROUP,
+      },
+      update: { element, weaponType: WeaponType.Sword, rarity: 5, exclusivityGroup: TRAVELER_EXCLUSIVITY_GROUP },
+    });
+    count++;
+  }
+
+  console.log(`Seeded ${count} characters`);
+}
+
+async function seedArtifactSets() {
+  const artifactSets = genshindb.artifacts("names", {
+    matchCategories: true,
+    verboseCategories: true,
+  });
+
+  let count = 0;
+  let skipped = 0;
+  for (const artifactSet of artifactSets) {
+    // Circlet-only single-piece artifacts (e.g. the "Prayers for..." family)
+    // have no 2pc/4pc set bonus and are excluded from seeding.
+    if (!artifactSet.effect2Pc) {
+      skipped++;
+      continue;
+    }
+
+    // Sets that never drop above 3★ (Adventurer, Lucky Dog, Traveling
+    // Doctor) have no meaningful build relevance — same reasoning as
+    // excluding 1-2★ weapons.
+    if (Math.max(...artifactSet.rarityList) < MIN_ARTIFACT_SET_RARITY) {
+      skipped++;
+      continue;
+    }
+
+    await prisma.artifactSet.upsert({
+      where: { name: artifactSet.name },
+      create: {
+        name: artifactSet.name,
+        twoPieceEffect: artifactSet.effect2Pc,
+        fourPieceEffect: artifactSet.effect4Pc ?? null,
+      },
+      update: {
+        twoPieceEffect: artifactSet.effect2Pc,
+        fourPieceEffect: artifactSet.effect4Pc ?? null,
+      },
+    });
+    count++;
+  }
+
+  console.log(`Seeded ${count} artifact sets (skipped ${skipped} single-piece or low-rarity sets)`);
+}
+
+async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
+  const weapons = genshindb.weapons("names", {
+    matchCategories: true,
+    verboseCategories: true,
+  });
+
+  let count = 0;
+  let skipped = 0;
+  for (const weapon of weapons) {
+    if (weapon.rarity < MIN_WEAPON_RARITY) {
+      skipped++;
+      continue;
+    }
+
+    const weaponType = WEAPON_TYPE_MAP[weapon.weaponType];
+    if (!weaponType) {
+      console.warn(`Skipping weapon "${weapon.name}": unmapped weaponType (${weapon.weaponType})`);
+      continue;
+    }
+
+    const secondaryStatId = weapon.mainStatType
+      ? statTypeIds.get(FIGHT_PROP_TO_STAT_TYPE[weapon.mainStatType]) ?? null
+      : null;
+
+    // R1 refinement text is used as the reference passive description;
+    // low-rarity weapons have no passive at all.
+    const passiveText = weapon.r1?.description ?? null;
+
+    await prisma.weapon.upsert({
+      where: { name: weapon.name },
+      create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveText },
+      update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveText },
+    });
+    count++;
+  }
+
+  console.log(`Seeded ${count} weapons (skipped ${skipped} below ${MIN_WEAPON_RARITY}★)`);
+}
+
+async function main() {
+  const statTypeIds = await seedStatTypes();
+  await seedCharacters();
+  await seedArtifactSets();
+  await seedWeapons(statTypeIds);
+}
+
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

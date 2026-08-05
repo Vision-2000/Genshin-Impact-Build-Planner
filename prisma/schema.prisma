@@ -86,11 +86,18 @@ model GameProfile {
 // ---------------------------------------------------------------------------
 
 model Character {
-  id         Int        @id @default(autoincrement())
-  name       String     @unique
-  element    Element
-  weaponType WeaponType @map("weapon_type")
-  rarity     Int
+  id               Int        @id @default(autoincrement())
+  name             String     @unique
+  element          Element
+  weaponType       WeaponType @map("weapon_type")
+  rarity           Int
+  // Null for nearly every character. Set to the shared value "traveler" on
+  // all 6 elemental Traveler rows so team/roster composition checks can block
+  // more than one of them appearing together, since only one Traveler can
+  // ever be in a party regardless of element and owned_character_id alone
+  // can't express that. Reuse this field for any future character that needs
+  // the same "only one of this group at a time" mechanic.
+  exclusivityGroup String?    @map("exclusivity_group")
 
   gameProfiles    GameProfile[]
   ownedCharacters OwnedCharacter[]
