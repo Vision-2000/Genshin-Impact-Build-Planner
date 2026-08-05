@@ -98,6 +98,7 @@ model Character {
   // can't express that. Reuse this field for any future character that needs
   // the same "only one of this group at a time" mechanic.
   exclusivityGroup String?    @map("exclusivity_group")
+  iconUrl          String?    @map("icon_url")
 
   gameProfiles    GameProfile[]
   ownedCharacters OwnedCharacter[]
@@ -112,6 +113,7 @@ model Weapon {
   rarity          Int
   secondaryStatId Int?       @map("secondary_stat_id")
   passiveText     String?    @map("passive_text")
+  iconUrl         String?    @map("icon_url")
 
   secondaryStat StatType?     @relation(fields: [secondaryStatId], references: [id])
   ownedWeapons  OwnedWeapon[]
@@ -119,11 +121,19 @@ model Weapon {
   @@map("weapons")
 }
 
+// One icon URL column per slot rather than one per set, since each slot has
+// visually distinct art within the same set and these render on the build
+// page.
 model ArtifactSet {
   id              Int     @id @default(autoincrement())
   name            String  @unique
   twoPieceEffect  String  @map("two_piece_effect")
   fourPieceEffect String? @map("four_piece_effect")
+  flowerIconUrl   String? @map("flower_icon_url")
+  featherIconUrl  String? @map("feather_icon_url")
+  sandsIconUrl    String? @map("sands_icon_url")
+  gobletIconUrl   String? @map("goblet_icon_url")
+  circletIconUrl  String? @map("circlet_icon_url")
 
   ownedArtifacts OwnedArtifact[]
 

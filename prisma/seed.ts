@@ -90,6 +90,10 @@ const TRAVELER_EXCLUSIVITY_GROUP = "traveler";
 // folder but aren't real playable characters.
 const EXCLUDED_CHARACTER_NAMES = new Set(["Aether", "Lumine", "Manekin", "Manekina"]);
 
+// Story-quest-only weapon (a corrupted/possessed blade with a 50% self-damage
+// penalty) — never obtainable as a real player weapon.
+const EXCLUDED_WEAPON_NAMES = new Set(["Prized Isshin Blade"]);
+
 // No meaningful build relevance at these rarities — excluded from seeding.
 const MIN_WEAPON_RARITY = 3;
 const MIN_ARTIFACT_SET_RARITY = 4;
@@ -129,13 +133,28 @@ async function seedCharacters() {
       continue;
     }
 
+    const iconUrl = character.images.mihoyo_icon ?? null;
+
     await prisma.character.upsert({
       where: { name: character.name },
-      create: { name: character.name, element, weaponType, rarity: character.rarity, exclusivityGroup: null },
-      update: { element, weaponType, rarity: character.rarity },
+      create: {
+        name: character.name,
+        element,
+        weaponType,
+        rarity: character.rarity,
+        exclusivityGroup: null,
+        iconUrl,
+      },
+      update: { element, weaponType, rarity: character.rarity, iconUrl },
     });
     count++;
   }
+
+  // All 6 visions share Lumine's icon: genshin-db has no per-vision icon
+  // breakdown, and the base Traveler icon doesn't actually change with
+  // element in-game.
+  const lumine = genshindb.characters("Lumine", { verboseCategories: true });
+  const travelerIconUrl = lumine?.images.mihoyo_icon ?? null;
 
   for (const element of TRAVELER_VISIONS) {
     const name = `Traveler (${element})`;
@@ -147,8 +166,15 @@ async function seedCharacters() {
         weaponType: WeaponType.Sword,
         rarity: 5,
         exclusivityGroup: TRAVELER_EXCLUSIVITY_GROUP,
+        iconUrl: travelerIconUrl,
       },
-      update: { element, weaponType: WeaponType.Sword, rarity: 5, exclusivityGroup: TRAVELER_EXCLUSIVITY_GROUP },
+      update: {
+        element,
+        weaponType: WeaponType.Sword,
+        rarity: 5,
+        exclusivityGroup: TRAVELER_EXCLUSIVITY_GROUP,
+        iconUrl: travelerIconUrl,
+      },
     });
     count++;
   }
@@ -180,16 +206,32 @@ async function seedArtifactSets() {
       continue;
     }
 
+    const flowerIconUrl = artifactSet.images.mihoyo_flower ?? null;
+    const featherIconUrl = artifactSet.images.mihoyo_plume ?? null;
+    const sandsIconUrl = artifactSet.images.mihoyo_sands ?? null;
+    const gobletIconUrl = artifactSet.images.mihoyo_goblet ?? null;
+    const circletIconUrl = artifactSet.images.mihoyo_circlet ?? null;
+
     await prisma.artifactSet.upsert({
       where: { name: artifactSet.name },
       create: {
         name: artifactSet.name,
         twoPieceEffect: artifactSet.effect2Pc,
         fourPieceEffect: artifactSet.effect4Pc ?? null,
+        flowerIconUrl,
+        featherIconUrl,
+        sandsIconUrl,
+        gobletIconUrl,
+        circletIconUrl,
       },
       update: {
         twoPieceEffect: artifactSet.effect2Pc,
         fourPieceEffect: artifactSet.effect4Pc ?? null,
+        flowerIconUrl,
+        featherIconUrl,
+        sandsIconUrl,
+        gobletIconUrl,
+        circletIconUrl,
       },
     });
     count++;
@@ -207,7 +249,7 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
   let count = 0;
   let skipped = 0;
   for (const weapon of weapons) {
-    if (weapon.rarity < MIN_WEAPON_RARITY) {
+    if (weapon.rarity < MIN_WEAPON_RARITY || EXCLUDED_WEAPON_NAMES.has(weapon.name)) {
       skipped++;
       continue;
     }
@@ -225,11 +267,12 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
     // R1 refinement text is used as the reference passive description;
     // low-rarity weapons have no passive at all.
     const passiveText = weapon.r1?.description ?? null;
+    const iconUrl = weapon.images.mihoyo_icon ?? null;
 
     await prisma.weapon.upsert({
       where: { name: weapon.name },
-      create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveText },
-      update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveText },
+      create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveText, iconUrl },
+      update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveText, iconUrl },
     });
     count++;
   }
