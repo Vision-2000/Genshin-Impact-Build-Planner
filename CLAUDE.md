@@ -30,9 +30,19 @@ user-editable.
   out of scope (no reliable free data source for them)
 
 **Master/reference data (shared, static, seeded once)**
-- Character — all playable characters (name, element, weapon type, rarity)
-- Weapon — all weapons (name, type, rarity, secondary stat, passive text)
-- ArtifactSet — all artifact sets (name, 2-piece/4-piece effect text)
+- Character — all playable characters (name, element, weapon type, rarity,
+  `exclusivityGroup`). Seed excludes Manekin/Manekina (non-buildable, no real
+  loadout). `exclusivityGroup` is nullable and null for nearly every character —
+  see Traveler handling below for the one exception.
+- Weapon — all weapons (name, type, rarity, secondary stat, passive text). Seed
+  excludes 1★/2★ weapons (no meaningful build relevance).
+- ArtifactSet — all artifact sets (name, 2-piece/4-piece effect text). Seed
+  excludes sets with only a 1-piece effect — these can't populate the required
+  `twoPieceEffect` field, so excluding them isn't a workaround, it's the schema
+  correctly rejecting data that doesn't fit the shape we defined. Seed also
+  excludes sets that never drop above 3★ (Adventurer, Lucky Dog, Traveling
+  Doctor) — same "no meaningful build relevance" reasoning as the weapon
+  rarity cutoff.
 - StatType — shared pool of stat types (Crit Rate, Crit DMG, ATK%, EM, elemental
   DMG bonus, etc.) — used by both weapon secondary stats and artifact main/substats
 
@@ -92,6 +102,25 @@ user-editable.
 - A build can be reused across multiple teams/rosters simultaneously.
 - A build can never contain the same character twice within one team/roster —
   this is what the denormalized owned_character_id + unique constraint enforces.
+- Traveler is modeled as one `Character` row per element (6 rows total), not one
+  row with a variable element and not split by gender — this lets each element
+  have its own real build, matching how the character actually plays. Gender is
+  deliberately not modeled at all: it only affects appearance/voice, never stats,
+  talents, or kit, so it carries no information relevant to anything this app
+  tracks. (If genshin-db's raw data happens to split by gender, collapse it down
+  to 6 rows during seeding — don't propagate a distinction upstream that doesn't
+  matter here. If a field is ever sourced from the gendered raw data, default
+  to the female variant, Lumine.)
+  The catch this exists to solve: only one Traveler can ever be in a party
+  regardless of element, and the base uniqueness constraint doesn't know the 6
+  rows are related. Fixed with a nullable `exclusivityGroup` field on
+  `Character`: null for every normal character (no behavior change), set to the
+  single shared value `"traveler"` for all 6 elemental rows. Team/Roster
+  composition checks (both the live warning during build selection and full
+  validation) must also block on a shared non-null `exclusivityGroup` between
+  builds already present, not just on owned_character_id. If a future character
+  rework ever needs the same mechanic, reuse this field rather than adding a
+  special case — it's intentionally not named after Traveler specifically.
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs
