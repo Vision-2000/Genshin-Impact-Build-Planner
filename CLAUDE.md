@@ -111,6 +111,13 @@ user-editable.
 9. Visual polish, deploy to Vercel, README
 
 ## Deferred / not designed yet — don't build ahead of these
+- Icon/image fields on master data — not yet in the schema, add via a small
+  additive migration when writing the seed script (safe to defer, doesn't block
+  anything before then). Decided shape: `Character.iconUrl` and `Weapon.iconUrl`
+  as simple nullable strings; `ArtifactSet` gets one icon URL column per slot
+  (`flowerIconUrl`, `featherIconUrl`, `sandsIconUrl`, `gobletIconUrl`,
+  `circletIconUrl`) rather than one column per set, since each slot has visually
+  distinct art within the same set and these need to render on the build page.
 - Home page task/reminder list
 - Custom validation rules for Lineups (e.g. Imaginary Theatre's 3-element +
   guest-character restrictions per season)
