@@ -23,6 +23,11 @@ user-editable.
 
 **Accounts**
 - User — app account, email/password
+- Session — DB-backed auth session: userId, opaque random token, expiresAt.
+  Chosen over JWTs specifically so logout/revocation is a plain row delete, and
+  the whole auth flow stays explainable end-to-end without crypto-library
+  internals (relevant since the point of building auth at all was to
+  demonstrate understanding it, not just wire up a library)
 - GameProfile — a Genshin account/region belonging to a User (players commonly run
   several regional accounts). Optional UID (cosmetic only, not used for any API
   call). Optional avatar, settable to any playable character in the master catalog
@@ -31,18 +36,23 @@ user-editable.
 
 **Master/reference data (shared, static, seeded once)**
 - Character — all playable characters (name, element, weapon type, rarity,
-  `exclusivityGroup`). Seed excludes Manekin/Manekina (non-buildable, no real
-  loadout). `exclusivityGroup` is nullable and null for nearly every character —
-  see Traveler handling below for the one exception.
-- Weapon — all weapons (name, type, rarity, secondary stat, passive text). Seed
-  excludes 1★/2★ weapons (no meaningful build relevance).
-- ArtifactSet — all artifact sets (name, 2-piece/4-piece effect text). Seed
-  excludes sets with only a 1-piece effect — these can't populate the required
-  `twoPieceEffect` field, so excluding them isn't a workaround, it's the schema
-  correctly rejecting data that doesn't fit the shape we defined. Seed also
-  excludes sets that never drop above 3★ (Adventurer, Lucky Dog, Traveling
-  Doctor) — same "no meaningful build relevance" reasoning as the weapon
-  rarity cutoff.
+  `iconUrl`, `exclusivityGroup`). Seed excludes Manekin/Manekina (non-buildable,
+  no real loadout). `exclusivityGroup` is nullable and null for nearly every
+  character — see Traveler handling below for the one exception.
+- Weapon — all weapons (name, type, rarity, secondary stat, passive text,
+  `iconUrl`). Seed excludes 1★/2★ weapons (no meaningful build relevance) and
+  the Prized Isshin Blade (story-quest-only, never obtainable as a real player
+  weapon).
+- ArtifactSet — all artifact sets (name, 2-piece/4-piece effect text, one icon
+  URL column per slot: `flowerIconUrl`, `featherIconUrl`, `sandsIconUrl`,
+  `gobletIconUrl`, `circletIconUrl` — not one column per set, since each slot
+  has visually distinct art within the same set and these render on the build
+  page). Seed excludes sets with only a 1-piece effect — these can't populate
+  the required `twoPieceEffect` field, so excluding them isn't a workaround,
+  it's the schema correctly rejecting data that doesn't fit the shape we
+  defined. Seed also excludes sets that never drop above 3★ (Adventurer, Lucky
+  Dog, Traveling Doctor) — same "no meaningful build relevance" reasoning as
+  the weapon rarity cutoff.
 - StatType — shared pool of stat types (Crit Rate, Crit DMG, ATK%, EM, elemental
   DMG bonus, etc.) — used by both weapon secondary stats and artifact main/substats
 
@@ -70,6 +80,11 @@ user-editable.
 
 ## Key decisions — these were deliberated, don't re-derive or second-guess them
 - All data is private per user. No sharing/social features of any kind.
+- Auth is hand-built, not Auth.js/NextAuth or a similar library — the entire
+  reason for having auth at all is to demonstrate understanding it, so
+  outsourcing it to a library would defeat the purpose. `bcryptjs` (not native
+  `bcrypt`) for password hashing, chosen specifically for Vercel serverless
+  compatibility. See the Session entity above for the session strategy.
 - Character ownership is a persistent flag (`is_owned`), never create/delete on
   toggle — this is what lets builds hide and reappear as ownership is toggled,
   instead of being destroyed and losing data.
@@ -140,13 +155,6 @@ user-editable.
 9. Visual polish, deploy to Vercel, README
 
 ## Deferred / not designed yet — don't build ahead of these
-- Icon/image fields on master data — not yet in the schema, add via a small
-  additive migration when writing the seed script (safe to defer, doesn't block
-  anything before then). Decided shape: `Character.iconUrl` and `Weapon.iconUrl`
-  as simple nullable strings; `ArtifactSet` gets one icon URL column per slot
-  (`flowerIconUrl`, `featherIconUrl`, `sandsIconUrl`, `gobletIconUrl`,
-  `circletIconUrl`) rather than one column per set, since each slot has visually
-  distinct art within the same set and these need to render on the build page.
 - Home page task/reminder list
 - Custom validation rules for Lineups (e.g. Imaginary Theatre's 3-element +
   guest-character restrictions per season)
