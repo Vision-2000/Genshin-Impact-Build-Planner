@@ -11,3 +11,335 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Element {
+  Pyro
+  Hydro
+  Electro
+  Cryo
+  Anemo
+  Geo
+  Dendro
+}
+
+enum WeaponType {
+  Sword
+  Claymore
+  Polearm
+  Bow
+  Catalyst
+}
+
+enum ArtifactSlot {
+  Flower
+  Feather
+  Sands
+  Goblet
+  Circlet
+}
+
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  gameProfiles GameProfile[]
+
+  @@map("users")
+}
+
+// A Genshin account/region belonging to a User. Players commonly run several
+// regional accounts, hence the one-to-many relation to User.
+model GameProfile {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  name              String
+  uid               String?
+  avatarCharacterId Int?     @map("avatar_character_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarCharacter Character?       @relation(fields: [avatarCharacterId], references: [id])
+  ownedCharacters OwnedCharacter[]
+  ownedWeapons    OwnedWeapon[]
+  ownedArtifacts  OwnedArtifact[]
+  teams           Team[]
+  rosters         Roster[]
+  lineups         Lineup[]
+
+  @@map("game_profiles")
+}
+
+// ---------------------------------------------------------------------------
+// Master/reference data (shared, static, seeded once — never user-editable)
+// ---------------------------------------------------------------------------
+
+model Character {
+  id         Int        @id @default(autoincrement())
+  name       String     @unique
+  element    Element
+  weaponType WeaponType @map("weapon_type")
+  rarity     Int
+
+  gameProfiles    GameProfile[]
+  ownedCharacters OwnedCharacter[]
+
+  @@map("characters")
+}
+
+model Weapon {
+  id              Int        @id @default(autoincrement())
+  name            String     @unique
+  weaponType      WeaponType @map("weapon_type")
+  rarity          Int
+  secondaryStatId Int?       @map("secondary_stat_id")
+  passiveText     String?    @map("passive_text")
+
+  secondaryStat StatType?     @relation(fields: [secondaryStatId], references: [id])
+  ownedWeapons  OwnedWeapon[]
+
+  @@map("weapons")
+}
+
+model ArtifactSet {
+  id              Int     @id @default(autoincrement())
+  name            String  @unique
+  twoPieceEffect  String  @map("two_piece_effect")
+  fourPieceEffect String? @map("four_piece_effect")
+
+  ownedArtifacts OwnedArtifact[]
+
+  @@map("artifact_sets")
+}
+
+// Shared pool of stat types (Crit Rate, Crit DMG, ATK%, EM, elemental DMG
+// bonus, etc.) — used by both weapon secondary stats and artifact main/substats.
+model StatType {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  weapons            Weapon[]
+  artifactMainStatOn OwnedArtifact[]        @relation("ArtifactMainStat")
+  artifactSubstatOn  OwnedArtifactSubstat[]
+
+  @@map("stat_types")
+}
+
+// ---------------------------------------------------------------------------
+// Owned inventory (profile-scoped)
+// ---------------------------------------------------------------------------
+
+model OwnedCharacter {
+  id            Int      @id @default(autoincrement())
+  gameProfileId Int      @map("game_profile_id")
+  characterId   Int      @map("character_id")
+  isOwned       Boolean  @default(false) @map("is_owned")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  gameProfile  GameProfile   @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  character    Character     @relation(fields: [characterId], references: [id])
+  builds       Build[]
+  teamBuilds   TeamBuild[]
+  rosterBuilds RosterBuild[]
+
+  @@unique([gameProfileId, characterId])
+  @@map("owned_characters")
+}
+
+// One row per physical copy owned — refinement lives on the copy, never a
+// quantity field.
+model OwnedWeapon {
+  id            Int      @id @default(autoincrement())
+  gameProfileId Int      @map("game_profile_id")
+  weaponId      Int      @map("weapon_id")
+  refinement    Int
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  gameProfile GameProfile @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  weapon      Weapon      @relation(fields: [weaponId], references: [id])
+  builds      Build[]
+
+  @@map("owned_weapons")
+}
+
+// One row per physical piece: slot, rarity, level, main stat. Main stat is
+// stored explicitly even for flower/feather (fixed in-game) rather than
+// derived from slot at query time.
+model OwnedArtifact {
+  id            Int          @id @default(autoincrement())
+  gameProfileId Int          @map("game_profile_id")
+  artifactSetId Int          @map("artifact_set_id")
+  slot          ArtifactSlot
+  rarity        Int
+  level         Int
+  mainStatId    Int          @map("main_stat_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  gameProfile    GameProfile            @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  artifactSet    ArtifactSet            @relation(fields: [artifactSetId], references: [id])
+  mainStat       StatType               @relation("ArtifactMainStat", fields: [mainStatId], references: [id])
+  substats       OwnedArtifactSubstat[]
+  buildArtifacts BuildArtifact[]
+
+  @@map("owned_artifacts")
+}
+
+// Child table, up to 4 rows per artifact (stat type + value) — the 4-row cap
+// is enforced in app code, not the DB.
+model OwnedArtifactSubstat {
+  id              Int   @id @default(autoincrement())
+  ownedArtifactId Int   @map("owned_artifact_id")
+  statTypeId      Int   @map("stat_type_id")
+  value           Float
+
+  ownedArtifact OwnedArtifact @relation(fields: [ownedArtifactId], references: [id], onDelete: Cascade)
+  statType      StatType      @relation(fields: [statTypeId], references: [id])
+
+  @@unique([ownedArtifactId, statTypeId])
+  @@map("owned_artifact_substats")
+}
+
+// ---------------------------------------------------------------------------
+// Builds
+// ---------------------------------------------------------------------------
+
+// 1 owned character (required) + 1 owned weapon (optional) + name, unique per
+// character.
+model Build {
+  id               Int      @id @default(autoincrement())
+  ownedCharacterId Int      @map("owned_character_id")
+  ownedWeaponId    Int?     @map("owned_weapon_id")
+  name             String
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  ownedCharacter OwnedCharacter  @relation(fields: [ownedCharacterId], references: [id], onDelete: Cascade)
+  ownedWeapon    OwnedWeapon?    @relation(fields: [ownedWeaponId], references: [id], onDelete: SetNull)
+  buildArtifacts BuildArtifact[]
+  teamBuilds     TeamBuild[]
+  rosterBuilds   RosterBuild[]
+
+  @@unique([ownedCharacterId, name])
+  @@map("builds")
+}
+
+// Join table, up to 5 rows per build (one per artifact slot) — the 5-row cap
+// falls out of the unique constraint on (buildId, slot).
+model BuildArtifact {
+  id              Int          @id @default(autoincrement())
+  buildId         Int          @map("build_id")
+  ownedArtifactId Int          @map("owned_artifact_id")
+  slot            ArtifactSlot
+
+  build         Build         @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  ownedArtifact OwnedArtifact @relation(fields: [ownedArtifactId], references: [id], onDelete: Cascade)
+
+  @@unique([buildId, slot])
+  @@map("build_artifacts")
+}
+
+// ---------------------------------------------------------------------------
+// Grouping
+// ---------------------------------------------------------------------------
+
+// Up to 4 builds — the cap is enforced in app code, not the DB.
+model Team {
+  id            Int      @id @default(autoincrement())
+  gameProfileId Int      @map("game_profile_id")
+  name          String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  gameProfile GameProfile  @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  teamBuilds  TeamBuild[]
+  lineupTeams LineupTeam[]
+
+  @@map("teams")
+}
+
+// Join table; denormalizes ownedCharacterId so the DB can enforce
+// UNIQUE(team_id, owned_character_id) directly — a build can never contain
+// the same character twice within one team.
+model TeamBuild {
+  id               Int @id @default(autoincrement())
+  teamId           Int @map("team_id")
+  buildId          Int @map("build_id")
+  ownedCharacterId Int @map("owned_character_id")
+
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  build          Build          @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  ownedCharacter OwnedCharacter @relation(fields: [ownedCharacterId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, ownedCharacterId])
+  @@map("team_builds")
+}
+
+// Same shape as Team, no build cap.
+model Roster {
+  id            Int      @id @default(autoincrement())
+  gameProfileId Int      @map("game_profile_id")
+  name          String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  gameProfile  GameProfile   @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  rosterBuilds RosterBuild[]
+
+  @@map("rosters")
+}
+
+// Same denormalization pattern as TeamBuild.
+model RosterBuild {
+  id               Int @id @default(autoincrement())
+  rosterId         Int @map("roster_id")
+  buildId          Int @map("build_id")
+  ownedCharacterId Int @map("owned_character_id")
+
+  roster         Roster         @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  build          Build          @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  ownedCharacter OwnedCharacter @relation(fields: [ownedCharacterId], references: [id], onDelete: Cascade)
+
+  @@unique([rosterId, ownedCharacterId])
+  @@map("roster_builds")
+}
+
+// A saved combination of Teams only (Rosters are always validated alone,
+// never combined).
+model Lineup {
+  id            Int      @id @default(autoincrement())
+  gameProfileId Int      @map("game_profile_id")
+  name          String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  gameProfile GameProfile  @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  lineupTeams LineupTeam[]
+
+  @@map("lineups")
+}
+
+model LineupTeam {
+  id       Int @id @default(autoincrement())
+  lineupId Int @map("lineup_id")
+  teamId   Int @map("team_id")
+
+  lineup Lineup @relation(fields: [lineupId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([lineupId, teamId])
+  @@map("lineup_teams")
+}
