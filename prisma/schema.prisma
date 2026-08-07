@@ -54,8 +54,25 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   gameProfiles GameProfile[]
+  sessions     Session[]
 
   @@map("users")
+}
+
+// Opaque random token as the primary key (not encrypted/signed) — the token
+// itself is the credential, looked up directly on each request. Chosen over
+// JWTs so logout/revocation is a plain row delete and the whole auth flow
+// stays explainable without crypto-library internals.
+model Session {
+  token     String   @id
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 // A Genshin account/region belonging to a User. Players commonly run several

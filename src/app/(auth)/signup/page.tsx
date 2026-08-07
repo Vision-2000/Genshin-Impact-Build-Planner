@@ -1,0 +1,17 @@
+import Link from "next/link";
+import { SignupForm } from "./signup-form";
+
+export default function SignupPage() {
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-semibold">Sign up</h1>
+      <SignupForm />
+      <p className="text-sm text-gray-600">
+        Already have an account?{" "}
+        <Link href="/login" className="underline">
+          Log in
+        </Link>
+      </p>
+    </div>
+  );
+}
