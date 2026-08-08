@@ -133,7 +133,10 @@ async function seedCharacters() {
       continue;
     }
 
-    const iconUrl = character.images.mihoyo_icon ?? null;
+    // mihoyo_icon points at HoYoLAB's game_record character_icon endpoint,
+    // which 404s broadly (not just for newer characters) — hoyowiki_icon
+    // (the actively-maintained wiki CDN) is the reliable source here.
+    const iconUrl = character.images.hoyowiki_icon ?? null;
 
     await prisma.character.upsert({
       where: { name: character.name },
@@ -154,7 +157,7 @@ async function seedCharacters() {
   // breakdown, and the base Traveler icon doesn't actually change with
   // element in-game.
   const lumine = genshindb.characters("Lumine", { verboseCategories: true });
-  const travelerIconUrl = lumine?.images.mihoyo_icon ?? null;
+  const travelerIconUrl = lumine?.images.hoyowiki_icon ?? null;
 
   for (const element of TRAVELER_VISIONS) {
     const name = `Traveler (${element})`;
