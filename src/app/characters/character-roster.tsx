@@ -3,24 +3,20 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
+import { paginate } from "@/lib/paginate";
 import { setCharacterOwnership } from "./actions";
+import {
+  filterAndSortCharacters,
+  type CharacterListItem,
+  type OwnershipFilter,
+  type SortKey,
+} from "./filter-sort";
 
-export type CharacterListItem = {
-  id: number;
-  name: string;
-  element: Element;
-  weaponType: WeaponType;
-  rarity: number;
-  iconUrl: string | null;
-  isOwned: boolean;
-};
+export type { CharacterListItem };
 
 const ELEMENTS = Object.values(Element);
 const WEAPON_TYPES = Object.values(WeaponType);
 const PAGE_SIZE = 24;
-
-type OwnershipFilter = "all" | "owned" | "unowned";
-type SortKey = "name" | "rarity";
 
 export function CharacterRoster({ initialCharacters }: { initialCharacters: CharacterListItem[] }) {
   const [characters, setCharacters] = useState(initialCharacters);
@@ -32,36 +28,12 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
   const [page, setPage] = useState(1);
   const [, startTransition] = useTransition();
 
-  const filtered = useMemo(() => {
-    let result = characters;
+  const filtered = useMemo(
+    () => filterAndSortCharacters(characters, { search, elementFilter, weaponTypeFilter, ownershipFilter, sortKey }),
+    [characters, search, elementFilter, weaponTypeFilter, ownershipFilter, sortKey]
+  );
 
-    const query = search.trim().toLowerCase();
-    if (query) {
-      result = result.filter((character) => character.name.toLowerCase().includes(query));
-    }
-    if (elementFilter.size > 0) {
-      result = result.filter((character) => elementFilter.has(character.element));
-    }
-    if (weaponTypeFilter.size > 0) {
-      result = result.filter((character) => weaponTypeFilter.has(character.weaponType));
-    }
-    if (ownershipFilter === "owned") {
-      result = result.filter((character) => character.isOwned);
-    } else if (ownershipFilter === "unowned") {
-      result = result.filter((character) => !character.isOwned);
-    }
-
-    return [...result].sort((a, b) => {
-      if (sortKey === "rarity") {
-        return b.rarity - a.rarity || a.name.localeCompare(b.name);
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [characters, search, elementFilter, weaponTypeFilter, ownershipFilter, sortKey]);
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
 
   function resetToFirstPage() {
     setPage(1);

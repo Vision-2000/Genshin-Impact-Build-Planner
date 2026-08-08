@@ -1,0 +1,52 @@
+import { Element, WeaponType } from "@/generated/prisma/enums";
+
+export type CharacterListItem = {
+  id: number;
+  name: string;
+  element: Element;
+  weaponType: WeaponType;
+  rarity: number;
+  iconUrl: string | null;
+  isOwned: boolean;
+};
+
+export type OwnershipFilter = "all" | "owned" | "unowned";
+export type SortKey = "name" | "rarity";
+
+export type CharacterFilters = {
+  search: string;
+  elementFilter: ReadonlySet<Element>;
+  weaponTypeFilter: ReadonlySet<WeaponType>;
+  ownershipFilter: OwnershipFilter;
+  sortKey: SortKey;
+};
+
+export function filterAndSortCharacters(
+  characters: CharacterListItem[],
+  { search, elementFilter, weaponTypeFilter, ownershipFilter, sortKey }: CharacterFilters
+): CharacterListItem[] {
+  let result = characters;
+
+  const query = search.trim().toLowerCase();
+  if (query) {
+    result = result.filter((character) => character.name.toLowerCase().includes(query));
+  }
+  if (elementFilter.size > 0) {
+    result = result.filter((character) => elementFilter.has(character.element));
+  }
+  if (weaponTypeFilter.size > 0) {
+    result = result.filter((character) => weaponTypeFilter.has(character.weaponType));
+  }
+  if (ownershipFilter === "owned") {
+    result = result.filter((character) => character.isOwned);
+  } else if (ownershipFilter === "unowned") {
+    result = result.filter((character) => !character.isOwned);
+  }
+
+  return [...result].sort((a, b) => {
+    if (sortKey === "rarity") {
+      return b.rarity - a.rarity || a.name.localeCompare(b.name);
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
