@@ -59,6 +59,11 @@ export async function destroySession() {
   }
 
   cookieStore.delete(SESSION_COOKIE_NAME);
+  await clearActiveProfileId();
+}
+
+export async function clearActiveProfileId() {
+  const cookieStore = await cookies();
   cookieStore.delete(ACTIVE_PROFILE_COOKIE_NAME);
 }
 

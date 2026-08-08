@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession, setActiveProfileId } from "@/lib/session";
 import { CreateProfileSchema, type CreateProfileFormState } from "./schemas";
@@ -38,4 +39,6 @@ export async function selectProfile(profileId: number) {
   if (!profile) return;
 
   await setActiveProfileId(profile.id);
+  // Stand-in destination until a real profile home page exists.
+  redirect("/characters");
 }
