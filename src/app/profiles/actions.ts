@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, setActiveProfileId } from "@/lib/session";
 import { CreateProfileSchema, type CreateProfileFormState } from "./schemas";
@@ -21,11 +22,11 @@ export async function createProfile(
 
   const { name, uid } = validated.data;
 
-  const profile = await prisma.gameProfile.create({
+  await prisma.gameProfile.create({
     data: { userId: session.userId, name, uid: uid ?? null },
   });
 
-  await setActiveProfileId(profile.id);
+  revalidatePath("/profiles");
 }
 
 export async function selectProfile(profileId: number) {

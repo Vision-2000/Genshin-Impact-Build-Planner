@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { requireSession, getActiveProfileIdCookie } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logout } from "../(auth)/actions";
 import { CreateProfileForm } from "./create-profile-form";
 import { SelectProfileButton } from "./select-profile-button";
+
+export const metadata: Metadata = {
+  title: "Your Profiles",
+};
 
 export default async function ProfilesPage() {
   const session = await requireSession();
