@@ -1,0 +1,163 @@
+import { ArtifactSlot } from "@/generated/prisma/enums";
+import { SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
+
+export type StatTypeOption = {
+  id: number;
+  name: string;
+};
+
+export type ArtifactSetCatalogItem = {
+  id: number;
+  name: string;
+  twoPieceEffect: string;
+  fourPieceEffect: string | null;
+  flowerIconUrl: string | null;
+  featherIconUrl: string | null;
+  sandsIconUrl: string | null;
+  gobletIconUrl: string | null;
+  circletIconUrl: string | null;
+};
+
+export type OwnedArtifactSubstatItem = {
+  id: number;
+  statTypeId: number;
+  statTypeName: string;
+  value: number;
+};
+
+export type OwnedArtifactItem = {
+  id: number;
+  artifactSetId: number;
+  setName: string;
+  slot: ArtifactSlot;
+  rarity: number;
+  level: number;
+  mainStatId: number;
+  mainStatName: string;
+  iconUrl: string | null;
+  substats: OwnedArtifactSubstatItem[];
+};
+
+export function slotIconUrl(
+  set: {
+    flowerIconUrl: string | null;
+    featherIconUrl: string | null;
+    sandsIconUrl: string | null;
+    gobletIconUrl: string | null;
+    circletIconUrl: string | null;
+  },
+  slot: ArtifactSlot
+): string | null {
+  switch (slot) {
+    case ArtifactSlot.Flower:
+      return set.flowerIconUrl;
+    case ArtifactSlot.Feather:
+      return set.featherIconUrl;
+    case ArtifactSlot.Sands:
+      return set.sandsIconUrl;
+    case ArtifactSlot.Goblet:
+      return set.gobletIconUrl;
+    case ArtifactSlot.Circlet:
+      return set.circletIconUrl;
+  }
+}
+
+type OwnedArtifactRow = {
+  id: number;
+  artifactSetId: number;
+  slot: ArtifactSlot;
+  rarity: number;
+  level: number;
+  mainStatId: number;
+  artifactSet: {
+    name: string;
+    flowerIconUrl: string | null;
+    featherIconUrl: string | null;
+    sandsIconUrl: string | null;
+    gobletIconUrl: string | null;
+    circletIconUrl: string | null;
+  };
+  mainStat: { name: string };
+  substats: { id: number; statTypeId: number; value: number; statType: { name: string } }[];
+};
+
+export function toOwnedArtifactItem(row: OwnedArtifactRow): OwnedArtifactItem {
+  return {
+    id: row.id,
+    artifactSetId: row.artifactSetId,
+    setName: row.artifactSet.name,
+    slot: row.slot,
+    rarity: row.rarity,
+    level: row.level,
+    mainStatId: row.mainStatId,
+    mainStatName: row.mainStat.name,
+    iconUrl: slotIconUrl(row.artifactSet, row.slot),
+    substats: row.substats.map((s) => ({
+      id: s.id,
+      statTypeId: s.statTypeId,
+      statTypeName: s.statType.name,
+      value: s.value,
+    })),
+  };
+}
+
+export type OwnedSortKey = "name" | "rarity" | "level" | SubstatTypeName;
+
+export type OwnedFilters = {
+  search: string;
+  slotFilter: ReadonlySet<ArtifactSlot>;
+  substatFilter: ReadonlySet<SubstatTypeName>;
+  sortKey: OwnedSortKey;
+};
+
+function substatValue(artifact: OwnedArtifactItem, statName: string): number | null {
+  const substat = artifact.substats.find((s) => s.statTypeName === statName);
+  return substat ? substat.value : null;
+}
+
+export function filterAndSortOwnedArtifacts(
+  artifacts: OwnedArtifactItem[],
+  { search, slotFilter, substatFilter, sortKey }: OwnedFilters
+): OwnedArtifactItem[] {
+  let result = artifacts;
+
+  const query = search.trim().toLowerCase();
+  if (query) {
+    result = result.filter((artifact) => artifact.setName.toLowerCase().includes(query));
+  }
+  if (slotFilter.size > 0) {
+    result = result.filter((artifact) => slotFilter.has(artifact.slot));
+  }
+  for (const statName of substatFilter) {
+    result = result.filter((artifact) => substatValue(artifact, statName) !== null);
+  }
+
+  return [...result].sort((a, b) => {
+    if (sortKey === "rarity") {
+      return b.rarity - a.rarity || a.setName.localeCompare(b.setName);
+    }
+    if (sortKey === "level") {
+      return b.level - a.level || a.setName.localeCompare(b.setName);
+    }
+    if ((SUBSTAT_TYPE_NAMES as readonly string[]).includes(sortKey)) {
+      const aValue = substatValue(a, sortKey) ?? -Infinity;
+      const bValue = substatValue(b, sortKey) ?? -Infinity;
+      return bValue - aValue || a.setName.localeCompare(b.setName);
+    }
+    return a.setName.localeCompare(b.setName);
+  });
+}
+
+export type CatalogFilters = {
+  search: string;
+};
+
+export function filterArtifactSetCatalog(
+  sets: ArtifactSetCatalogItem[],
+  { search }: CatalogFilters
+): ArtifactSetCatalogItem[] {
+  const query = search.trim().toLowerCase();
+  const result = query ? sets.filter((set) => set.name.toLowerCase().includes(query)) : sets;
+
+  return [...result].sort((a, b) => a.name.localeCompare(b.name));
+}
