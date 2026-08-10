@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
+import { PaginationControls } from "../pagination-controls";
 import { setCharacterOwnership } from "./actions";
 import {
   filterAndSortCharacters,
@@ -177,27 +178,7 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
         {pageItems.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
       </ul>
 
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setPage((current) => Math.max(1, current - 1))}
-          disabled={currentPage === 1}
-          className="rounded border px-3 py-1 text-sm disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <span className="text-sm text-gray-500">
-          Page {currentPage} of {pageCount}
-        </span>
-        <button
-          type="button"
-          onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
-          disabled={currentPage === pageCount}
-          className="rounded border px-3 py-1 text-sm disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+      <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
     </div>
   );
 }
