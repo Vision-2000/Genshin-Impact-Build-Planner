@@ -6,28 +6,12 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        // Weapon and artifact icons (game_record/genshin/equip/...).
+        // Enka Network mirrors the game's UI asset files directly — see the
+        // comment on enkaIconUrl() in prisma/seed.ts for why this replaced
+        // HoYoLAB's mihoyo_icon/hoyowiki_icon endpoints (both have a
+        // meaningful dead-link rate; this one doesn't).
         protocol: "https",
-        hostname: "upload-os-bbs.mihoyo.com",
-      },
-      {
-        // Character icons (hoyowiki_icon) — the game_record character_icon
-        // endpoint used for weapons/artifacts 404s broadly for characters,
-        // so those use the wiki CDN instead, which spans these hosts.
-        protocol: "https",
-        hostname: "bbs.hoyolab.com",
-      },
-      {
-        protocol: "https",
-        hostname: "act-webstatic.hoyoverse.com",
-      },
-      {
-        protocol: "https",
-        hostname: "upload-static.hoyoverse.com",
-      },
-      {
-        protocol: "https",
-        hostname: "act-upload.hoyoverse.com",
+        hostname: "enka.network",
       },
     ],
   },
