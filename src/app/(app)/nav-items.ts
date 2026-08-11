@@ -8,4 +8,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/characters", label: "Characters" },
   { href: "/weapons", label: "Weapons" },
   { href: "/artifacts", label: "Artifacts" },
+  { href: "/builds", label: "Builds" },
 ];
