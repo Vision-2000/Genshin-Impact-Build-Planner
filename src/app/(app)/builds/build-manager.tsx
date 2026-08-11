@@ -5,7 +5,14 @@ import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
 import { PaginationControls } from "../pagination-controls";
-import { createBuild, updateBuildName, updateBuildWeapon, setBuildArtifact, deleteBuild } from "./actions";
+import {
+  createBuild,
+  updateBuildName,
+  updateBuildWeapon,
+  setBuildArtifact,
+  deleteBuild,
+  getBuildTeamNames,
+} from "./actions";
 import type { CreateBuildErrors } from "./schemas";
 import {
   filterAndSortBuilds,
@@ -202,10 +209,19 @@ export function BuildManager({
   }
 
   function handleDelete(buildId: number) {
-    if (!window.confirm("Delete this build? This can't be undone.")) return;
-    const previous = builds;
-    setBuilds((prev) => prev.filter((b) => b.id !== buildId));
-    startTransition(() => {
+    startTransition(async () => {
+      const teamNames = await getBuildTeamNames(buildId);
+      const message =
+        teamNames.length > 0
+          ? `This build is used in: ${teamNames.join(", ")}. Deleting it will remove it from ${
+              teamNames.length === 1 ? "that team" : "those teams"
+            } too. Delete anyway?`
+          : "Delete this build? This can't be undone.";
+
+      if (!window.confirm(message)) return;
+
+      const previous = builds;
+      setBuilds((prev) => prev.filter((b) => b.id !== buildId));
       deleteBuild(buildId).catch(() => setBuilds(previous));
     });
   }

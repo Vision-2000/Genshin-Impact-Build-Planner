@@ -122,6 +122,20 @@ export async function setBuildArtifact(buildId: number, slot: ArtifactSlot, owne
   });
 }
 
+// Deleting a build cascades out of any team it's in (DB-level, via
+// TeamBuild's onDelete: Cascade) -- this lets the confirm prompt name the
+// affected teams first, per CLAUDE.md.
+export async function getBuildTeamNames(buildId: number): Promise<string[]> {
+  const profile = await requireActiveProfile();
+
+  const teamBuilds = await prisma.teamBuild.findMany({
+    where: { buildId, team: { gameProfileId: profile.id } },
+    include: { team: true },
+  });
+
+  return teamBuilds.map((teamBuild) => teamBuild.team.name);
+}
+
 export async function deleteBuild(buildId: number) {
   const profile = await requireActiveProfile();
 
