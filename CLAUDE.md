@@ -113,7 +113,11 @@ user-editable.
 - Overlap-detection (shared weapon/artifact reuse across a set of builds) is one
   generic function over "a set of builds" — reused for in-progress team/roster
   selection warnings, full validation, and saved Lineup display. Do not
-  reimplement this per screen.
+  reimplement this per screen. All composition checks are hard blocks, not
+  advisory warnings — shared weapon and shared artifact reuse across builds in
+  the same team/roster are blocked exactly like duplicate-character and
+  exclusivityGroup collisions are. "Warnings" above describes the UI moment
+  (surfaced live during selection), not a lower severity.
 - A build can be reused across multiple teams/rosters simultaneously.
 - A build can never contain the same character twice within one team/roster —
   this is what the denormalized owned_character_id + unique constraint enforces.
@@ -155,6 +159,11 @@ user-editable.
 9. Visual polish, deploy to Vercel, README
 
 ## Deferred / not designed yet — don't build ahead of these
+- Build editing's copy-vs-force-edit prompt when an edit would break a Team
+  it already belongs to (now that overlap checks are hard blocks, an
+  unguarded edit could leave a team in a state full validation would reject).
+  Editing a Build is a direct save for now. Revisit alongside or after
+  Rosters.
 - Home page task/reminder list
 - Custom validation rules for Lineups (e.g. Imaginary Theatre's 3-element +
   guest-character restrictions per season)
