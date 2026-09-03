@@ -94,6 +94,7 @@ const TRAVELER_VISIONS: Element[] = [
   Element.Dendro,
   Element.Hydro,
   Element.Pyro,
+  Element.Cryo,
 ];
 const TRAVELER_EXCLUSIVITY_GROUP = "traveler";
 
