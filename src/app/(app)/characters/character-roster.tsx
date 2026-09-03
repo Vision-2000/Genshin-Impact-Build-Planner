@@ -6,6 +6,8 @@ import { Element, WeaponType } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
 import { PaginationControls } from "../pagination-controls";
 import { setCharacterOwnership } from "./actions";
+import { ELEMENT_ICON_URL } from "./element-icons";
+import { WEAPON_TYPE_ICON_URL } from "./weapon-type-icons";
 import {
   filterAndSortCharacters,
   type CharacterListItem,
@@ -147,32 +149,47 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
         {filtered.length} character{filtered.length === 1 ? "" : "s"}
       </p>
 
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {pageItems.map((character) => (
-          <li key={character.id} className="flex items-center gap-3 rounded border p-3">
-            {character.iconUrl && (
-              <Image
-                src={character.iconUrl}
-                alt=""
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{character.name}</p>
-              <p className="text-xs text-gray-500">
-                {character.rarity}★ {character.element}
-              </p>
-            </div>
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                checked={character.isOwned}
-                onChange={(event) => handleToggleOwnership(character.id, event.target.checked)}
-              />
-              Owned
-            </label>
+          <li key={character.id}>
+            <button
+              type="button"
+              onClick={() => handleToggleOwnership(character.id, !character.isOwned)}
+              aria-pressed={character.isOwned}
+              className={`relative flex w-full flex-col items-center gap-2 rounded-xl border-8 p-3 pt-8 text-center shadow ${
+                character.isOwned ? "border-green-500" : "border-gray-600"
+              } ${
+                character.rarity >= 5
+                  ? "bg-gradient-to-b from-yellow-700 via-amber-700 to-yellow-900"
+                  : "bg-gradient-to-b from-purple-800 via-purple-700 to-purple-950"
+              }`}
+            >
+              <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
+                <Image src={ELEMENT_ICON_URL[character.element]} alt={character.element} width={26} height={26} />
+              </span>
+              <span className="absolute right-2 top-2 h-9 w-9 rounded-full shadow">
+                <Image
+                  src={WEAPON_TYPE_ICON_URL[character.weaponType]}
+                  alt={character.weaponType}
+                  width={36}
+                  height={36}
+                  className="rounded-full"
+                />
+              </span>
+
+              {character.iconUrl && (
+                <div className="relative aspect-square w-full p-[6%]">
+                  <Image
+                    src={character.iconUrl}
+                    alt=""
+                    fill
+                    sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+                    className="rounded-full object-cover"
+                  />
+                </div>
+              )}
+              <p className="w-full truncate text-sm font-semibold text-white drop-shadow-sm">{character.name}</p>
+            </button>
           </li>
         ))}
         {pageItems.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
