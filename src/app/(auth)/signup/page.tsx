@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function SignupPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Sign up</h1>
+      <h1 className="text-2xl font-semibold">Genshin Build Tracker</h1>
       <SignupForm />
       <p className="text-sm text-gray-600">
         Already have an account?{" "}
