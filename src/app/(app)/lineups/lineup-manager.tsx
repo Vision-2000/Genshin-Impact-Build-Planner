@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { paginate } from "@/lib/paginate";
 import { detectOverlaps } from "@/lib/overlap";
+import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import { createLineup, updateLineupName, deleteLineup, addLineupTeam, removeLineupTeam } from "./actions";
 import type { CreateLineupErrors } from "./schemas";
@@ -106,6 +107,7 @@ function LineupCard({
 export function LineupManager({ teams, initialLineups }: { teams: TeamOption[]; initialLineups: LineupItem[] }) {
   const [lineups, setLineups] = useState(initialLineups);
   const [, startTransition] = useTransition();
+  const { confirm, notify } = useDialogs();
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -137,11 +139,16 @@ export function LineupManager({ teams, initialLineups }: { teams: TeamOption[]; 
     });
   }
 
-  function handleDelete(lineupId: number) {
-    if (!window.confirm("Delete this lineup? This can't be undone.")) return;
-    const previous = lineups;
-    setLineups((prev) => prev.filter((lineup) => lineup.id !== lineupId));
+  async function handleDelete(lineupId: number) {
+    const confirmed = await confirm("Delete this lineup? This can't be undone.", {
+      title: "Delete lineup",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     startTransition(() => {
+      const previous = lineups;
+      setLineups((prev) => prev.filter((lineup) => lineup.id !== lineupId));
       deleteLineup(lineupId).catch(() => setLineups(previous));
     });
   }
@@ -150,7 +157,7 @@ export function LineupManager({ teams, initialLineups }: { teams: TeamOption[]; 
     startTransition(async () => {
       const result = await addLineupTeam(lineupId, teamId);
       if ("error" in result) {
-        window.alert(result.error);
+        notify(result.error, { title: "Can't add team" });
         return;
       }
       setLineups((prev) =>

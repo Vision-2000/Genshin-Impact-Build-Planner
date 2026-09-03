@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { paginate } from "@/lib/paginate";
 import { detectOverlaps } from "@/lib/overlap";
+import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild } from "./actions";
 import type { CreateTeamErrors } from "./schemas";
@@ -115,6 +116,7 @@ function TeamCard({
 export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; initialTeams: TeamItem[] }) {
   const [teams, setTeams] = useState(initialTeams);
   const [, startTransition] = useTransition();
+  const { confirm, notify } = useDialogs();
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -146,11 +148,16 @@ export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; i
     });
   }
 
-  function handleDelete(teamId: number) {
-    if (!window.confirm("Delete this team? This can't be undone.")) return;
-    const previous = teams;
-    setTeams((prev) => prev.filter((team) => team.id !== teamId));
+  async function handleDelete(teamId: number) {
+    const confirmed = await confirm("Delete this team? This can't be undone.", {
+      title: "Delete team",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     startTransition(() => {
+      const previous = teams;
+      setTeams((prev) => prev.filter((team) => team.id !== teamId));
       deleteTeam(teamId).catch(() => setTeams(previous));
     });
   }
@@ -159,7 +166,7 @@ export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; i
     startTransition(async () => {
       const result = await addTeamBuild(teamId, buildId);
       if ("error" in result) {
-        window.alert(result.error);
+        notify(result.error, { title: "Can't add build" });
         return;
       }
       setTeams((prev) =>

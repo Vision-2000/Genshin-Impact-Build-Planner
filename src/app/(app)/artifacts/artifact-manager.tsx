@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
+import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import {
   addArtifact,
@@ -158,6 +159,7 @@ export function ArtifactManager({
 }) {
   const [owned, setOwned] = useState(initialOwnedArtifacts);
   const [, startTransition] = useTransition();
+  const { confirm } = useDialogs();
 
   const statTypeByName = new Map(statTypes.map((s) => [s.name, s]));
   const statTypeById = new Map(statTypes.map((s) => [s.id, s]));
@@ -280,11 +282,15 @@ export function ArtifactManager({
     });
   }
 
-  function handleRemoveArtifact(ownedArtifactId: number) {
-    if (!window.confirm("Remove this artifact? This can't be undone.")) return;
-    const previous = owned;
-    setOwned((prev) => prev.filter((a) => a.id !== ownedArtifactId));
+  async function handleRemoveArtifact(ownedArtifactId: number) {
+    const confirmed = await confirm("Remove this artifact? This can't be undone.", {
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!confirmed) return;
     startTransition(() => {
+      const previous = owned;
+      setOwned((prev) => prev.filter((a) => a.id !== ownedArtifactId));
       removeArtifact(ownedArtifactId).catch(() => setOwned(previous));
     });
   }

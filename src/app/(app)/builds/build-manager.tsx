@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
+import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import {
   createBuild,
@@ -134,6 +135,7 @@ export function BuildManager({
 }) {
   const [builds, setBuilds] = useState(initialBuilds);
   const [, startTransition] = useTransition();
+  const { confirm } = useDialogs();
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<BuildSortKey>("name");
@@ -208,22 +210,23 @@ export function BuildManager({
     });
   }
 
-  function handleDelete(buildId: number) {
-    startTransition(async () => {
-      const { teamNames, rosterNames } = await getBuildContainerNames(buildId);
-      const containerLabels = [
-        ...teamNames.map((name) => `team "${name}"`),
-        ...rosterNames.map((name) => `roster "${name}"`),
-      ];
-      const message =
-        containerLabels.length > 0
-          ? `This build is used in: ${containerLabels.join(", ")}. Deleting it will remove it from ${
-              containerLabels.length === 1 ? "that" : "those"
-            } too. Delete anyway?`
-          : "Delete this build? This can't be undone.";
+  async function handleDelete(buildId: number) {
+    const { teamNames, rosterNames } = await getBuildContainerNames(buildId);
+    const containerLabels = [
+      ...teamNames.map((name) => `team "${name}"`),
+      ...rosterNames.map((name) => `roster "${name}"`),
+    ];
+    const message =
+      containerLabels.length > 0
+        ? `This build is used in: ${containerLabels.join(", ")}. Deleting it will remove it from ${
+            containerLabels.length === 1 ? "that" : "those"
+          } too. Delete anyway?`
+        : "Delete this build? This can't be undone.";
 
-      if (!window.confirm(message)) return;
+    const confirmed = await confirm(message, { title: "Delete build", confirmLabel: "Delete", danger: true });
+    if (!confirmed) return;
 
+    startTransition(() => {
       const previous = builds;
       setBuilds((prev) => prev.filter((b) => b.id !== buildId));
       deleteBuild(buildId).catch(() => setBuilds(previous));

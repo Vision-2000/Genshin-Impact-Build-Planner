@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { WeaponType } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
+import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import { WeaponTypeFilterRow } from "./weapon-type-filter-row";
 import { addWeapon, removeWeapon, updateWeaponRefinement } from "./actions";
@@ -35,6 +36,7 @@ export function WeaponManager({
 }) {
   const [owned, setOwned] = useState(initialOwnedWeapons);
   const [, startTransition] = useTransition();
+  const { confirm } = useDialogs();
 
   const [ownedSearch, setOwnedSearch] = useState("");
   const [ownedTypeFilter, setOwnedTypeFilter] = useState<Set<WeaponType>>(new Set());
@@ -90,13 +92,17 @@ export function WeaponManager({
     });
   }
 
-  function handleRemove(ownedWeaponId: number) {
-    if (!window.confirm("Remove this weapon? This can't be undone.")) return;
-
-    const previous = owned;
-    setOwned((prev) => prev.filter((weapon) => weapon.id !== ownedWeaponId));
+  async function handleRemove(ownedWeaponId: number) {
+    const confirmed = await confirm("Remove this weapon? This can't be undone.", {
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!confirmed) return;
 
     startTransition(() => {
+      const previous = owned;
+      setOwned((prev) => prev.filter((weapon) => weapon.id !== ownedWeaponId));
+
       removeWeapon(ownedWeaponId).catch(() => {
         setOwned(previous);
       });

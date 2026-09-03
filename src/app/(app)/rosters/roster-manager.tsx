@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { paginate } from "@/lib/paginate";
 import { detectOverlaps } from "@/lib/overlap";
+import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import { createRoster, updateRosterName, deleteRoster, addRosterBuild, removeRosterBuild } from "./actions";
 import type { CreateRosterErrors } from "./schemas";
@@ -108,6 +109,7 @@ function RosterCard({
 export function RosterManager({ builds, initialRosters }: { builds: BuildOption[]; initialRosters: RosterItem[] }) {
   const [rosters, setRosters] = useState(initialRosters);
   const [, startTransition] = useTransition();
+  const { confirm, notify } = useDialogs();
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -139,11 +141,16 @@ export function RosterManager({ builds, initialRosters }: { builds: BuildOption[
     });
   }
 
-  function handleDelete(rosterId: number) {
-    if (!window.confirm("Delete this roster? This can't be undone.")) return;
-    const previous = rosters;
-    setRosters((prev) => prev.filter((roster) => roster.id !== rosterId));
+  async function handleDelete(rosterId: number) {
+    const confirmed = await confirm("Delete this roster? This can't be undone.", {
+      title: "Delete roster",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     startTransition(() => {
+      const previous = rosters;
+      setRosters((prev) => prev.filter((roster) => roster.id !== rosterId));
       deleteRoster(rosterId).catch(() => setRosters(previous));
     });
   }
@@ -152,7 +159,7 @@ export function RosterManager({ builds, initialRosters }: { builds: BuildOption[
     startTransition(async () => {
       const result = await addRosterBuild(rosterId, buildId);
       if ("error" in result) {
-        window.alert(result.error);
+        notify(result.error, { title: "Can't add build" });
         return;
       }
       setRosters((prev) =>
