@@ -10,4 +10,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/artifacts", label: "Artifacts" },
   { href: "/builds", label: "Builds" },
   { href: "/teams", label: "Teams" },
+  { href: "/rosters", label: "Rosters" },
 ];

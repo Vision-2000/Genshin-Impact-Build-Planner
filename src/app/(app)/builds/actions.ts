@@ -122,18 +122,27 @@ export async function setBuildArtifact(buildId: number, slot: ArtifactSlot, owne
   });
 }
 
-// Deleting a build cascades out of any team it's in (DB-level, via
-// TeamBuild's onDelete: Cascade) -- this lets the confirm prompt name the
-// affected teams first, per CLAUDE.md.
-export async function getBuildTeamNames(buildId: number): Promise<string[]> {
+// Deleting a build cascades out of any team/roster it's in (DB-level, via
+// TeamBuild/RosterBuild's onDelete: Cascade) -- this lets the confirm prompt
+// name the affected teams/rosters first, per CLAUDE.md.
+export async function getBuildContainerNames(buildId: number): Promise<{ teamNames: string[]; rosterNames: string[] }> {
   const profile = await requireActiveProfile();
 
-  const teamBuilds = await prisma.teamBuild.findMany({
-    where: { buildId, team: { gameProfileId: profile.id } },
-    include: { team: true },
-  });
+  const [teamBuilds, rosterBuilds] = await Promise.all([
+    prisma.teamBuild.findMany({
+      where: { buildId, team: { gameProfileId: profile.id } },
+      include: { team: true },
+    }),
+    prisma.rosterBuild.findMany({
+      where: { buildId, roster: { gameProfileId: profile.id } },
+      include: { roster: true },
+    }),
+  ]);
 
-  return teamBuilds.map((teamBuild) => teamBuild.team.name);
+  return {
+    teamNames: teamBuilds.map((teamBuild) => teamBuild.team.name),
+    rosterNames: rosterBuilds.map((rosterBuild) => rosterBuild.roster.name),
+  };
 }
 
 export async function deleteBuild(buildId: number) {

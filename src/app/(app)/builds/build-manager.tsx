@@ -11,7 +11,7 @@ import {
   updateBuildWeapon,
   setBuildArtifact,
   deleteBuild,
-  getBuildTeamNames,
+  getBuildContainerNames,
 } from "./actions";
 import type { CreateBuildErrors } from "./schemas";
 import {
@@ -210,11 +210,15 @@ export function BuildManager({
 
   function handleDelete(buildId: number) {
     startTransition(async () => {
-      const teamNames = await getBuildTeamNames(buildId);
+      const { teamNames, rosterNames } = await getBuildContainerNames(buildId);
+      const containerLabels = [
+        ...teamNames.map((name) => `team "${name}"`),
+        ...rosterNames.map((name) => `roster "${name}"`),
+      ];
       const message =
-        teamNames.length > 0
-          ? `This build is used in: ${teamNames.join(", ")}. Deleting it will remove it from ${
-              teamNames.length === 1 ? "that team" : "those teams"
+        containerLabels.length > 0
+          ? `This build is used in: ${containerLabels.join(", ")}. Deleting it will remove it from ${
+              containerLabels.length === 1 ? "that" : "those"
             } too. Delete anyway?`
           : "Delete this build? This can't be undone.";
 
