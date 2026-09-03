@@ -95,6 +95,7 @@ model GameProfile {
   rosters         Roster[]
   lineups         Lineup[]
 
+  @@unique([userId, name])
   @@map("game_profiles")
 }
 

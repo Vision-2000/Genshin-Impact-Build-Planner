@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession, setActiveProfileId, getActiveProfileIdCookie, clearActiveProfileId } from "@/lib/session";
 import { CreateProfileSchema, type CreateProfileFormState } from "./schemas";
@@ -23,9 +24,16 @@ export async function createProfile(
 
   const { name, uid } = validated.data;
 
-  await prisma.gameProfile.create({
-    data: { userId: session.userId, name, uid: uid ?? null },
-  });
+  try {
+    await prisma.gameProfile.create({
+      data: { userId: session.userId, name, uid: uid ?? null },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { errors: { name: ["You already have a profile with this name."] } };
+    }
+    throw error;
+  }
 
   revalidatePath("/profiles");
 }
