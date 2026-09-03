@@ -30,7 +30,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
-    "genshin-db": "^5.2.12",
+    "genshin-db": "^5.2.13",
     "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.7",
