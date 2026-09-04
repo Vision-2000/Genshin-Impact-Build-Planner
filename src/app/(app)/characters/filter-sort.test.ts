@@ -19,6 +19,7 @@ const baseFilters = {
   search: "",
   elementFilter: new Set<Element>(),
   weaponTypeFilter: new Set<WeaponType>(),
+  rarityFilter: new Set<number>(),
   ownershipFilter: "all" as const,
   sortKey: "name" as const,
 };
@@ -55,6 +56,11 @@ describe("filterAndSortCharacters", () => {
       weaponTypeFilter: new Set([WeaponType.Polearm]),
     });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Xiangling"]);
+  });
+
+  it("filters by rarity, matching any rarity in the set", () => {
+    const result = filterAndSortCharacters(characters, { ...baseFilters, rarityFilter: new Set([5]) });
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao"]);
   });
 
   it("filters to owned only", () => {

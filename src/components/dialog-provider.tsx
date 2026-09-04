@@ -85,7 +85,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             className="w-full max-w-sm space-y-4 rounded-lg border bg-background p-5 text-foreground shadow-lg"
           >
             {state.options.title && <h2 className="text-base font-semibold">{state.options.title}</h2>}
-            <p className="text-sm text-gray-600">{state.message}</p>
+            <p className="whitespace-pre-line text-sm text-foreground">{state.message}</p>
             <div className="flex justify-end gap-2">
               {state.kind === "confirm" && (
                 <button

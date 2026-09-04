@@ -3,8 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
-import { paginate } from "@/lib/paginate";
-import { PaginationControls } from "../pagination-controls";
 import { setCharacterOwnership } from "./actions";
 import { ELEMENT_ICON_URL } from "./element-icons";
 import { WEAPON_TYPE_ICON_URL } from "./weapon-type-icons";
@@ -17,30 +15,41 @@ import {
 
 export type { CharacterListItem };
 
+function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2 L14.9 9.1 L22.5 9.7 L16.7 14.6 L18.5 22 L12 17.8 L5.5 22 L7.3 14.6 L1.5 9.7 L9.1 9.1 Z" />
+    </svg>
+  );
+}
+
 const ELEMENTS = Object.values(Element);
 const WEAPON_TYPES = Object.values(WeaponType);
-const PAGE_SIZE = 24;
+// Playable characters are only ever seeded at 4-5 star (see prisma/seed.ts).
+const RARITIES = [5, 4];
 
 export function CharacterRoster({ initialCharacters }: { initialCharacters: CharacterListItem[] }) {
   const [characters, setCharacters] = useState(initialCharacters);
   const [search, setSearch] = useState("");
   const [elementFilter, setElementFilter] = useState<Set<Element>>(new Set());
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
+  const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [page, setPage] = useState(1);
   const [, startTransition] = useTransition();
 
   const filtered = useMemo(
-    () => filterAndSortCharacters(characters, { search, elementFilter, weaponTypeFilter, ownershipFilter, sortKey }),
-    [characters, search, elementFilter, weaponTypeFilter, ownershipFilter, sortKey]
+    () =>
+      filterAndSortCharacters(characters, {
+        search,
+        elementFilter,
+        weaponTypeFilter,
+        rarityFilter,
+        ownershipFilter,
+        sortKey,
+      }),
+    [characters, search, elementFilter, weaponTypeFilter, rarityFilter, ownershipFilter, sortKey]
   );
-
-  const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
-
-  function resetToFirstPage() {
-    setPage(1);
-  }
 
   function toggleElement(element: Element) {
     setElementFilter((prev) => {
@@ -49,7 +58,6 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
       else next.add(element);
       return next;
     });
-    resetToFirstPage();
   }
 
   function toggleWeaponType(weaponType: WeaponType) {
@@ -59,7 +67,15 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
       else next.add(weaponType);
       return next;
     });
-    resetToFirstPage();
+  }
+
+  function toggleRarity(rarity: number) {
+    setRarityFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(rarity)) next.delete(rarity);
+      else next.add(rarity);
+      return next;
+    });
   }
 
   function handleToggleOwnership(characterId: number, nextIsOwned: boolean) {
@@ -85,19 +101,13 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
           type="text"
           placeholder="Search by name..."
           value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            resetToFirstPage();
-          }}
+          onChange={(event) => setSearch(event.target.value)}
           className="rounded border px-3 py-2 text-sm bg-white text-black"
         />
 
         <select
           value={ownershipFilter}
-          onChange={(event) => {
-            setOwnershipFilter(event.target.value as OwnershipFilter);
-            resetToFirstPage();
-          }}
+          onChange={(event) => setOwnershipFilter(event.target.value as OwnershipFilter)}
           className="rounded border px-3 py-2 text-sm bg-white text-black"
         >
           <option value="all">All</option>
@@ -121,11 +131,13 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
             key={element}
             type="button"
             onClick={() => toggleElement(element)}
-            className={`rounded-full border px-3 py-1 text-xs ${
-              elementFilter.has(element) ? "bg-foreground text-background" : ""
+            aria-pressed={elementFilter.has(element)}
+            title={element}
+            className={`flex h-10 w-10 items-center justify-center rounded-full bg-black/40 p-1.5 ring-2 ${
+              elementFilter.has(element) ? "ring-blue-500" : "ring-foreground"
             }`}
           >
-            {element}
+            <Image src={ELEMENT_ICON_URL[element]} alt={element} width={24} height={24} />
           </button>
         ))}
       </div>
@@ -136,11 +148,37 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
             key={weaponType}
             type="button"
             onClick={() => toggleWeaponType(weaponType)}
-            className={`rounded-full border px-3 py-1 text-xs ${
-              weaponTypeFilter.has(weaponType) ? "bg-foreground text-background" : ""
+            aria-pressed={weaponTypeFilter.has(weaponType)}
+            title={weaponType}
+            className={`h-10 w-10 rounded-full ring-2 ${
+              weaponTypeFilter.has(weaponType) ? "ring-blue-500" : "ring-foreground"
             }`}
           >
-            {weaponType}
+            <Image
+              src={WEAPON_TYPE_ICON_URL[weaponType]}
+              alt={weaponType}
+              width={40}
+              height={40}
+              className="rounded-full"
+            />
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {RARITIES.map((rarity) => (
+          <button
+            key={rarity}
+            type="button"
+            onClick={() => toggleRarity(rarity)}
+            aria-pressed={rarityFilter.has(rarity)}
+            title={`${rarity} star`}
+            className={`flex h-10 items-center gap-0.5 rounded-full bg-black/40 pl-2 pr-1.5 ring-2 ${
+              rarityFilter.has(rarity) ? "ring-blue-500" : "ring-foreground"
+            }`}
+          >
+            <span className="text-sm font-medium text-white">{rarity}</span>
+            <StarIcon className="h-4 w-4 text-yellow-400" />
           </button>
         ))}
       </div>
@@ -150,13 +188,13 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
       </p>
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {pageItems.map((character) => (
+        {filtered.map((character) => (
           <li key={character.id}>
             <button
               type="button"
               onClick={() => handleToggleOwnership(character.id, !character.isOwned)}
               aria-pressed={character.isOwned}
-              className={`relative flex w-full flex-col items-center gap-2 rounded-xl border-8 p-3 pt-8 text-center shadow ${
+              className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 text-left shadow ${
                 character.isOwned ? "border-green-500" : "border-gray-600"
               } ${
                 character.rarity >= 5
@@ -164,6 +202,16 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
                   : "bg-gradient-to-b from-purple-800 via-purple-700 to-purple-950"
               }`}
             >
+              {character.iconUrl && (
+                <Image
+                  src={character.iconUrl}
+                  alt=""
+                  fill
+                  sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+                  className="object-cover"
+                />
+              )}
+
               <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
                 <Image src={ELEMENT_ICON_URL[character.element]} alt={character.element} width={26} height={26} />
               </span>
@@ -177,25 +225,14 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
                 />
               </span>
 
-              {character.iconUrl && (
-                <div className="relative aspect-square w-full p-[6%]">
-                  <Image
-                    src={character.iconUrl}
-                    alt=""
-                    fill
-                    sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-                    className="rounded-full object-cover"
-                  />
-                </div>
-              )}
-              <p className="w-full truncate text-sm font-semibold text-white drop-shadow-sm">{character.name}</p>
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-8">
+                <p className="truncate text-center text-lg font-semibold text-white">{character.name}</p>
+              </div>
             </button>
           </li>
         ))}
-        {pageItems.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
+        {filtered.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
       </ul>
-
-      <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
     </div>
   );
 }

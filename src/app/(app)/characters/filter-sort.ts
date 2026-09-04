@@ -17,13 +17,14 @@ export type CharacterFilters = {
   search: string;
   elementFilter: ReadonlySet<Element>;
   weaponTypeFilter: ReadonlySet<WeaponType>;
+  rarityFilter: ReadonlySet<number>;
   ownershipFilter: OwnershipFilter;
   sortKey: SortKey;
 };
 
 export function filterAndSortCharacters(
   characters: CharacterListItem[],
-  { search, elementFilter, weaponTypeFilter, ownershipFilter, sortKey }: CharacterFilters
+  { search, elementFilter, weaponTypeFilter, rarityFilter, ownershipFilter, sortKey }: CharacterFilters
 ): CharacterListItem[] {
   let result = characters;
 
@@ -36,6 +37,9 @@ export function filterAndSortCharacters(
   }
   if (weaponTypeFilter.size > 0) {
     result = result.filter((character) => weaponTypeFilter.has(character.weaponType));
+  }
+  if (rarityFilter.size > 0) {
+    result = result.filter((character) => rarityFilter.has(character.rarity));
   }
   if (ownershipFilter === "owned") {
     result = result.filter((character) => character.isOwned);

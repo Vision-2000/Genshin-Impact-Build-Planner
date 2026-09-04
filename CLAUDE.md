@@ -140,6 +140,18 @@ user-editable.
   builds already present, not just on owned_character_id. If a future character
   rework ever needs the same mechanic, reuse this field rather than adding a
   special case — it's intentionally not named after Traveler specifically.
+- Pagination on Characters was removed in favor of a full scrollable list —
+  it's bounded, slow-growing master data (~125 rows, only grows with game
+  updates), and rendering all of it at once is well within normal browser
+  capability. This is deliberately NOT a general pattern to copy onto every
+  list page: Artifacts (and any page with genuinely unbounded per-user growth
+  — `OwnedArtifact` is one row per physical piece, no consolidation, so a
+  long-term player can accumulate hundreds+) keeps pagination for now. If a
+  page like that ever needs to drop pagination too, the right answer is
+  virtualization (e.g. `@tanstack/react-virtual`, virtualizing by row since
+  the grid's column count is responsive) — not "render everything," which
+  would degrade with real usage. Don't build that virtualized-grid component
+  speculatively; wait for a concrete page that actually needs it.
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs
