@@ -54,7 +54,7 @@ export function WeaponCard({
           />
         )}
 
-        <span className="absolute right-2 top-2 h-9 w-9 rounded-full shadow">
+        <span className="absolute left-2 top-2 h-9 w-9 rounded-full shadow">
           <Image
             src={WEAPON_TYPE_ICON_URL[weaponType]}
             alt={weaponType}
@@ -75,7 +75,7 @@ export function WeaponCard({
             <select
               value={refinement}
               onChange={(event) => onRefinementChange(Number(event.target.value))}
-              className="rounded border bg-white px-1.5 py-0.5 text-xs text-black"
+              className="h-6 rounded border bg-white px-1.5 text-xs text-black"
             >
               {REFINEMENTS.map((r) => (
                 <option key={r} value={r}>
@@ -86,7 +86,9 @@ export function WeaponCard({
             <button
               type="button"
               onClick={onAction}
-              className={`rounded px-2 py-0.5 text-xs text-white ${danger ? "bg-red-600" : "bg-black"}`}
+              className={`flex h-6 items-center justify-center rounded px-2 text-xs font-semibold leading-none text-white ${
+                danger ? "bg-red-600" : "border border-white/70 hover:bg-white/10"
+              }`}
             >
               {actionLabel}
             </button>

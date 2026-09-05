@@ -30,7 +30,7 @@ export default async function AddWeaponPage() {
 
   return (
     <div className="mx-auto max-w-[90rem] space-y-3 p-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">Add a weapon</h1>
@@ -38,7 +38,10 @@ export default async function AddWeaponPage() {
           </div>
           <p className="text-sm text-gray-500">Adding weapons for {profile.name}</p>
         </div>
-        <Link href="/weapons" className="text-sm underline">
+        <Link
+          href="/weapons"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+        >
           ← Back to my weapons
         </Link>
       </div>
