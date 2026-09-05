@@ -1,5 +1,7 @@
 import { WeaponType } from "@/generated/prisma/enums";
 
+export const REFINEMENTS = [1, 2, 3, 4, 5];
+
 export type WeaponCatalogItem = {
   id: number;
   name: string;
@@ -26,19 +28,22 @@ export type OwnedSortKey = "name" | "rarity" | "refinement";
 export type CatalogFilters = {
   search: string;
   weaponTypeFilter: ReadonlySet<WeaponType>;
+  rarityFilter: ReadonlySet<number>;
   sortKey: CatalogSortKey;
 };
 
 export type OwnedFilters = {
   search: string;
   weaponTypeFilter: ReadonlySet<WeaponType>;
+  rarityFilter: ReadonlySet<number>;
   sortKey: OwnedSortKey;
 };
 
-function matchesSearchAndType<T extends { name: string; weaponType: WeaponType }>(
+function matchesSearchTypeAndRarity<T extends { name: string; weaponType: WeaponType; rarity: number }>(
   items: T[],
   search: string,
-  weaponTypeFilter: ReadonlySet<WeaponType>
+  weaponTypeFilter: ReadonlySet<WeaponType>,
+  rarityFilter: ReadonlySet<number>
 ): T[] {
   let result = items;
 
@@ -49,15 +54,18 @@ function matchesSearchAndType<T extends { name: string; weaponType: WeaponType }
   if (weaponTypeFilter.size > 0) {
     result = result.filter((item) => weaponTypeFilter.has(item.weaponType));
   }
+  if (rarityFilter.size > 0) {
+    result = result.filter((item) => rarityFilter.has(item.rarity));
+  }
 
   return result;
 }
 
 export function filterAndSortWeaponCatalog(
   weapons: WeaponCatalogItem[],
-  { search, weaponTypeFilter, sortKey }: CatalogFilters
+  { search, weaponTypeFilter, rarityFilter, sortKey }: CatalogFilters
 ): WeaponCatalogItem[] {
-  const result = matchesSearchAndType(weapons, search, weaponTypeFilter);
+  const result = matchesSearchTypeAndRarity(weapons, search, weaponTypeFilter, rarityFilter);
 
   return [...result].sort((a, b) => {
     if (sortKey === "rarity") {
@@ -69,9 +77,9 @@ export function filterAndSortWeaponCatalog(
 
 export function filterAndSortOwnedWeapons(
   weapons: OwnedWeaponItem[],
-  { search, weaponTypeFilter, sortKey }: OwnedFilters
+  { search, weaponTypeFilter, rarityFilter, sortKey }: OwnedFilters
 ): OwnedWeaponItem[] {
-  const result = matchesSearchAndType(weapons, search, weaponTypeFilter);
+  const result = matchesSearchTypeAndRarity(weapons, search, weaponTypeFilter, rarityFilter);
 
   return [...result].sort((a, b) => {
     if (sortKey === "rarity") {

@@ -36,12 +36,14 @@ function ownedItem(overrides: Partial<OwnedWeaponItem>): OwnedWeaponItem {
 const catalogBaseFilters = {
   search: "",
   weaponTypeFilter: new Set<WeaponType>(),
+  rarityFilter: new Set<number>(),
   sortKey: "name" as const,
 };
 
 const ownedBaseFilters = {
   search: "",
   weaponTypeFilter: new Set<WeaponType>(),
+  rarityFilter: new Set<number>(),
   sortKey: "name" as const,
 };
 
@@ -80,6 +82,11 @@ describe("filterAndSortWeaponCatalog", () => {
     expect(result.map((w) => w.name)).toEqual(["Favonius Sword"]);
   });
 
+  it("filters by rarity, matching any rarity in the set", () => {
+    const result = filterAndSortWeaponCatalog(catalog, { ...catalogBaseFilters, rarityFilter: new Set([5]) });
+    expect(result.map((w) => w.name)).toEqual(["Amos' Bow", "Aquila Favonia"]);
+  });
+
   it("sorts by rarity descending, breaking ties by name", () => {
     const result = filterAndSortWeaponCatalog(catalog, { ...catalogBaseFilters, sortKey: "rarity" });
     expect(result.map((w) => w.name)).toEqual(["Amos' Bow", "Aquila Favonia", "Favonius Sword", "Widsith"]);
@@ -114,6 +121,11 @@ describe("filterAndSortOwnedWeapons", () => {
       weaponTypeFilter: new Set([WeaponType.Sword]),
     });
     expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword"]);
+  });
+
+  it("filters by rarity, matching any rarity in the set", () => {
+    const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, rarityFilter: new Set([5]) });
+    expect(result.map((w) => w.name)).toEqual(["Aquila Favonia"]);
   });
 
   it("sorts by rarity descending, breaking ties by name", () => {

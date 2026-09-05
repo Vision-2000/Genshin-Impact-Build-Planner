@@ -1,0 +1,98 @@
+"use client";
+
+import Image from "next/image";
+import { WeaponType } from "@/generated/prisma/enums";
+import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
+import { REFINEMENTS } from "./filter-sort";
+
+// Shared visual card for both the owned-weapons list and the add-weapon
+// catalog -- same rarity-gradient/badge/overlay treatment as the Characters
+// cards, but not a single click-to-toggle button, since a weapon isn't a
+// boolean: refinement is a real per-copy value the user picks, and the
+// action (Add vs Remove) differs by context.
+export function WeaponCard({
+  name,
+  weaponType,
+  rarity,
+  secondaryStatName,
+  iconUrl,
+  refinement,
+  onRefinementChange,
+  actionLabel,
+  onAction,
+  danger = false,
+}: {
+  name: string;
+  weaponType: WeaponType;
+  rarity: number;
+  secondaryStatName: string | null;
+  iconUrl: string | null;
+  refinement: number;
+  onRefinementChange: (refinement: number) => void;
+  actionLabel: string;
+  onAction: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <li>
+      <div
+        className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 border-gray-600 shadow ${
+          rarity >= 5
+            ? "bg-gradient-to-b from-yellow-700 via-amber-700 to-yellow-900"
+            : rarity === 4
+              ? "bg-gradient-to-b from-purple-800 via-purple-700 to-purple-950"
+              : "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-950"
+        }`}
+      >
+        {iconUrl && (
+          <Image
+            src={iconUrl}
+            alt=""
+            fill
+            sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+            className="object-cover"
+          />
+        )}
+
+        <span className="absolute right-2 top-2 h-9 w-9 rounded-full shadow">
+          <Image
+            src={WEAPON_TYPE_ICON_URL[weaponType]}
+            alt={weaponType}
+            width={36}
+            height={36}
+            className="rounded-full"
+          />
+        </span>
+
+        <div className="absolute inset-x-0 bottom-0 space-y-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
+          <div>
+            <p className="truncate text-center text-base font-semibold text-white">{name}</p>
+            {secondaryStatName && (
+              <p className="truncate text-center text-xs text-gray-300">{secondaryStatName}</p>
+            )}
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <select
+              value={refinement}
+              onChange={(event) => onRefinementChange(Number(event.target.value))}
+              className="rounded border bg-white px-1.5 py-0.5 text-xs text-black"
+            >
+              {REFINEMENTS.map((r) => (
+                <option key={r} value={r}>
+                  R{r}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={onAction}
+              className={`rounded px-2 py-0.5 text-xs text-white ${danger ? "bg-red-600" : "bg-black"}`}
+            >
+              {actionLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}

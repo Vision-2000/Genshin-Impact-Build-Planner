@@ -3,9 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
+import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
+import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { setCharacterOwnership } from "./actions";
 import { ELEMENT_ICON_URL } from "./element-icons";
-import { WEAPON_TYPE_ICON_URL } from "./weapon-type-icons";
 import {
   filterAndSortCharacters,
   type CharacterListItem,
@@ -14,14 +15,6 @@ import {
 } from "./filter-sort";
 
 export type { CharacterListItem };
-
-function StarIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M12 2 L14.9 9.1 L22.5 9.7 L16.7 14.6 L18.5 22 L12 17.8 L5.5 22 L7.3 14.6 L1.5 9.7 L9.1 9.1 Z" />
-    </svg>
-  );
-}
 
 const ELEMENTS = Object.values(Element);
 const WEAPON_TYPES = Object.values(WeaponType);
@@ -165,23 +158,7 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {RARITIES.map((rarity) => (
-          <button
-            key={rarity}
-            type="button"
-            onClick={() => toggleRarity(rarity)}
-            aria-pressed={rarityFilter.has(rarity)}
-            title={`${rarity} star`}
-            className={`flex h-10 items-center gap-0.5 rounded-full bg-black/40 pl-2 pr-1.5 ring-2 ${
-              rarityFilter.has(rarity) ? "ring-blue-500" : "ring-foreground"
-            }`}
-          >
-            <span className="text-sm font-medium text-white">{rarity}</span>
-            <StarIcon className="h-4 w-4 text-yellow-400" />
-          </button>
-        ))}
-      </div>
+      <RarityFilterRow rarities={RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 
       <p className="text-sm text-gray-500">
         {filtered.length} character{filtered.length === 1 ? "" : "s"}

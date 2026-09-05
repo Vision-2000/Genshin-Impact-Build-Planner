@@ -152,6 +152,28 @@ user-editable.
   the grid's column count is responsive) — not "render everything," which
   would degrade with real usage. Don't build that virtualized-grid component
   speculatively; wait for a concrete page that actually needs it.
+- The Weapons page is split into `/weapons` (owned copies only) and
+  `/weapons/add` (the full catalog, for adding new copies) rather than one
+  page with both sections stacked together. This isn't just a layout choice —
+  `OwnedWeapon` is its own entity (one row per physical copy, each with its
+  own refinement), not a boolean flag on `Weapon` the way character ownership
+  is, so "browse the catalog" and "manage what you own" are genuinely
+  different interactions on different data, and deserve different views.
+  A separate page was chosen over a modal/overlay for the add flow: it matches
+  this app's existing one-Server-Component-per-route architecture (each route
+  fetches only what it needs), and a searchable ~230-item catalog is too much
+  content for the kind of small, focused overlay `DialogProvider` is designed
+  for — building a second, heavier modal system just for this wasn't worth it.
+  The sidebar's existing prefix-match active-link logic
+  (`pathname.startsWith(item.href + "/")`) already keeps "Weapons" highlighted
+  on `/weapons/add` and navigates back to `/weapons` for free — this is why
+  the add route must stay nested under `/weapons`, not a sibling route.
+  Same reasoning as Characters applies to pagination here too: both
+  `/weapons` and `/weapons/add` render their full filtered list rather than
+  paginating — the catalog is bounded/slow-growing master data (same
+  reasoning as Characters), and an owned-weapon collection is nowhere near
+  Artifacts-scale unbounded (a refinement is one value per copy, not a
+  physical-piece entity with per-substat rows).
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs

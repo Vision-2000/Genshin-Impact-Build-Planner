@@ -1,0 +1,48 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { requireActiveProfile } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+import { HelpButton } from "@/components/help-button";
+import { WeaponCatalog } from "./weapon-catalog";
+import type { WeaponCatalogItem } from "../filter-sort";
+
+export const metadata: Metadata = {
+  title: "Add Weapon",
+};
+
+const HELP_TEXT = `Browse every weapon in the game. Search by name, or use the badges to filter by weapon type or rarity.
+
+Pick a refinement and click Add to add a copy to your owned weapons. You can add the same weapon more than once -- each copy is tracked separately with its own refinement.`;
+
+export default async function AddWeaponPage() {
+  const profile = await requireActiveProfile();
+
+  const weapons = await prisma.weapon.findMany({ orderBy: { name: "asc" }, include: { secondaryStat: true } });
+
+  const catalog: WeaponCatalogItem[] = weapons.map((weapon) => ({
+    id: weapon.id,
+    name: weapon.name,
+    weaponType: weapon.weaponType,
+    rarity: weapon.rarity,
+    secondaryStatName: weapon.secondaryStat?.name ?? null,
+    iconUrl: weapon.iconUrl,
+  }));
+
+  return (
+    <div className="mx-auto max-w-[90rem] space-y-3 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">Add a weapon</h1>
+            <HelpButton title="Add weapon help" text={HELP_TEXT} />
+          </div>
+          <p className="text-sm text-gray-500">Adding weapons for {profile.name}</p>
+        </div>
+        <Link href="/weapons" className="text-sm underline">
+          ← Back to my weapons
+        </Link>
+      </div>
+      <WeaponCatalog catalog={catalog} />
+    </div>
+  );
+}

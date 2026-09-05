@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { HelpButton } from "@/components/help-button";
 import { CharacterRoster, type CharacterListItem } from "./character-roster";
-import { HelpButton } from "./help-button";
 
 export const metadata: Metadata = {
   title: "Characters",
 };
+
+const HELP_TEXT = `Search by name, or use the badges below to filter by element, weapon type, or rarity -- click a badge to toggle it on, and combine as many as you like.
+
+Use the ownership dropdown to show All / Owned / Not owned characters, and the sort dropdown to order by name or rarity.
+
+Click anywhere on a character's card to mark it owned or not owned. A green border means it's in your owned roster; the border stays gray otherwise.`;
 
 export default async function CharactersPage() {
   const profile = await requireActiveProfile();
@@ -33,7 +39,7 @@ export default async function CharactersPage() {
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold">Characters</h1>
-          <HelpButton />
+          <HelpButton title="Characters page help" text={HELP_TEXT} />
         </div>
         <p className="text-sm text-gray-500">Managing characters for {profile.name}</p>
       </div>
