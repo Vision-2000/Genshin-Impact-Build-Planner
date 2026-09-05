@@ -12,6 +12,7 @@ export type CharacterListItem = {
 
 export type OwnershipFilter = "all" | "owned" | "unowned";
 export type SortKey = "name" | "rarity";
+export type SortDirection = "asc" | "desc";
 
 export type CharacterFilters = {
   search: string;
@@ -20,11 +21,12 @@ export type CharacterFilters = {
   rarityFilter: ReadonlySet<number>;
   ownershipFilter: OwnershipFilter;
   sortKey: SortKey;
+  sortDirection: SortDirection;
 };
 
 export function filterAndSortCharacters(
   characters: CharacterListItem[],
-  { search, elementFilter, weaponTypeFilter, rarityFilter, ownershipFilter, sortKey }: CharacterFilters
+  { search, elementFilter, weaponTypeFilter, rarityFilter, ownershipFilter, sortKey, sortDirection }: CharacterFilters
 ): CharacterListItem[] {
   let result = characters;
 
@@ -47,10 +49,12 @@ export function filterAndSortCharacters(
     result = result.filter((character) => !character.isOwned);
   }
 
+  const direction = sortDirection === "desc" ? -1 : 1;
+
   return [...result].sort((a, b) => {
     if (sortKey === "rarity") {
-      return b.rarity - a.rarity || a.name.localeCompare(b.name);
+      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
     }
-    return a.name.localeCompare(b.name);
+    return direction * a.name.localeCompare(b.name);
   });
 }

@@ -22,6 +22,7 @@ const baseFilters = {
   rarityFilter: new Set<number>(),
   ownershipFilter: "all" as const,
   sortKey: "name" as const,
+  sortDirection: "asc" as const,
 };
 
 const characters: CharacterListItem[] = [
@@ -82,9 +83,19 @@ describe("filterAndSortCharacters", () => {
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Xiangling"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity ascending, breaking ties by name", () => {
     const result = filterAndSortCharacters(characters, { ...baseFilters, sortKey: "rarity" });
+    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Xiangling", "Hu Tao"]);
+  });
+
+  it("sorts by rarity descending, breaking ties by name", () => {
+    const result = filterAndSortCharacters(characters, { ...baseFilters, sortKey: "rarity", sortDirection: "desc" });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
+  });
+
+  it("sorts by name descending", () => {
+    const result = filterAndSortCharacters(characters, { ...baseFilters, sortDirection: "desc" });
+    expect(result.map((c) => c.name)).toEqual(["Xiangling", "Kaeya", "Hu Tao", "Amber"]);
   });
 
   it("returns an empty array when nothing matches", () => {

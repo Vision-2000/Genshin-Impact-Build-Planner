@@ -12,6 +12,7 @@ import {
   type CharacterListItem,
   type OwnershipFilter,
   type SortKey,
+  type SortDirection,
 } from "./filter-sort";
 
 export type { CharacterListItem };
@@ -29,6 +30,7 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [, startTransition] = useTransition();
 
   const filtered = useMemo(
@@ -40,8 +42,9 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
         rarityFilter,
         ownershipFilter,
         sortKey,
+        sortDirection,
       }),
-    [characters, search, elementFilter, weaponTypeFilter, rarityFilter, ownershipFilter, sortKey]
+    [characters, search, elementFilter, weaponTypeFilter, rarityFilter, ownershipFilter, sortKey, sortDirection]
   );
 
   function toggleElement(element: Element) {
@@ -116,6 +119,31 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
         </select>
+
+        <div className="flex overflow-hidden rounded border">
+          <button
+            type="button"
+            onClick={() => setSortDirection("asc")}
+            aria-pressed={sortDirection === "asc"}
+            title="Ascending"
+            className={`px-3 py-2 text-sm ${
+              sortDirection === "asc" ? "bg-blue-500 text-white" : "bg-white text-black"
+            }`}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortDirection("desc")}
+            aria-pressed={sortDirection === "desc"}
+            title="Descending"
+            className={`border-l px-3 py-2 text-sm ${
+              sortDirection === "desc" ? "bg-blue-500 text-white" : "bg-white text-black"
+            }`}
+          >
+            ↓
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
