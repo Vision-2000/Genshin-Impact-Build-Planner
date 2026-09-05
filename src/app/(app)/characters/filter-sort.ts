@@ -1,4 +1,7 @@
 import { Element, WeaponType } from "@/generated/prisma/enums";
+import type { SortDirection } from "@/lib/sort";
+
+export type { SortDirection };
 
 export type CharacterListItem = {
   id: number;
@@ -12,7 +15,6 @@ export type CharacterListItem = {
 
 export type OwnershipFilter = "all" | "owned" | "unowned";
 export type SortKey = "name" | "rarity";
-export type SortDirection = "asc" | "desc";
 
 export type CharacterFilters = {
   search: string;

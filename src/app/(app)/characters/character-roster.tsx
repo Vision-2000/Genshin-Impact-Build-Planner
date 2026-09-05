@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { setCharacterOwnership } from "./actions";
 import { ELEMENT_ICON_URL } from "./element-icons";
 import {
@@ -120,30 +121,7 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
           <option value="rarity">Sort: Rarity</option>
         </select>
 
-        <div className="flex overflow-hidden rounded border">
-          <button
-            type="button"
-            onClick={() => setSortDirection("asc")}
-            aria-pressed={sortDirection === "asc"}
-            title="Ascending"
-            className={`px-3 py-2 text-sm ${
-              sortDirection === "asc" ? "bg-blue-500 text-white" : "bg-white text-black"
-            }`}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            onClick={() => setSortDirection("desc")}
-            aria-pressed={sortDirection === "desc"}
-            title="Descending"
-            className={`border-l px-3 py-2 text-sm ${
-              sortDirection === "desc" ? "bg-blue-500 text-white" : "bg-white text-black"
-            }`}
-          >
-            ↓
-          </button>
-        </div>
+        <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
       </div>
 
       <div className="flex flex-wrap gap-2">

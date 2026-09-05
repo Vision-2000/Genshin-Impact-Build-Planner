@@ -1,4 +1,7 @@
 import { WeaponType } from "@/generated/prisma/enums";
+import type { SortDirection } from "@/lib/sort";
+
+export type { SortDirection };
 
 export const REFINEMENTS = [1, 2, 3, 4, 5];
 
@@ -30,6 +33,7 @@ export type CatalogFilters = {
   weaponTypeFilter: ReadonlySet<WeaponType>;
   rarityFilter: ReadonlySet<number>;
   sortKey: CatalogSortKey;
+  sortDirection: SortDirection;
 };
 
 export type OwnedFilters = {
@@ -37,6 +41,7 @@ export type OwnedFilters = {
   weaponTypeFilter: ReadonlySet<WeaponType>;
   rarityFilter: ReadonlySet<number>;
   sortKey: OwnedSortKey;
+  sortDirection: SortDirection;
 };
 
 function matchesSearchTypeAndRarity<T extends { name: string; weaponType: WeaponType; rarity: number }>(
@@ -63,31 +68,33 @@ function matchesSearchTypeAndRarity<T extends { name: string; weaponType: Weapon
 
 export function filterAndSortWeaponCatalog(
   weapons: WeaponCatalogItem[],
-  { search, weaponTypeFilter, rarityFilter, sortKey }: CatalogFilters
+  { search, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: CatalogFilters
 ): WeaponCatalogItem[] {
   const result = matchesSearchTypeAndRarity(weapons, search, weaponTypeFilter, rarityFilter);
+  const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
     if (sortKey === "rarity") {
-      return b.rarity - a.rarity || a.name.localeCompare(b.name);
+      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
     }
-    return a.name.localeCompare(b.name);
+    return direction * a.name.localeCompare(b.name);
   });
 }
 
 export function filterAndSortOwnedWeapons(
   weapons: OwnedWeaponItem[],
-  { search, weaponTypeFilter, rarityFilter, sortKey }: OwnedFilters
+  { search, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: OwnedFilters
 ): OwnedWeaponItem[] {
   const result = matchesSearchTypeAndRarity(weapons, search, weaponTypeFilter, rarityFilter);
+  const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
     if (sortKey === "rarity") {
-      return b.rarity - a.rarity || a.name.localeCompare(b.name);
+      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
     }
     if (sortKey === "refinement") {
-      return b.refinement - a.refinement || a.name.localeCompare(b.name);
+      return direction * (a.refinement - b.refinement) || a.name.localeCompare(b.name);
     }
-    return a.name.localeCompare(b.name);
+    return direction * a.name.localeCompare(b.name);
   });
 }

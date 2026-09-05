@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { WeaponType } from "@/generated/prisma/enums";
 import { useDialogs } from "@/components/dialog-provider";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "./weapon-type-filter-row";
 import { WeaponCard } from "./weapon-card";
 import { removeWeapon, updateWeaponRefinement } from "./actions";
@@ -28,8 +30,15 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const filtered = filterAndSortOwnedWeapons(owned, { search, weaponTypeFilter, rarityFilter, sortKey });
+  const filtered = filterAndSortOwnedWeapons(owned, {
+    search,
+    weaponTypeFilter,
+    rarityFilter,
+    sortKey,
+    sortDirection,
+  });
 
   function handleUpdateRefinement(ownedWeaponId: number, refinement: number) {
     const previous = owned;
@@ -73,6 +82,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           <option value="rarity">Sort: Rarity</option>
           <option value="refinement">Sort: Refinement</option>
         </select>
+        <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
       </div>
 
       <WeaponTypeFilterRow

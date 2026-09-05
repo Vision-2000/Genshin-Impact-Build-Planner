@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { WeaponType } from "@/generated/prisma/enums";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "../weapon-type-filter-row";
 import { WeaponCard } from "../weapon-card";
 import { addWeapon } from "../actions";
@@ -26,9 +28,16 @@ export function WeaponCatalog({ catalog }: { catalog: WeaponCatalogItem[] }) {
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [sortKey, setSortKey] = useState<CatalogSortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [refinements, setRefinements] = useState<Record<number, number>>({});
 
-  const filtered = filterAndSortWeaponCatalog(catalog, { search, weaponTypeFilter, rarityFilter, sortKey });
+  const filtered = filterAndSortWeaponCatalog(catalog, {
+    search,
+    weaponTypeFilter,
+    rarityFilter,
+    sortKey,
+    sortDirection,
+  });
 
   function handleAdd(weaponId: number) {
     const refinement = refinements[weaponId] ?? 1;
@@ -71,6 +80,7 @@ export function WeaponCatalog({ catalog }: { catalog: WeaponCatalogItem[] }) {
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
         </select>
+        <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
       </div>
 
       <WeaponTypeFilterRow

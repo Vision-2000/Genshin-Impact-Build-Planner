@@ -38,6 +38,7 @@ const catalogBaseFilters = {
   weaponTypeFilter: new Set<WeaponType>(),
   rarityFilter: new Set<number>(),
   sortKey: "name" as const,
+  sortDirection: "asc" as const,
 };
 
 const ownedBaseFilters = {
@@ -45,6 +46,7 @@ const ownedBaseFilters = {
   weaponTypeFilter: new Set<WeaponType>(),
   rarityFilter: new Set<number>(),
   sortKey: "name" as const,
+  sortDirection: "asc" as const,
 };
 
 describe("filterAndSortWeaponCatalog", () => {
@@ -87,9 +89,23 @@ describe("filterAndSortWeaponCatalog", () => {
     expect(result.map((w) => w.name)).toEqual(["Amos' Bow", "Aquila Favonia"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity ascending, breaking ties by name", () => {
     const result = filterAndSortWeaponCatalog(catalog, { ...catalogBaseFilters, sortKey: "rarity" });
+    expect(result.map((w) => w.name)).toEqual(["Favonius Sword", "Widsith", "Amos' Bow", "Aquila Favonia"]);
+  });
+
+  it("sorts by rarity descending, breaking ties by name", () => {
+    const result = filterAndSortWeaponCatalog(catalog, {
+      ...catalogBaseFilters,
+      sortKey: "rarity",
+      sortDirection: "desc",
+    });
     expect(result.map((w) => w.name)).toEqual(["Amos' Bow", "Aquila Favonia", "Favonius Sword", "Widsith"]);
+  });
+
+  it("sorts by name descending", () => {
+    const result = filterAndSortWeaponCatalog(catalog, { ...catalogBaseFilters, sortDirection: "desc" });
+    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia", "Amos' Bow"]);
   });
 
   it("returns an empty array when nothing matches", () => {
@@ -128,13 +144,36 @@ describe("filterAndSortOwnedWeapons", () => {
     expect(result.map((w) => w.name)).toEqual(["Aquila Favonia"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity ascending, breaking ties by name", () => {
     const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "rarity" });
+    expect(result.map((w) => w.name)).toEqual(["Favonius Sword", "Widsith", "Aquila Favonia"]);
+  });
+
+  it("sorts by rarity descending, breaking ties by name", () => {
+    const result = filterAndSortOwnedWeapons(owned, {
+      ...ownedBaseFilters,
+      sortKey: "rarity",
+      sortDirection: "desc",
+    });
+    expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword", "Widsith"]);
+  });
+
+  it("sorts by refinement ascending, breaking ties by name", () => {
+    const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "refinement" });
     expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword", "Widsith"]);
   });
 
   it("sorts by refinement descending, breaking ties by name", () => {
-    const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "refinement" });
+    const result = filterAndSortOwnedWeapons(owned, {
+      ...ownedBaseFilters,
+      sortKey: "refinement",
+      sortDirection: "desc",
+    });
+    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
+  });
+
+  it("sorts by name descending", () => {
+    const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortDirection: "desc" });
     expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
   });
 
