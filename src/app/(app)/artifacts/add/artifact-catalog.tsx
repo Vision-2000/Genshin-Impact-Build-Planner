@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
+import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { addArtifact } from "../actions";
 import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL, SLOT_MAIN_STATS, SUBSTAT_TYPE_NAMES } from "../artifact-rules";
 import {
@@ -13,8 +14,9 @@ import {
 } from "../filter-sort";
 
 const SLOTS = Object.values(ArtifactSlot);
-const RARITIES = [5, 4, 3, 2, 1];
 const LEVELS = Array.from({ length: MAX_LEVEL - MIN_LEVEL + 1 }, (_, i) => MIN_LEVEL + i);
+// Artifact sets are seeded at 4-5 star (see prisma/seed.ts).
+const RARITIES = [5, 4];
 
 type DraftSubstat = { statTypeId: number; value: string };
 
@@ -32,11 +34,20 @@ export function ArtifactCatalog({
   const statTypeById = new Map(statTypes.map((s) => [s.id, s]));
 
   const [search, setSearch] = useState("");
-  const filtered = filterArtifactSetCatalog(catalog, { search });
+  const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
+  const filtered = filterArtifactSetCatalog(catalog, { search, rarityFilter });
+
+  function toggleRarity(rarity: number) {
+    setRarityFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(rarity)) next.delete(rarity);
+      else next.add(rarity);
+      return next;
+    });
+  }
 
   const [addingSetId, setAddingSetId] = useState<number | null>(null);
   const [addSlot, setAddSlot] = useState<ArtifactSlot>(ArtifactSlot.Flower);
-  const [addRarity, setAddRarity] = useState(5);
   const [addLevel, setAddLevel] = useState(0);
   const [addMainStatId, setAddMainStatId] = useState<number | null>(null);
   const [addSubstats, setAddSubstats] = useState<DraftSubstat[]>([]);
@@ -45,7 +56,6 @@ export function ArtifactCatalog({
     const initialMainStatId = statTypeByName.get(SLOT_MAIN_STATS[ArtifactSlot.Flower][0])?.id ?? null;
     setAddingSetId(setId);
     setAddSlot(ArtifactSlot.Flower);
-    setAddRarity(5);
     setAddLevel(0);
     setAddMainStatId(initialMainStatId);
     setAddSubstats([]);
@@ -98,9 +108,10 @@ export function ArtifactCatalog({
     if (addingSetId === null || addMainStatId === null) return;
 
     const setId = addingSetId;
-    const setName = catalog.find((s) => s.id === setId)?.name ?? "artifact";
+    const set = catalog.find((s) => s.id === setId);
+    const setName = set?.name ?? "artifact";
+    const rarity = set?.rarity ?? 0;
     const slot = addSlot;
-    const rarity = addRarity;
     const level = addLevel;
     const mainStatId = addMainStatId;
     const substats = addSubstats
@@ -109,7 +120,7 @@ export function ArtifactCatalog({
 
     startTransition(async () => {
       try {
-        await addArtifact(setId, slot, rarity, level, mainStatId, substats);
+        await addArtifact(setId, slot, level, mainStatId, substats);
         closeAddForm();
         // No local owned list here -- owned artifacts live on their own page
         // (/artifacts) -- so a toast confirms the add instead.
@@ -134,6 +145,8 @@ export function ArtifactCatalog({
         className="rounded border bg-white px-3 py-2 text-sm text-black"
       />
 
+      <RarityFilterRow rarities={RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
+
       <p className="text-sm text-gray-500">
         {filtered.length} set{filtered.length === 1 ? "" : "s"}
       </p>
@@ -147,7 +160,10 @@ export function ArtifactCatalog({
             <li key={set.id} className="rounded border p-3">
               <div className="flex items-center gap-3">
                 {previewIcon && <Image src={previewIcon} alt="" width={40} height={40} />}
-                <p className="min-w-0 flex-1 truncate text-sm font-medium">{set.name}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{set.name}</p>
+                  <p className="text-xs text-gray-500">{set.rarity}★</p>
+                </div>
                 <button
                   type="button"
                   onClick={() => (isAdding ? closeAddForm() : openAddForm(set.id))}
@@ -177,17 +193,7 @@ export function ArtifactCatalog({
 
                     <label className="text-xs">
                       Rarity
-                      <select
-                        value={addRarity}
-                        onChange={(event) => setAddRarity(Number(event.target.value))}
-                        className="ml-1 rounded border bg-white px-2 py-1 text-xs text-black"
-                      >
-                        {RARITIES.map((rarity) => (
-                          <option key={rarity} value={rarity}>
-                            {rarity}★
-                          </option>
-                        ))}
-                      </select>
+                      <span className="ml-1 text-gray-500">{set.rarity}★ (fixed by set)</span>
                     </label>
 
                     <label className="text-xs">

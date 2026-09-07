@@ -61,7 +61,7 @@ export default async function BuildsPage() {
     setName: owned.artifactSet.name,
     mainStatName: owned.mainStat.name,
     iconUrl: slotIconUrl(owned.artifactSet, owned.slot),
-    rarity: owned.rarity,
+    rarity: owned.artifactSet.rarity,
     level: owned.level,
   }));
 

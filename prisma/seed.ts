@@ -213,7 +213,8 @@ async function seedArtifactSets() {
     // Sets that never drop above 3★ (Adventurer, Lucky Dog, Traveling
     // Doctor) have no meaningful build relevance — same reasoning as
     // excluding 1-2★ weapons.
-    if (Math.max(...artifactSet.rarityList) < MIN_ARTIFACT_SET_RARITY) {
+    const rarity = Math.max(...artifactSet.rarityList);
+    if (rarity < MIN_ARTIFACT_SET_RARITY) {
       skipped++;
       continue;
     }
@@ -228,6 +229,7 @@ async function seedArtifactSets() {
       where: { name: artifactSet.name },
       create: {
         name: artifactSet.name,
+        rarity,
         twoPieceEffect: artifactSet.effect2Pc,
         fourPieceEffect: artifactSet.effect4Pc ?? null,
         flowerIconUrl,
@@ -237,6 +239,7 @@ async function seedArtifactSets() {
         circletIconUrl,
       },
       update: {
+        rarity,
         twoPieceEffect: artifactSet.effect2Pc,
         fourPieceEffect: artifactSet.effect4Pc ?? null,
         flowerIconUrl,

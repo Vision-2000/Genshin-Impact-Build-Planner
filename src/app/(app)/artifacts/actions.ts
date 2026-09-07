@@ -3,7 +3,7 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
-import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL, MIN_RARITY, MAX_RARITY } from "./artifact-rules";
+import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL } from "./artifact-rules";
 import { toOwnedArtifactItem, type OwnedArtifactItem, type OwnedArtifactSubstatItem } from "./filter-sort";
 
 type SubstatInput = { statTypeId: number; value: number };
@@ -32,7 +32,6 @@ function sanitizeSubstats(substats: SubstatInput[], mainStatId: number): Substat
 export async function addArtifact(
   artifactSetId: number,
   slot: ArtifactSlot,
-  rarity: number,
   level: number,
   mainStatId: number,
   substats: SubstatInput[]
@@ -44,7 +43,6 @@ export async function addArtifact(
       gameProfileId: profile.id,
       artifactSetId,
       slot,
-      rarity: clamp(rarity, MIN_RARITY, MAX_RARITY),
       level: clamp(level, MIN_LEVEL, MAX_LEVEL),
       mainStatId,
       substats: {

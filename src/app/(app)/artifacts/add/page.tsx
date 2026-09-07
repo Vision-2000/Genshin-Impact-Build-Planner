@@ -25,6 +25,7 @@ export default async function AddArtifactPage() {
   const catalog: ArtifactSetCatalogItem[] = artifactSets.map((set) => ({
     id: set.id,
     name: set.name,
+    rarity: set.rarity,
     twoPieceEffect: set.twoPieceEffect,
     fourPieceEffect: set.fourPieceEffect,
     flowerIconUrl: set.flowerIconUrl,

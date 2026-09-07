@@ -145,6 +145,12 @@ model Weapon {
 model ArtifactSet {
   id              Int     @id @default(autoincrement())
   name            String  @unique
+  // The set's fixed max rarity (e.g. Instructor/Exile top out at 4-star,
+  // most current sets at 5-star) — a property of the set, not something a
+  // user picks per piece. Sourced from genshin-db's rarityList at seed time
+  // (max(rarityList), same value seed.ts already computes to decide whether
+  // to exclude a set entirely).
+  rarity          Int
   twoPieceEffect  String  @map("two_piece_effect")
   fourPieceEffect String? @map("four_piece_effect")
   flowerIconUrl   String? @map("flower_icon_url")
@@ -218,7 +224,8 @@ model OwnedArtifact {
   gameProfileId Int          @map("game_profile_id")
   artifactSetId Int          @map("artifact_set_id")
   slot          ArtifactSlot
-  rarity        Int
+  // No rarity column here -- rarity is a fixed property of the ArtifactSet,
+  // not something that varies per physical piece (see ArtifactSet.rarity).
   level         Int
   mainStatId    Int          @map("main_stat_id")
   createdAt     DateTime     @default(now()) @map("created_at")

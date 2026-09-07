@@ -33,6 +33,7 @@ function catalogItem(overrides: Partial<ArtifactSetCatalogItem>): ArtifactSetCat
   return {
     id: 1,
     name: "Test Set",
+    rarity: 5,
     twoPieceEffect: "2pc effect",
     fourPieceEffect: "4pc effect",
     flowerIconUrl: null,
@@ -141,28 +142,37 @@ describe("filterAndSortOwnedArtifacts", () => {
 });
 
 describe("filterArtifactSetCatalog", () => {
+  const catalogBaseFilters = { search: "", rarityFilter: new Set<number>() };
+
   const catalog: ArtifactSetCatalogItem[] = [
-    catalogItem({ id: 1, name: "Viridescent Venerer" }),
-    catalogItem({ id: 2, name: "Crimson Witch of Flames" }),
-    catalogItem({ id: 3, name: "Emblem of Severed Fate" }),
+    catalogItem({ id: 1, name: "Viridescent Venerer", rarity: 5 }),
+    catalogItem({ id: 2, name: "Crimson Witch of Flames", rarity: 5 }),
+    catalogItem({ id: 3, name: "Emblem of Severed Fate", rarity: 5 }),
+    catalogItem({ id: 4, name: "Instructor", rarity: 4 }),
   ];
 
-  it("returns everything sorted by name with no search", () => {
-    const result = filterArtifactSetCatalog(catalog, { search: "" });
+  it("returns everything sorted by name with no filters applied", () => {
+    const result = filterArtifactSetCatalog(catalog, catalogBaseFilters);
     expect(result.map((s) => s.name)).toEqual([
       "Crimson Witch of Flames",
       "Emblem of Severed Fate",
+      "Instructor",
       "Viridescent Venerer",
     ]);
   });
 
   it("filters by case-insensitive, whitespace-trimmed name search", () => {
-    const result = filterArtifactSetCatalog(catalog, { search: "  crimson  " });
+    const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, search: "  crimson  " });
     expect(result.map((s) => s.name)).toEqual(["Crimson Witch of Flames"]);
   });
 
+  it("filters by rarity, matching any rarity in the set", () => {
+    const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, rarityFilter: new Set([4]) });
+    expect(result.map((s) => s.name)).toEqual(["Instructor"]);
+  });
+
   it("returns an empty array when nothing matches", () => {
-    const result = filterArtifactSetCatalog(catalog, { search: "nonexistent" });
+    const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, search: "nonexistent" });
     expect(result).toEqual([]);
   });
 });

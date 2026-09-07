@@ -48,5 +48,3 @@ export type SubstatTypeName = (typeof SUBSTAT_TYPE_NAMES)[number];
 export const MAX_SUBSTATS = 4;
 export const MIN_LEVEL = 0;
 export const MAX_LEVEL = 20;
-export const MIN_RARITY = 1;
-export const MAX_RARITY = 5;

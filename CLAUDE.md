@@ -43,16 +43,18 @@ user-editable.
   `iconUrl`). Seed excludes 1★/2★ weapons (no meaningful build relevance) and
   the Prized Isshin Blade (story-quest-only, never obtainable as a real player
   weapon).
-- ArtifactSet — all artifact sets (name, 2-piece/4-piece effect text, one icon
-  URL column per slot: `flowerIconUrl`, `featherIconUrl`, `sandsIconUrl`,
-  `gobletIconUrl`, `circletIconUrl` — not one column per set, since each slot
-  has visually distinct art within the same set and these render on the build
-  page). Seed excludes sets with only a 1-piece effect — these can't populate
-  the required `twoPieceEffect` field, so excluding them isn't a workaround,
-  it's the schema correctly rejecting data that doesn't fit the shape we
-  defined. Seed also excludes sets that never drop above 3★ (Adventurer, Lucky
-  Dog, Traveling Doctor) — same "no meaningful build relevance" reasoning as
-  the weapon rarity cutoff.
+- ArtifactSet — all artifact sets (name, fixed rarity, 2-piece/4-piece effect
+  text, one icon URL column per slot: `flowerIconUrl`, `featherIconUrl`,
+  `sandsIconUrl`, `gobletIconUrl`, `circletIconUrl` — not one column per set,
+  since each slot has visually distinct art within the same set and these
+  render on the build page). Seed excludes sets with only a 1-piece effect —
+  these can't populate the required `twoPieceEffect` field, so excluding them
+  isn't a workaround, it's the schema correctly rejecting data that doesn't
+  fit the shape we defined. Seed also excludes sets that never drop above 3★
+  (Adventurer, Lucky Dog, Traveling Doctor) — same "no meaningful build
+  relevance" reasoning as the weapon rarity cutoff. `rarity` is
+  `max(rarityList)` from genshin-db — the same value already computed for
+  that exclusion check.
 - StatType — shared pool of stat types (Crit Rate, Crit DMG, ATK%, EM, elemental
   DMG bonus, etc.) — used by both weapon secondary stats and artifact main/substats
 
@@ -60,7 +62,9 @@ user-editable.
 - OwnedCharacter — links GameProfile to Character, with an `is_owned` boolean flag
 - OwnedWeapon — one row per physical copy owned, each with its own refinement
   (never a quantity field)
-- OwnedArtifact — one row per physical piece: slot, rarity, level, main stat
+- OwnedArtifact — one row per physical piece: slot, level, main stat. No
+  rarity column — rarity is fixed per ArtifactSet, not chosen per piece (see
+  Key decisions below)
 - OwnedArtifactSubstat — child table, up to 4 rows per artifact (stat type + value)
 
 **Builds**
@@ -192,16 +196,29 @@ user-editable.
   artifacts can roll any of them, unlike Characters/Weapons which only ever
   reach 4-5★ / 3-5★). The catalog side (`/artifacts/add`, just picking a set
   to add a piece from) has nothing to edit yet at that stage, so its list
-  entries stay simple like before — no per-set rarity to color by either,
-  since rarity is rolled per owned piece, not a property of the set itself.
-  The multi-field creation form (slot/rarity/level/main stat/substats) stays
-  an inline expand under the chosen set, not a separate step — it already
-  worked and a second step would add navigation for no benefit here.
+  entries stay simple like before (see below on why rarity isn't part of the
+  add form). The multi-field creation form (slot/level/main stat/substats)
+  stays an inline expand under the chosen set, not a separate step — it
+  already worked and a second step would add navigation for no benefit here.
   Also extracted `useToast`/`Toast` (`src/components/toast.tsx`) once a
   second page (this one) needed the same "confirm an add via a temporary
   banner, since the created item lives on a different page's list" pattern
   Weapons' catalog introduced — Weapons' catalog was retrofitted to use it
   too instead of keeping its own copy.
+- Artifact rarity moved from `OwnedArtifact` (originally a free-choice field
+  set per piece when adding it) to `ArtifactSet` (fixed, seeded from
+  genshin-db). Real in-game sets have a fixed max rarity — Instructor, The
+  Exile, Berserker, and other old domain-drop sets top out at 4★, while most
+  current sets top out at 5★ — so letting the add form offer any rarity for
+  any set (including a 4-star pick on a 5-star-only set) was letting the UI
+  represent combinations that can't actually happen. The add form no longer
+  asks for rarity at all; it's shown read-only, and `addArtifact` no longer
+  takes a rarity argument. `OwnedArtifact.rarity` was dropped outright rather
+  than kept and auto-filled — with rarity now 100% derived from the set,
+  keeping a per-piece copy would just be redundant, possibly-stale data for
+  no benefit. This intentionally doesn't model that a 5-star set can in
+  theory still drop lower-rarity copies in-game; not something this tracker
+  represents.
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs

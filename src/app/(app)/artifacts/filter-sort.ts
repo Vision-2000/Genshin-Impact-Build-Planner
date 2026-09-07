@@ -9,6 +9,7 @@ export type StatTypeOption = {
 export type ArtifactSetCatalogItem = {
   id: number;
   name: string;
+  rarity: number;
   twoPieceEffect: string;
   fourPieceEffect: string | null;
   flowerIconUrl: string | null;
@@ -66,11 +67,11 @@ type OwnedArtifactRow = {
   id: number;
   artifactSetId: number;
   slot: ArtifactSlot;
-  rarity: number;
   level: number;
   mainStatId: number;
   artifactSet: {
     name: string;
+    rarity: number;
     flowerIconUrl: string | null;
     featherIconUrl: string | null;
     sandsIconUrl: string | null;
@@ -87,7 +88,8 @@ export function toOwnedArtifactItem(row: OwnedArtifactRow): OwnedArtifactItem {
     artifactSetId: row.artifactSetId,
     setName: row.artifactSet.name,
     slot: row.slot,
-    rarity: row.rarity,
+    // Rarity is a fixed property of the set, not the individual piece.
+    rarity: row.artifactSet.rarity,
     level: row.level,
     mainStatId: row.mainStatId,
     mainStatName: row.mainStat.name,
@@ -150,14 +152,22 @@ export function filterAndSortOwnedArtifacts(
 
 export type CatalogFilters = {
   search: string;
+  rarityFilter: ReadonlySet<number>;
 };
 
 export function filterArtifactSetCatalog(
   sets: ArtifactSetCatalogItem[],
-  { search }: CatalogFilters
+  { search, rarityFilter }: CatalogFilters
 ): ArtifactSetCatalogItem[] {
+  let result = sets;
+
   const query = search.trim().toLowerCase();
-  const result = query ? sets.filter((set) => set.name.toLowerCase().includes(query)) : sets;
+  if (query) {
+    result = result.filter((set) => set.name.toLowerCase().includes(query));
+  }
+  if (rarityFilter.size > 0) {
+    result = result.filter((set) => rarityFilter.has(set.rarity));
+  }
 
   return [...result].sort((a, b) => a.name.localeCompare(b.name));
 }
