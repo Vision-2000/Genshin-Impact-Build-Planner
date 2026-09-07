@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { ArtifactManager } from "./artifact-manager";
-import { toOwnedArtifactItem, type ArtifactSetCatalogItem, type StatTypeOption } from "./filter-sort";
+import { HelpButton } from "@/components/help-button";
+import { OwnedArtifactManager } from "./owned-artifact-manager";
+import { toOwnedArtifactItem, type StatTypeOption } from "./filter-sort";
 
 export const metadata: Metadata = {
   title: "Artifacts",
 };
 
+const HELP_TEXT = `This page shows the artifacts you currently own. Search by set name, or use the badges below to filter by slot or by which substat a piece has.
+
+Change a piece's level with its dropdown, edit or remove individual substats, or remove the whole piece.
+
+To add a new artifact, use the "Add artifact" button -- it opens the full set catalog and a form for the piece's slot, rarity, level, main stat, and substats on its own page.`;
+
 export default async function ArtifactsPage() {
   const profile = await requireActiveProfile();
 
-  const [artifactSets, statTypes, ownedArtifacts] = await Promise.all([
-    prisma.artifactSet.findMany({ orderBy: { name: "asc" } }),
+  const [statTypes, ownedArtifacts] = await Promise.all([
     prisma.statType.findMany({ orderBy: { name: "asc" } }),
     prisma.ownedArtifact.findMany({
       where: { gameProfileId: profile.id },
@@ -20,18 +27,6 @@ export default async function ArtifactsPage() {
       include: { artifactSet: true, mainStat: true, substats: { include: { statType: true } } },
     }),
   ]);
-
-  const catalog: ArtifactSetCatalogItem[] = artifactSets.map((set) => ({
-    id: set.id,
-    name: set.name,
-    twoPieceEffect: set.twoPieceEffect,
-    fourPieceEffect: set.fourPieceEffect,
-    flowerIconUrl: set.flowerIconUrl,
-    featherIconUrl: set.featherIconUrl,
-    sandsIconUrl: set.sandsIconUrl,
-    gobletIconUrl: set.gobletIconUrl,
-    circletIconUrl: set.circletIconUrl,
-  }));
 
   const statTypeOptions: StatTypeOption[] = statTypes.map((statType) => ({
     id: statType.id,
@@ -41,12 +36,23 @@ export default async function ArtifactsPage() {
   const owned = ownedArtifacts.map(toOwnedArtifactItem);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Artifacts</h1>
-        <p className="text-sm text-gray-500">Managing artifacts for {profile.name}</p>
+    <div className="mx-auto max-w-[90rem] space-y-3 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">Artifacts</h1>
+            <HelpButton title="Artifacts page help" text={HELP_TEXT} />
+          </div>
+          <p className="text-sm text-gray-500">Managing artifacts for {profile.name}</p>
+        </div>
+        <Link
+          href="/artifacts/add"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+        >
+          <span className="text-base leading-none">+</span> Add artifact
+        </Link>
       </div>
-      <ArtifactManager catalog={catalog} statTypes={statTypeOptions} initialOwnedArtifacts={owned} />
+      <OwnedArtifactManager statTypes={statTypeOptions} initialOwnedArtifacts={owned} />
     </div>
   );
 }

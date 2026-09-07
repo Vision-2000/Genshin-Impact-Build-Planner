@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { WeaponType } from "@/generated/prisma/enums";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import { useToast, Toast } from "@/components/toast";
 import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "../weapon-type-filter-row";
 import { WeaponCard } from "../weapon-card";
@@ -22,9 +23,7 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
 
 export function WeaponCatalog({ catalog }: { catalog: WeaponCatalogItem[] }) {
   const [, startTransition] = useTransition();
-  const [toast, setToast] = useState<{ name: string; refinement: number } | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
-  const toastTimeouts = useRef<{ hide?: ReturnType<typeof setTimeout>; clear?: ReturnType<typeof setTimeout> }>({});
+  const { message, visible, showToast } = useToast();
 
   const [search, setSearch] = useState("");
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
@@ -41,25 +40,6 @@ export function WeaponCatalog({ catalog }: { catalog: WeaponCatalogItem[] }) {
     sortDirection,
   });
 
-  function showToast(name: string, refinement: number) {
-    // Clear any in-flight hide/unmount timers from a previous toast so
-    // rapid adds just reset the countdown instead of a stale timeout
-    // cutting the new toast's animation short.
-    clearTimeout(toastTimeouts.current.hide);
-    clearTimeout(toastTimeouts.current.clear);
-
-    setToast({ name, refinement });
-    // Mount in the hidden state first, then flip to visible on the next
-    // frame so the opacity/translate transition actually has something to
-    // animate from, instead of just appearing already-visible.
-    requestAnimationFrame(() => setToastVisible(true));
-
-    toastTimeouts.current.hide = setTimeout(() => {
-      setToastVisible(false);
-      toastTimeouts.current.clear = setTimeout(() => setToast(null), 300);
-    }, 2000);
-  }
-
   function handleAdd(weaponId: number) {
     const refinement = refinements[weaponId] ?? 1;
     const weapon = catalog.find((w) => w.id === weaponId);
@@ -70,7 +50,11 @@ export function WeaponCatalog({ catalog }: { catalog: WeaponCatalogItem[] }) {
         // Weapons can be added more than once (each is its own physical
         // copy), so the button itself never disables -- the same weapon
         // stays addable. A brief toast confirms the add instead.
-        showToast(weapon?.name ?? "weapon", refinement);
+        showToast(
+          <>
+            Added <span className="font-bold">{weapon?.name ?? "weapon"}</span> · R{refinement}
+          </>
+        );
       } catch {
         // Nothing changed, nothing to revert.
       }
@@ -132,20 +116,7 @@ export function WeaponCatalog({ catalog }: { catalog: WeaponCatalogItem[] }) {
         {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
       </ul>
 
-      {toast && (
-        // left-48 matches the sidebar's own w-48, so this centers within the
-        // page content area rather than the full viewport (which would skew
-        // the toast off-center behind the sidebar).
-        <div className="fixed left-48 right-0 top-4 z-50 flex justify-center">
-          <div
-            className={`rounded-full border-2 border-emerald-300 bg-emerald-600 px-4 py-2 text-sm text-white shadow-lg transition-all duration-300 ${
-              toastVisible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
-            }`}
-          >
-            Added <span className="font-bold">{toast.name}</span> · R{toast.refinement}
-          </div>
-        </div>
-      )}
+      <Toast message={message} visible={visible} />
     </div>
   );
 }

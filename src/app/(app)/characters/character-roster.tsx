@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
+import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { setCharacterOwnership } from "./actions";
@@ -179,11 +180,7 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
               aria-pressed={character.isOwned}
               className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 text-left shadow ${
                 character.isOwned ? "border-green-500" : "border-gray-600"
-              } ${
-                character.rarity >= 5
-                  ? "bg-gradient-to-b from-yellow-700 via-amber-700 to-yellow-900"
-                  : "bg-gradient-to-b from-purple-800 via-purple-700 to-purple-950"
-              }`}
+              } ${rarityGradientClasses(character.rarity)}`}
             >
               {character.iconUrl && (
                 <Image

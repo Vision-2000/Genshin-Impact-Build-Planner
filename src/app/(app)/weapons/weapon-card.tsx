@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { WeaponType } from "@/generated/prisma/enums";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
+import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { REFINEMENTS } from "./filter-sort";
 
 // Shared visual card for both the owned-weapons list and the add-weapon
@@ -36,13 +37,7 @@ export function WeaponCard({
   return (
     <li>
       <div
-        className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 border-gray-600 shadow ${
-          rarity >= 5
-            ? "bg-gradient-to-b from-yellow-700 via-amber-700 to-yellow-900"
-            : rarity === 4
-              ? "bg-gradient-to-b from-purple-800 via-purple-700 to-purple-950"
-              : "bg-gradient-to-b from-blue-800 via-blue-700 to-blue-950"
-        }`}
+        className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 border-gray-600 shadow ${rarityGradientClasses(rarity)}`}
       >
         {iconUrl && (
           <Image

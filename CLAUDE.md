@@ -174,6 +174,34 @@ user-editable.
   reasoning as Characters), and an owned-weapon collection is nowhere near
   Artifacts-scale unbounded (a refinement is one value per copy, not a
   physical-piece entity with per-substat rows).
+- Artifacts got the same owned/catalog page split as Weapons
+  (`/artifacts` + `/artifacts/add`), for the same reasons — but `/artifacts`
+  is the one page that explicitly keeps pagination, since `OwnedArtifact` is
+  the genuinely-unbounded case called out above (one row per physical piece,
+  each with up to 4 individually-editable substats). `/artifacts/add`'s set
+  catalog drops pagination like Characters/Weapons, since ArtifactSet itself
+  is bounded/slow-growing (~55 sets).
+  Owned artifacts deliberately did NOT get the big square icon-dominant grid
+  card Characters/Weapons use: that treatment only works because there's
+  almost nothing else to show per item. An owned artifact needs to display
+  and let you edit a level dropdown plus up to 4 substat rows, which doesn't
+  fit in a small square card without cramping the editing UI. The owned list
+  stays row-based; only the icon gets the shared rarity-tinted treatment
+  (`rarityGradientClasses`, `src/lib/rarity-colors.ts` — extracted once a
+  third page needed rarity-based coloring, covering all 5 rarity tiers since
+  artifacts can roll any of them, unlike Characters/Weapons which only ever
+  reach 4-5★ / 3-5★). The catalog side (`/artifacts/add`, just picking a set
+  to add a piece from) has nothing to edit yet at that stage, so its list
+  entries stay simple like before — no per-set rarity to color by either,
+  since rarity is rolled per owned piece, not a property of the set itself.
+  The multi-field creation form (slot/rarity/level/main stat/substats) stays
+  an inline expand under the chosen set, not a separate step — it already
+  worked and a second step would add navigation for no benefit here.
+  Also extracted `useToast`/`Toast` (`src/components/toast.tsx`) once a
+  second page (this one) needed the same "confirm an add via a temporary
+  banner, since the created item lives on a different page's list" pattern
+  Weapons' catalog introduced — Weapons' catalog was retrofitted to use it
+  too instead of keeping its own copy.
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs
