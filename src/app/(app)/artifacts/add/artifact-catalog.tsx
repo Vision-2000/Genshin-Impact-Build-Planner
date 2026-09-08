@@ -5,20 +5,30 @@ import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { addArtifact } from "../actions";
-import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL, SLOT_MAIN_STATS, SUBSTAT_TYPE_NAMES } from "../artifact-rules";
+import {
+  MAX_SUBSTATS,
+  MIN_LEVEL,
+  MAX_LEVEL,
+  SLOT_MAIN_STATS,
+  SUBSTAT_TYPE_NAMES,
+  maxLevelForRarity,
+  substatRollRange,
+  type SubstatTypeName,
+} from "../artifact-rules";
 import {
   filterArtifactSetCatalog,
+  slotIconUrl,
   type ArtifactSetCatalogItem,
   type StatTypeOption,
 } from "../filter-sort";
 
 const SLOTS = Object.values(ArtifactSlot);
-const LEVELS = Array.from({ length: MAX_LEVEL - MIN_LEVEL + 1 }, (_, i) => MIN_LEVEL + i);
 // Artifact sets are seeded at 4-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4];
 
-type DraftSubstat = { statTypeId: number; value: string };
+type DraftSubstat = { statTypeId: number; value: number };
 
 export function ArtifactCatalog({
   catalog,
@@ -48,15 +58,16 @@ export function ArtifactCatalog({
 
   const [addingSetId, setAddingSetId] = useState<number | null>(null);
   const [addSlot, setAddSlot] = useState<ArtifactSlot>(ArtifactSlot.Flower);
-  const [addLevel, setAddLevel] = useState(0);
+  const [addLevel, setAddLevel] = useState(MAX_LEVEL);
   const [addMainStatId, setAddMainStatId] = useState<number | null>(null);
   const [addSubstats, setAddSubstats] = useState<DraftSubstat[]>([]);
 
   function openAddForm(setId: number) {
+    const set = catalog.find((s) => s.id === setId);
     const initialMainStatId = statTypeByName.get(SLOT_MAIN_STATS[ArtifactSlot.Flower][0])?.id ?? null;
     setAddingSetId(setId);
     setAddSlot(ArtifactSlot.Flower);
-    setAddLevel(0);
+    setAddLevel(set ? maxLevelForRarity(set.rarity) : MAX_LEVEL);
     setAddMainStatId(initialMainStatId);
     setAddSubstats([]);
   }
@@ -89,11 +100,14 @@ export function ArtifactCatalog({
     );
   }
 
-  function addSubstatRow() {
+  // New substats and level changes both default/reclamp to the range's max
+  // -- "assume the best case," matching the level slider's own +20 default.
+  function addSubstatRow(rarity: number) {
     if (addSubstats.length >= MAX_SUBSTATS) return;
     const options = substatOptionsExcluding(-1);
     if (options.length === 0) return;
-    setAddSubstats((prev) => [...prev, { statTypeId: options[0].id, value: "" }]);
+    const range = substatRollRange(options[0].name as SubstatTypeName, rarity, addLevel);
+    setAddSubstats((prev) => [...prev, { statTypeId: options[0].id, value: range.max }]);
   }
 
   function removeSubstatRow(index: number) {
@@ -102,6 +116,28 @@ export function ArtifactCatalog({
 
   function updateSubstatRow(index: number, changes: Partial<DraftSubstat>) {
     setAddSubstats((prev) => prev.map((s, i) => (i === index ? { ...s, ...changes } : s)));
+  }
+
+  // Changing which stat a row uses resets its value -- a value on the old
+  // stat's scale has no relation to the new one's.
+  function handleSubstatTypeChange(index: number, statTypeId: number, rarity: number) {
+    const name = statTypeById.get(statTypeId)?.name as SubstatTypeName | undefined;
+    const range = name ? substatRollRange(name, rarity, addLevel) : undefined;
+    updateSubstatRow(index, { statTypeId, value: range?.max ?? 0 });
+  }
+
+  // Changing level can shrink or grow every substat's valid range, so
+  // existing values are reclamped into whatever range now applies.
+  function handleLevelChange(newLevel: number, rarity: number) {
+    setAddLevel(newLevel);
+    setAddSubstats((prev) =>
+      prev.map((s) => {
+        const name = statTypeById.get(s.statTypeId)?.name as SubstatTypeName | undefined;
+        if (!name) return s;
+        const range = substatRollRange(name, rarity, newLevel);
+        return { ...s, value: Math.min(Math.max(s.value, range.min), range.max) };
+      })
+    );
   }
 
   function handleAddSubmit() {
@@ -114,16 +150,14 @@ export function ArtifactCatalog({
     const slot = addSlot;
     const level = addLevel;
     const mainStatId = addMainStatId;
-    const substats = addSubstats
-      .filter((s) => s.value.trim() !== "")
-      .map((s) => ({ statTypeId: s.statTypeId, value: Number(s.value) }));
+    const substats = addSubstats.map((s) => ({ statTypeId: s.statTypeId, value: s.value }));
 
     startTransition(async () => {
       try {
         await addArtifact(setId, slot, level, mainStatId, substats);
-        closeAddForm();
-        // No local owned list here -- owned artifacts live on their own page
-        // (/artifacts) -- so a toast confirms the add instead.
+        // Deliberately not calling closeAddForm() -- keeping the form's
+        // values in place lets the user save a duplicate/near-duplicate
+        // piece without re-entering everything.
         showToast(
           <>
             Added <span className="font-bold">{setName}</span> · {slot} · {rarity}★
@@ -156,59 +190,89 @@ export function ArtifactCatalog({
           const isAdding = addingSetId === set.id;
           const previewIcon = set.flowerIconUrl ?? set.featherIconUrl ?? set.circletIconUrl;
 
+          function toggleExpanded() {
+            if (isAdding) closeAddForm();
+            else openAddForm(set.id);
+          }
+
           return (
             <li key={set.id} className="rounded border p-3">
-              <div className="flex items-center gap-3">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={toggleExpanded}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  toggleExpanded();
+                }}
+                className="flex cursor-pointer items-center gap-3"
+              >
                 {previewIcon && <Image src={previewIcon} alt="" width={40} height={40} />}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{set.name}</p>
-                  <p className="text-xs text-gray-500">{set.rarity}★</p>
+                  <span
+                    className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium text-white ${rarityGradientClasses(set.rarity)}`}
+                  >
+                    {set.rarity}★
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => (isAdding ? closeAddForm() : openAddForm(set.id))}
-                  className="rounded border px-3 py-1.5 text-xs font-semibold hover:bg-black/5"
+                <span
+                  aria-hidden="true"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-base font-semibold"
                 >
-                  {isAdding ? "Cancel" : "Add"}
-                </button>
+                  {isAdding ? "−" : "+"}
+                </span>
               </div>
 
               {isAdding && (
                 <div className="mt-3 space-y-3 border-t pt-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium">Slot</p>
+                    <div className="flex flex-wrap gap-2">
+                      {SLOTS.map((slot) => {
+                        const icon = slotIconUrl(set, slot);
+                        const isSelected = addSlot === slot;
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            onClick={() => handleSlotChange(slot)}
+                            aria-pressed={isSelected}
+                            className={`flex w-16 flex-col items-center gap-1 rounded-lg border-4 p-1.5 ${
+                              isSelected ? "border-blue-500" : "border-transparent"
+                            } ${rarityGradientClasses(set.rarity)}`}
+                          >
+                            {icon && <Image src={icon} alt="" width={40} height={40} />}
+                            <span className="text-[10px] font-medium text-white">{slot}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap gap-3">
-                    <label className="text-xs">
-                      Slot
-                      <select
-                        value={addSlot}
-                        onChange={(event) => handleSlotChange(event.target.value as ArtifactSlot)}
-                        className="ml-1 rounded border bg-white px-2 py-1 text-xs text-black"
-                      >
-                        {SLOTS.map((slot) => (
-                          <option key={slot} value={slot}>
-                            {slot}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="text-xs">
+                    <label className="flex items-center gap-1 text-xs">
                       Rarity
-                      <span className="ml-1 text-gray-500">{set.rarity}★ (fixed by set)</span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 font-medium text-white ${rarityGradientClasses(set.rarity)}`}
+                      >
+                        {set.rarity}★
+                      </span>
+                      <span className="text-gray-500">(fixed by set)</span>
                     </label>
 
-                    <label className="text-xs">
+                    <label className="flex items-center gap-2 text-xs">
                       Level
-                      <select
+                      <input
+                        type="range"
+                        min={MIN_LEVEL}
+                        max={maxLevelForRarity(set.rarity)}
                         value={addLevel}
-                        onChange={(event) => setAddLevel(Number(event.target.value))}
-                        className="ml-1 rounded border bg-white px-2 py-1 text-xs text-black"
-                      >
-                        {LEVELS.map((level) => (
-                          <option key={level} value={level}>
-                            +{level}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(event) => handleLevelChange(Number(event.target.value), set.rarity)}
+                        className="w-32"
+                      />
+                      <span className="w-8 text-gray-500">+{addLevel}</span>
                     </label>
 
                     <label className="text-xs">
@@ -235,45 +299,66 @@ export function ArtifactCatalog({
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-xs font-medium">Substats</p>
-                    {addSubstats.map((substat, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <select
-                          value={substat.statTypeId}
-                          onChange={(event) => updateSubstatRow(index, { statTypeId: Number(event.target.value) })}
-                          className="rounded border bg-white px-2 py-1 text-xs text-black"
-                        >
-                          {substatOptionsExcluding(index).map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {option.name}
-                            </option>
-                          ))}
-                          {!substatOptionsExcluding(index).some((o) => o.id === substat.statTypeId) &&
-                            statTypeById.get(substat.statTypeId) && (
-                              <option value={substat.statTypeId}>{statTypeById.get(substat.statTypeId)?.name}</option>
-                            )}
-                        </select>
-                        <input
-                          type="number"
-                          placeholder="Value"
-                          value={substat.value}
-                          onChange={(event) => updateSubstatRow(index, { value: event.target.value })}
-                          className="w-20 rounded border bg-white px-2 py-1 text-xs text-black"
-                        />
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-medium">Substats</p>
+                      {addSubstats.length < MAX_SUBSTATS && (
                         <button
                           type="button"
-                          onClick={() => removeSubstatRow(index)}
-                          className="text-xs text-red-600 underline"
+                          onClick={() => addSubstatRow(set.rarity)}
+                          title="Add substat"
+                          className="flex h-5 w-5 items-center justify-center rounded-full border text-xs font-semibold hover:bg-black/5"
                         >
-                          Remove
+                          +
                         </button>
-                      </div>
-                    ))}
-                    {addSubstats.length < MAX_SUBSTATS && (
-                      <button type="button" onClick={addSubstatRow} className="text-xs underline">
-                        + Add substat
-                      </button>
-                    )}
+                      )}
+                    </div>
+                    {addSubstats.map((substat, index) => {
+                      const statName = statTypeById.get(substat.statTypeId)?.name as SubstatTypeName | undefined;
+                      const range = statName
+                        ? substatRollRange(statName, set.rarity, addLevel)
+                        : { min: 0, max: 0 };
+
+                      return (
+                        <div key={index} className="flex flex-wrap items-center gap-2">
+                          <select
+                            value={substat.statTypeId}
+                            onChange={(event) =>
+                              handleSubstatTypeChange(index, Number(event.target.value), set.rarity)
+                            }
+                            className="rounded border bg-white px-2 py-1 text-xs text-black"
+                          >
+                            {substatOptionsExcluding(index).map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.name}
+                              </option>
+                            ))}
+                            {!substatOptionsExcluding(index).some((o) => o.id === substat.statTypeId) &&
+                              statTypeById.get(substat.statTypeId) && (
+                                <option value={substat.statTypeId}>
+                                  {statTypeById.get(substat.statTypeId)?.name}
+                                </option>
+                              )}
+                          </select>
+                          <input
+                            type="range"
+                            min={range.min}
+                            max={range.max}
+                            step={0.01}
+                            value={substat.value}
+                            onChange={(event) => updateSubstatRow(index, { value: Number(event.target.value) })}
+                            className="w-28"
+                          />
+                          <span className="w-14 text-xs text-gray-500">{substat.value.toFixed(2)}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeSubstatRow(index)}
+                            className="text-xs text-red-600 underline"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <button

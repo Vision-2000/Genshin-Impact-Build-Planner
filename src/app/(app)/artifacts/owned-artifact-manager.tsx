@@ -8,7 +8,7 @@ import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import { addSubstat, removeArtifact, removeSubstat, updateArtifactLevel, updateSubstatValue } from "./actions";
-import { MIN_LEVEL, MAX_LEVEL, MAX_SUBSTATS, SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
+import { MIN_LEVEL, MAX_SUBSTATS, SUBSTAT_TYPE_NAMES, maxLevelForRarity, type SubstatTypeName } from "./artifact-rules";
 import {
   filterAndSortOwnedArtifacts,
   type OwnedArtifactItem,
@@ -18,7 +18,6 @@ import {
 } from "./filter-sort";
 
 const SLOTS = Object.values(ArtifactSlot);
-const LEVELS = Array.from({ length: MAX_LEVEL - MIN_LEVEL + 1 }, (_, i) => MIN_LEVEL + i);
 const PAGE_SIZE = 10;
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
@@ -67,6 +66,8 @@ function OwnedArtifactCard({
   const availableToAdd = SUBSTAT_TYPE_NAMES.map((name) => statTypeByName.get(name)).filter(
     (s): s is StatTypeOption => !!s && !usedIds.has(s.id)
   );
+  const maxLevel = maxLevelForRarity(artifact.rarity);
+  const levels = Array.from({ length: maxLevel - MIN_LEVEL + 1 }, (_, i) => MIN_LEVEL + i);
 
   return (
     <li className="space-y-2 rounded border p-3">
@@ -87,7 +88,7 @@ function OwnedArtifactCard({
           onChange={(event) => onUpdateLevel(Number(event.target.value))}
           className="rounded border bg-white px-2 py-1 text-xs text-black"
         >
-          {LEVELS.map((level) => (
+          {levels.map((level) => (
             <option key={level} value={level}>
               +{level}
             </option>

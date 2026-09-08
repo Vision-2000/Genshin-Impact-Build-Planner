@@ -3,7 +3,7 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
-import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL } from "./artifact-rules";
+import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL, maxLevelForRarity } from "./artifact-rules";
 import { toOwnedArtifactItem, type OwnedArtifactItem, type OwnedArtifactSubstatItem } from "./filter-sort";
 
 type SubstatInput = { statTypeId: number; value: number };
@@ -38,12 +38,20 @@ export async function addArtifact(
 ): Promise<OwnedArtifactItem> {
   const profile = await requireActiveProfile();
 
+  // Level's real cap depends on the set's rarity (4-star maxes at +16,
+  // 5-star at +20) -- defense-in-depth behind the UI's own rarity-aware slider.
+  const artifactSet = await prisma.artifactSet.findUnique({
+    where: { id: artifactSetId },
+    select: { rarity: true },
+  });
+  const maxLevel = artifactSet ? maxLevelForRarity(artifactSet.rarity) : MAX_LEVEL;
+
   const created = await prisma.ownedArtifact.create({
     data: {
       gameProfileId: profile.id,
       artifactSetId,
       slot,
-      level: clamp(level, MIN_LEVEL, MAX_LEVEL),
+      level: clamp(level, MIN_LEVEL, maxLevel),
       mainStatId,
       substats: {
         create: sanitizeSubstats(substats, mainStatId).map((s) => ({
@@ -61,9 +69,17 @@ export async function addArtifact(
 export async function updateArtifactLevel(ownedArtifactId: number, level: number) {
   const profile = await requireActiveProfile();
 
+  const artifact = await prisma.ownedArtifact.findFirst({
+    where: { id: ownedArtifactId, gameProfileId: profile.id },
+    select: { artifactSet: { select: { rarity: true } } },
+  });
+  if (!artifact) return;
+
+  const maxLevel = maxLevelForRarity(artifact.artifactSet.rarity);
+
   await prisma.ownedArtifact.updateMany({
     where: { id: ownedArtifactId, gameProfileId: profile.id },
-    data: { level: clamp(level, MIN_LEVEL, MAX_LEVEL) },
+    data: { level: clamp(level, MIN_LEVEL, maxLevel) },
   });
 }
 
