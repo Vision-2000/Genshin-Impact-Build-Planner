@@ -29,7 +29,7 @@ export default async function AddWeaponPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-3 p-4">
+    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

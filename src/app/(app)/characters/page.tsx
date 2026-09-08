@@ -35,7 +35,7 @@ export default async function CharactersPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-3 p-4">
+    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold">Characters</h1>
