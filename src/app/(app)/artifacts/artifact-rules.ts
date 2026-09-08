@@ -80,23 +80,62 @@ function roundTo2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-// A substat present since the artifact's first appearance (this app always
-// assumes it was, since it doesn't track when a 4th substat was unlocked --
-// see CLAUDE.md) has 1 guaranteed initial roll, plus one more roll every 4
-// levels. So by a given level it could have anywhere from 1 roll (never
-// touched by an upgrade) to 1 + floor(level/4) rolls (every upgrade landed
-// on it) -- capped at the rarity's own total upgrade count, since a 5-star
-// artifact only ever gets 5 upgrades over its lifetime (+4/+8/+12/+16/+20).
-export function substatRollRange(
-  statName: SubstatTypeName,
-  rarity: number,
-  level: number
-): { min: number; max: number } {
-  const highest = SUBSTAT_HIGHEST_ROLL[statName][rarity] ?? SUBSTAT_HIGHEST_ROLL[statName][5];
-  const maxRolls = 1 + Math.min(rarity, Math.floor(level / 4));
+// The most rolls a substat present since the artifact's first appearance
+// (this app always assumes it was, since it doesn't track when a 4th
+// substat was unlocked -- see CLAUDE.md) could have received by a given
+// level: 1 guaranteed initial roll, plus one more every 4 levels -- capped
+// at the rarity's own total upgrade count, since a 5-star artifact only
+// ever gets 5 upgrades over its lifetime (+4/+8/+12/+16/+20). The actual
+// roll count could be anywhere from 1 (never touched by an upgrade) up to
+// this maximum, since upgrades are distributed randomly among a piece's
+// existing substats -- not always this one.
+function maxRollCount(rarity: number, level: number): number {
+  return 1 + Math.min(rarity, Math.floor(level / 4));
+}
 
-  return {
-    min: roundTo2(highest * SUBSTAT_ROLL_MULTIPLIERS[0]),
-    max: roundTo2(highest * maxRolls),
-  };
+// Every value a substat could actually have landed on: each individual roll
+// independently picks one of the 4 multiplier tiers, and the substat could
+// have received anywhere from 1 up to maxRollCount rolls -- so the
+// achievable totals are every distinct SUM across every roll count in that
+// range (order doesn't matter, repeats allowed), not a continuous range.
+// Different combinations can tie (0.7+1.0 == 0.8+0.9), so this is usually
+// fewer than the raw combination count. maxRollCount never exceeds 6 (a
+// 5-star's max), so this whole search is tiny regardless -- no need to
+// memoize.
+export function substatValidValues(statName: SubstatTypeName, rarity: number, level: number): number[] {
+  const highest = SUBSTAT_HIGHEST_ROLL[statName][rarity] ?? SUBSTAT_HIGHEST_ROLL[statName][5];
+  const maxRolls = maxRollCount(rarity, level);
+
+  const multiplierSums = new Set<number>();
+  function pick(startTier: number, rollsLeft: number, sumSoFar: number) {
+    if (rollsLeft === 0) {
+      multiplierSums.add(sumSoFar);
+      return;
+    }
+    for (let tier = startTier; tier < SUBSTAT_ROLL_MULTIPLIERS.length; tier++) {
+      pick(tier, rollsLeft - 1, sumSoFar + SUBSTAT_ROLL_MULTIPLIERS[tier]);
+    }
+  }
+  for (let rolls = 1; rolls <= maxRolls; rolls++) {
+    pick(0, rolls, 0);
+  }
+
+  // Distinct multiplier sums can still round to the same 2-decimal value
+  // once multiplied by `highest` -- dedupe again after rounding, otherwise
+  // the returned array can contain repeats. That matters beyond tidiness:
+  // the UI finds a value's slider index via indexOf, which always resolves
+  // to a repeat's first occurrence, so a slider sitting on a later repeat
+  // gets silently snapped back a step on every render -- invisible when
+  // dragging past it, but it makes the right-arrow key look stuck.
+  const roundedValues = new Set([...multiplierSums].map((sum) => roundTo2(sum * highest)));
+  return [...roundedValues].sort((a, b) => a - b);
+}
+
+// Snaps to the closest of a set of valid values -- used when a substat's
+// stored value no longer appears in its (possibly just-changed) valid list,
+// e.g. after the level slider moves.
+export function nearestValidValue(validValues: number[], value: number): number {
+  return validValues.reduce((closest, candidate) =>
+    Math.abs(candidate - value) < Math.abs(closest - value) ? candidate : closest
+  );
 }

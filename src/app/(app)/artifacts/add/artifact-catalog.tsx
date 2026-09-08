@@ -14,7 +14,8 @@ import {
   SLOT_MAIN_STATS,
   SUBSTAT_TYPE_NAMES,
   maxLevelForRarity,
-  substatRollRange,
+  substatValidValues,
+  nearestValidValue,
   type SubstatTypeName,
 } from "../artifact-rules";
 import {
@@ -100,14 +101,15 @@ export function ArtifactCatalog({
     );
   }
 
-  // New substats and level changes both default/reclamp to the range's max
-  // -- "assume the best case," matching the level slider's own +20 default.
+  // New substats and level changes both default/reset to the best achievable
+  // value -- "assume the best case," matching the level slider's own +20
+  // default.
   function addSubstatRow(rarity: number) {
     if (addSubstats.length >= MAX_SUBSTATS) return;
     const options = substatOptionsExcluding(-1);
     if (options.length === 0) return;
-    const range = substatRollRange(options[0].name as SubstatTypeName, rarity, addLevel);
-    setAddSubstats((prev) => [...prev, { statTypeId: options[0].id, value: range.max }]);
+    const values = substatValidValues(options[0].name as SubstatTypeName, rarity, addLevel);
+    setAddSubstats((prev) => [...prev, { statTypeId: options[0].id, value: values[values.length - 1] }]);
   }
 
   function removeSubstatRow(index: number) {
@@ -122,20 +124,21 @@ export function ArtifactCatalog({
   // stat's scale has no relation to the new one's.
   function handleSubstatTypeChange(index: number, statTypeId: number, rarity: number) {
     const name = statTypeById.get(statTypeId)?.name as SubstatTypeName | undefined;
-    const range = name ? substatRollRange(name, rarity, addLevel) : undefined;
-    updateSubstatRow(index, { statTypeId, value: range?.max ?? 0 });
+    const values = name ? substatValidValues(name, rarity, addLevel) : [0];
+    updateSubstatRow(index, { statTypeId, value: values[values.length - 1] });
   }
 
-  // Changing level can shrink or grow every substat's valid range, so
-  // existing values are reclamped into whatever range now applies.
+  // Changing level can change which values are achievable for every existing
+  // substat, so each one snaps to the closest value still valid at the new
+  // level.
   function handleLevelChange(newLevel: number, rarity: number) {
     setAddLevel(newLevel);
     setAddSubstats((prev) =>
       prev.map((s) => {
         const name = statTypeById.get(s.statTypeId)?.name as SubstatTypeName | undefined;
         if (!name) return s;
-        const range = substatRollRange(name, rarity, newLevel);
-        return { ...s, value: Math.min(Math.max(s.value, range.min), range.max) };
+        const values = substatValidValues(name, rarity, newLevel);
+        return { ...s, value: nearestValidValue(values, s.value) };
       })
     );
   }
@@ -314,9 +317,12 @@ export function ArtifactCatalog({
                     </div>
                     {addSubstats.map((substat, index) => {
                       const statName = statTypeById.get(substat.statTypeId)?.name as SubstatTypeName | undefined;
-                      const range = statName
-                        ? substatRollRange(statName, set.rarity, addLevel)
-                        : { min: 0, max: 0 };
+                      const values = statName ? substatValidValues(statName, set.rarity, addLevel) : [0];
+                      // The slider steps through indices into `values` rather
+                      // than the values themselves, since they aren't evenly
+                      // spaced (only specific roll-combination sums are ever
+                      // achievable).
+                      const currentIndex = values.indexOf(nearestValidValue(values, substat.value));
 
                       return (
                         <div key={index} className="flex flex-wrap items-center gap-2">
@@ -325,7 +331,7 @@ export function ArtifactCatalog({
                             onChange={(event) =>
                               handleSubstatTypeChange(index, Number(event.target.value), set.rarity)
                             }
-                            className="rounded border bg-white px-2 py-1 text-xs text-black"
+                            className="w-44 shrink-0 rounded border bg-white px-2 py-1 text-xs text-black"
                           >
                             {substatOptionsExcluding(index).map((option) => (
                               <option key={option.id} value={option.id}>
@@ -341,14 +347,18 @@ export function ArtifactCatalog({
                           </select>
                           <input
                             type="range"
-                            min={range.min}
-                            max={range.max}
-                            step={0.01}
-                            value={substat.value}
-                            onChange={(event) => updateSubstatRow(index, { value: Number(event.target.value) })}
+                            min={0}
+                            max={values.length - 1}
+                            step={1}
+                            value={currentIndex}
+                            onChange={(event) => updateSubstatRow(index, { value: values[Number(event.target.value)] })}
                             className="w-28"
                           />
-                          <span className="w-14 text-xs text-gray-500">{substat.value.toFixed(2)}</span>
+                          <span className="w-14 text-xs text-gray-500">
+                            {/* Flat stats (HP/ATK/DEF/Elemental Mastery) display as whole
+                                numbers in-game; every %-based stat shows 1 decimal. */}
+                            {values[currentIndex].toFixed(statName?.endsWith("%") ? 1 : 0)}
+                          </span>
                           <button
                             type="button"
                             onClick={() => removeSubstatRow(index)}
