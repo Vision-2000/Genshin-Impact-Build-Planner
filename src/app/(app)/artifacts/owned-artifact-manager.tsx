@@ -29,7 +29,7 @@ import {
   type StatTypeOption,
 } from "./filter-sort";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 60;
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -364,7 +364,7 @@ export function OwnedArtifactManager({
               substatFilter.has(name) ? "bg-foreground text-background" : ""
             }`}
           >
-            Has {name}
+            Substat: {name}
           </button>
         ))}
       </div>
