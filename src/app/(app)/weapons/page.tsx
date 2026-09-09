@@ -10,11 +10,7 @@ export const metadata: Metadata = {
   title: "Weapons",
 };
 
-const HELP_TEXT = `This page shows the weapons you currently own. Search by name, or use the badges below to filter by weapon type or rarity -- click a badge to toggle it on, and combine as many as you like.
-
-Change a weapon's refinement with its dropdown, or remove it entirely.
-
-To add a new weapon, use the "Add weapon" button -- it opens the full weapon catalog on its own page.`;
+const HELP_TEXT = `This page shows the weapons you currently own. Change a weapon's refinement with its dropdown, or remove it entirely.`;
 
 export default async function WeaponsPage() {
   const profile = await requireActiveProfile();

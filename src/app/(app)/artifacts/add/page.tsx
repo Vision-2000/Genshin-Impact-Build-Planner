@@ -10,9 +10,7 @@ export const metadata: Metadata = {
   title: "Add Artifact",
 };
 
-const HELP_TEXT = `Browse every artifact set in the game. Search by name, then click Add on a set to fill in the piece's slot, rarity, level, main stat, and up to 4 substats.
-
-You can add as many pieces as you like -- each is tracked as its own physical piece.`;
+const HELP_TEXT = `Browse every artifact set in the game. Click a set to expand it and fill in the piece's slot, level, main stat, and up to 4 substats.`;
 
 export default async function AddArtifactPage() {
   const profile = await requireActiveProfile();

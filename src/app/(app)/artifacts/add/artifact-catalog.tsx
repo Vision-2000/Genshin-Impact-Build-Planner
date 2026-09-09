@@ -29,7 +29,14 @@ const SLOTS = Object.values(ArtifactSlot);
 // Artifact sets are seeded at 4-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4];
 
-type DraftSubstat = { statTypeId: number; value: number };
+// statTypeId is null for a row left on its default "None" option -- the row
+// still exists (there are always exactly MAX_SUBSTATS rows) but contributes
+// nothing on save.
+type DraftSubstat = { statTypeId: number | null; value: number };
+
+function emptySubstatRow(): DraftSubstat {
+  return { statTypeId: null, value: 0 };
+}
 
 export function ArtifactCatalog({
   catalog,
@@ -70,7 +77,7 @@ export function ArtifactCatalog({
     setAddSlot(ArtifactSlot.Flower);
     setAddLevel(set ? maxLevelForRarity(set.rarity) : MAX_LEVEL);
     setAddMainStatId(initialMainStatId);
-    setAddSubstats([]);
+    setAddSubstats(Array.from({ length: MAX_SUBSTATS }, emptySubstatRow));
   }
 
   function closeAddForm() {
@@ -85,56 +92,55 @@ export function ArtifactCatalog({
       currentName && validNames.includes(currentName) ? addMainStatId : statTypeByName.get(validNames[0])?.id ?? null;
 
     setAddMainStatId(nextMainStatId);
-    setAddSubstats((prev) => prev.filter((s) => s.statTypeId !== nextMainStatId));
+    // A row that was using the old main stat's slot can't keep it -- reset
+    // that row to "None" rather than removing it, since there are always
+    // exactly MAX_SUBSTATS rows.
+    setAddSubstats((prev) => prev.map((s) => (s.statTypeId === nextMainStatId ? emptySubstatRow() : s)));
   }
 
   function handleMainStatChange(statTypeId: number) {
     setAddMainStatId(statTypeId);
-    setAddSubstats((prev) => prev.filter((s) => s.statTypeId !== statTypeId));
+    setAddSubstats((prev) => prev.map((s) => (s.statTypeId === statTypeId ? emptySubstatRow() : s)));
   }
 
   function substatOptionsExcluding(excludeIndex: number): StatTypeOption[] {
-    const used = new Set(addSubstats.filter((_, i) => i !== excludeIndex).map((s) => s.statTypeId));
+    const used = new Set(
+      addSubstats
+        .filter((_, i) => i !== excludeIndex)
+        .map((s) => s.statTypeId)
+        .filter((id): id is number => id !== null)
+    );
     if (addMainStatId !== null) used.add(addMainStatId);
     return SUBSTAT_TYPE_NAMES.map((name) => statTypeByName.get(name)).filter(
       (s): s is StatTypeOption => !!s && !used.has(s.id)
     );
   }
 
-  // New substats and level changes both default/reset to the best achievable
-  // value -- "assume the best case," matching the level slider's own +20
-  // default.
-  function addSubstatRow(rarity: number) {
-    if (addSubstats.length >= MAX_SUBSTATS) return;
-    const options = substatOptionsExcluding(-1);
-    if (options.length === 0) return;
-    const values = substatValidValues(options[0].name as SubstatTypeName, rarity, addLevel);
-    setAddSubstats((prev) => [...prev, { statTypeId: options[0].id, value: values[values.length - 1] }]);
-  }
-
-  function removeSubstatRow(index: number) {
-    setAddSubstats((prev) => prev.filter((_, i) => i !== index));
-  }
-
   function updateSubstatRow(index: number, changes: Partial<DraftSubstat>) {
     setAddSubstats((prev) => prev.map((s, i) => (i === index ? { ...s, ...changes } : s)));
   }
 
-  // Changing which stat a row uses resets its value -- a value on the old
-  // stat's scale has no relation to the new one's.
-  function handleSubstatTypeChange(index: number, statTypeId: number, rarity: number) {
+  // Selecting "None" resets the row; selecting a real stat defaults to the
+  // lowest achievable value, matching the substat slider's own
+  // leftmost/minimum position.
+  function handleSubstatTypeChange(index: number, statTypeId: number | null, rarity: number) {
+    if (statTypeId === null) {
+      updateSubstatRow(index, emptySubstatRow());
+      return;
+    }
     const name = statTypeById.get(statTypeId)?.name as SubstatTypeName | undefined;
     const values = name ? substatValidValues(name, rarity, addLevel) : [0];
-    updateSubstatRow(index, { statTypeId, value: values[values.length - 1] });
+    updateSubstatRow(index, { statTypeId, value: values[0] });
   }
 
   // Changing level can change which values are achievable for every existing
   // substat, so each one snaps to the closest value still valid at the new
-  // level.
+  // level. Rows still on "None" are untouched.
   function handleLevelChange(newLevel: number, rarity: number) {
     setAddLevel(newLevel);
     setAddSubstats((prev) =>
       prev.map((s) => {
+        if (s.statTypeId === null) return s;
         const name = statTypeById.get(s.statTypeId)?.name as SubstatTypeName | undefined;
         if (!name) return s;
         const values = substatValidValues(name, rarity, newLevel);
@@ -153,7 +159,9 @@ export function ArtifactCatalog({
     const slot = addSlot;
     const level = addLevel;
     const mainStatId = addMainStatId;
-    const substats = addSubstats.map((s) => ({ statTypeId: s.statTypeId, value: s.value }));
+    const substats = addSubstats
+      .filter((s): s is { statTypeId: number; value: number } => s.statTypeId !== null)
+      .map((s) => ({ statTypeId: s.statTypeId, value: s.value }));
 
     startTransition(async () => {
       try {
@@ -211,27 +219,26 @@ export function ArtifactCatalog({
                 }}
                 className="flex cursor-pointer items-center gap-3"
               >
-                {previewIcon && <Image src={previewIcon} alt="" width={40} height={40} />}
+                <div
+                  className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg p-1.5 ${rarityGradientClasses(set.rarity)}`}
+                >
+                  {previewIcon && <Image src={previewIcon} alt="" width={56} height={56} />}
+                </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{set.name}</p>
-                  <span
-                    className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium text-white ${rarityGradientClasses(set.rarity)}`}
-                  >
-                    {set.rarity}★
-                  </span>
+                  <p className="truncate text-lg font-medium">{set.name}</p>
                 </div>
                 <span
                   aria-hidden="true"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-base font-semibold"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center text-2xl font-semibold"
                 >
                   {isAdding ? "−" : "+"}
                 </span>
               </div>
 
               {isAdding && (
-                <div className="mt-3 space-y-3 border-t pt-3">
+                <div className="mt-3 max-w-2xl space-y-3 border-t pt-3">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium">Slot</p>
+                    <p className="text-sm font-medium">Slot</p>
                     <div className="flex flex-wrap gap-2">
                       {SLOTS.map((slot) => {
                         const icon = slotIconUrl(set, slot);
@@ -242,12 +249,12 @@ export function ArtifactCatalog({
                             type="button"
                             onClick={() => handleSlotChange(slot)}
                             aria-pressed={isSelected}
-                            className={`flex w-16 flex-col items-center gap-1 rounded-lg border-4 p-1.5 ${
+                            className={`flex w-24 flex-col items-center gap-1 rounded-lg border-4 p-2 ${
                               isSelected ? "border-blue-500" : "border-transparent"
                             } ${rarityGradientClasses(set.rarity)}`}
                           >
-                            {icon && <Image src={icon} alt="" width={40} height={40} />}
-                            <span className="text-[10px] font-medium text-white">{slot}</span>
+                            {icon && <Image src={icon} alt="" width={64} height={64} />}
+                            <span className="text-sm font-medium text-white">{slot}</span>
                           </button>
                         );
                       })}
@@ -255,17 +262,7 @@ export function ArtifactCatalog({
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <label className="flex items-center gap-1 text-xs">
-                      Rarity
-                      <span
-                        className={`rounded px-1.5 py-0.5 font-medium text-white ${rarityGradientClasses(set.rarity)}`}
-                      >
-                        {set.rarity}★
-                      </span>
-                      <span className="text-gray-500">(fixed by set)</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 text-xs">
+                    <label className="flex items-center gap-2 text-sm">
                       Level
                       <input
                         type="range"
@@ -273,50 +270,37 @@ export function ArtifactCatalog({
                         max={maxLevelForRarity(set.rarity)}
                         value={addLevel}
                         onChange={(event) => handleLevelChange(Number(event.target.value), set.rarity)}
-                        className="w-32"
+                        className="-mt-1 w-32"
                       />
-                      <span className="w-8 text-gray-500">+{addLevel}</span>
+                      <span className="w-8 text-gray-400">+{addLevel}</span>
                     </label>
 
-                    <label className="text-xs">
-                      Main stat
-                      {SLOT_MAIN_STATS[addSlot].length === 1 ? (
-                        <span className="ml-1 text-gray-500">{SLOT_MAIN_STATS[addSlot][0]} (fixed)</span>
-                      ) : (
-                        <select
-                          value={addMainStatId ?? ""}
-                          onChange={(event) => handleMainStatChange(Number(event.target.value))}
-                          className="ml-1 rounded border bg-white px-2 py-1 text-xs text-black"
-                        >
-                          {SLOT_MAIN_STATS[addSlot].map((name) => {
-                            const option = statTypeByName.get(name);
-                            return option ? (
-                              <option key={option.id} value={option.id}>
-                                {name}
-                              </option>
-                            ) : null;
-                          })}
-                        </select>
-                      )}
+                    <label className="text-sm">
+                      Main stat:
+                      <select
+                        value={addMainStatId ?? ""}
+                        onChange={(event) => handleMainStatChange(Number(event.target.value))}
+                        disabled={SLOT_MAIN_STATS[addSlot].length === 1}
+                        className="ml-1 w-[11.5rem] rounded border bg-white px-2 py-1 text-sm text-black disabled:bg-gray-100 disabled:text-gray-500"
+                      >
+                        {SLOT_MAIN_STATS[addSlot].map((name) => {
+                          const option = statTypeByName.get(name);
+                          return option ? (
+                            <option key={option.id} value={option.id}>
+                              {name}
+                            </option>
+                          ) : null;
+                        })}
+                      </select>
                     </label>
                   </div>
 
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-medium">Substats</p>
-                      {addSubstats.length < MAX_SUBSTATS && (
-                        <button
-                          type="button"
-                          onClick={() => addSubstatRow(set.rarity)}
-                          title="Add substat"
-                          className="flex h-5 w-5 items-center justify-center rounded-full border text-xs font-semibold hover:bg-black/5"
-                        >
-                          +
-                        </button>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium">Substats</p>
                     {addSubstats.map((substat, index) => {
-                      const statName = statTypeById.get(substat.statTypeId)?.name as SubstatTypeName | undefined;
+                      const statName = statTypeById.get(substat.statTypeId ?? -1)?.name as
+                        | SubstatTypeName
+                        | undefined;
                       const values = statName ? substatValidValues(statName, set.rarity, addLevel) : [0];
                       // The slider steps through indices into `values` rather
                       // than the values themselves, since they aren't evenly
@@ -327,45 +311,49 @@ export function ArtifactCatalog({
                       return (
                         <div key={index} className="flex flex-wrap items-center gap-2">
                           <select
-                            value={substat.statTypeId}
+                            value={substat.statTypeId ?? ""}
                             onChange={(event) =>
-                              handleSubstatTypeChange(index, Number(event.target.value), set.rarity)
+                              handleSubstatTypeChange(
+                                index,
+                                event.target.value === "" ? null : Number(event.target.value),
+                                set.rarity
+                              )
                             }
-                            className="w-44 shrink-0 rounded border bg-white px-2 py-1 text-xs text-black"
+                            className="w-44 shrink-0 rounded border bg-white px-2 py-1 text-sm text-black"
                           >
+                            <option value="">None</option>
                             {substatOptionsExcluding(index).map((option) => (
                               <option key={option.id} value={option.id}>
                                 {option.name}
                               </option>
                             ))}
                             {!substatOptionsExcluding(index).some((o) => o.id === substat.statTypeId) &&
-                              statTypeById.get(substat.statTypeId) && (
-                                <option value={substat.statTypeId}>
-                                  {statTypeById.get(substat.statTypeId)?.name}
+                              statTypeById.get(substat.statTypeId ?? -1) && (
+                                <option value={substat.statTypeId ?? ""}>
+                                  {statTypeById.get(substat.statTypeId ?? -1)?.name}
                                 </option>
                               )}
                           </select>
-                          <input
-                            type="range"
-                            min={0}
-                            max={values.length - 1}
-                            step={1}
-                            value={currentIndex}
-                            onChange={(event) => updateSubstatRow(index, { value: values[Number(event.target.value)] })}
-                            className="w-28"
-                          />
-                          <span className="w-14 text-xs text-gray-500">
-                            {/* Flat stats (HP/ATK/DEF/Elemental Mastery) display as whole
-                                numbers in-game; every %-based stat shows 1 decimal. */}
-                            {values[currentIndex].toFixed(statName?.endsWith("%") ? 1 : 0)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeSubstatRow(index)}
-                            className="text-xs text-red-600 underline"
-                          >
-                            Remove
-                          </button>
+                          {substat.statTypeId !== null && (
+                            <>
+                              <input
+                                type="range"
+                                min={0}
+                                max={values.length - 1}
+                                step={1}
+                                value={currentIndex}
+                                onChange={(event) =>
+                                  updateSubstatRow(index, { value: values[Number(event.target.value)] })
+                                }
+                                className="w-28"
+                              />
+                              <span className="w-14 text-sm text-gray-400">
+                                {/* Flat stats (HP/ATK/DEF/Elemental Mastery) display as whole
+                                    numbers in-game; every %-based stat shows 1 decimal. */}
+                                {values[currentIndex].toFixed(statName?.endsWith("%") ? 1 : 0)}
+                              </span>
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -374,7 +362,7 @@ export function ArtifactCatalog({
                   <button
                     type="button"
                     onClick={handleAddSubmit}
-                    className="rounded bg-black px-3 py-1 text-xs text-white"
+                    className="rounded border border-white bg-black px-3 py-1 text-sm text-white"
                   >
                     Save artifact
                   </button>

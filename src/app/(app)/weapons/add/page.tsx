@@ -10,9 +10,7 @@ export const metadata: Metadata = {
   title: "Add Weapon",
 };
 
-const HELP_TEXT = `Browse every weapon in the game. Search by name, or use the badges to filter by weapon type or rarity.
-
-Pick a refinement and click Add to add a copy to your owned weapons. You can add the same weapon more than once -- each copy is tracked separately with its own refinement.`;
+const HELP_TEXT = `Browse every weapon in the game. Pick a refinement and add a copy to your owned weapons. You can add the same weapon more than once.`;
 
 export default async function AddWeaponPage() {
   const profile = await requireActiveProfile();

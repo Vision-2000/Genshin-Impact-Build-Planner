@@ -10,11 +10,7 @@ export const metadata: Metadata = {
   title: "Artifacts",
 };
 
-const HELP_TEXT = `This page shows the artifacts you currently own. Search by set name, or use the badges below to filter by slot or by which substat a piece has.
-
-Change a piece's level with its dropdown, edit or remove individual substats, or remove the whole piece.
-
-To add a new artifact, use the "Add artifact" button -- it opens the full set catalog and a form for the piece's slot, rarity, level, main stat, and substats on its own page.`;
+const HELP_TEXT = `This page shows the artifacts you currently own. Change a piece's level with its dropdown, edit or remove individual substats, or remove the whole piece.`;
 
 export default async function ArtifactsPage() {
   const profile = await requireActiveProfile();
