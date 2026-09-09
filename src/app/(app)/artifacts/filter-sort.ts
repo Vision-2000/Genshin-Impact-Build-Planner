@@ -1,5 +1,8 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
+import type { SortDirection } from "@/lib/sort";
 import { SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
+
+export type { SortDirection };
 
 export type StatTypeOption = {
   id: number;
@@ -108,8 +111,14 @@ export type OwnedSortKey = "name" | "rarity" | "level" | SubstatTypeName;
 export type OwnedFilters = {
   search: string;
   slotFilter: ReadonlySet<ArtifactSlot>;
+  rarityFilter: ReadonlySet<number>;
   substatFilter: ReadonlySet<SubstatTypeName>;
+  // Empty string means "any main stat" -- a single-select dropdown rather
+  // than badges, since filtering by more than one main stat at once is a
+  // rare enough case not to be worth a multi-select UI.
+  mainStatFilter: string;
   sortKey: OwnedSortKey;
+  sortDirection: SortDirection;
 };
 
 function substatValue(artifact: OwnedArtifactItem, statName: string): number | null {
@@ -119,7 +128,7 @@ function substatValue(artifact: OwnedArtifactItem, statName: string): number | n
 
 export function filterAndSortOwnedArtifacts(
   artifacts: OwnedArtifactItem[],
-  { search, slotFilter, substatFilter, sortKey }: OwnedFilters
+  { search, slotFilter, rarityFilter, substatFilter, mainStatFilter, sortKey, sortDirection }: OwnedFilters
 ): OwnedArtifactItem[] {
   let result = artifacts;
 
@@ -130,23 +139,31 @@ export function filterAndSortOwnedArtifacts(
   if (slotFilter.size > 0) {
     result = result.filter((artifact) => slotFilter.has(artifact.slot));
   }
+  if (rarityFilter.size > 0) {
+    result = result.filter((artifact) => rarityFilter.has(artifact.rarity));
+  }
+  if (mainStatFilter) {
+    result = result.filter((artifact) => artifact.mainStatName === mainStatFilter);
+  }
   for (const statName of substatFilter) {
     result = result.filter((artifact) => substatValue(artifact, statName) !== null);
   }
 
+  const direction = sortDirection === "desc" ? -1 : 1;
+
   return [...result].sort((a, b) => {
     if (sortKey === "rarity") {
-      return b.rarity - a.rarity || a.setName.localeCompare(b.setName);
+      return direction * (a.rarity - b.rarity) || a.setName.localeCompare(b.setName);
     }
     if (sortKey === "level") {
-      return b.level - a.level || a.setName.localeCompare(b.setName);
+      return direction * (a.level - b.level) || a.setName.localeCompare(b.setName);
     }
     if ((SUBSTAT_TYPE_NAMES as readonly string[]).includes(sortKey)) {
       const aValue = substatValue(a, sortKey) ?? -Infinity;
       const bValue = substatValue(b, sortKey) ?? -Infinity;
-      return bValue - aValue || a.setName.localeCompare(b.setName);
+      return direction * (aValue - bValue) || a.setName.localeCompare(b.setName);
     }
-    return a.setName.localeCompare(b.setName);
+    return direction * a.setName.localeCompare(b.setName);
   });
 }
 

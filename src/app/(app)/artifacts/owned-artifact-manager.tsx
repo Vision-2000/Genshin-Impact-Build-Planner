@@ -1,14 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { useDialogs } from "@/components/dialog-provider";
+import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import type { SortDirection } from "@/lib/sort";
 import { PaginationControls } from "../pagination-controls";
 import { addSubstat, removeArtifact, removeSubstat, updateArtifactLevel, updateSubstatValue } from "./actions";
-import { MIN_LEVEL, MAX_SUBSTATS, SUBSTAT_TYPE_NAMES, maxLevelForRarity, type SubstatTypeName } from "./artifact-rules";
+import { ArtifactSlotFilterRow } from "./artifact-slot-filter-row";
+import {
+  ARTIFACT_RARITIES,
+  MAIN_STAT_NAMES,
+  MIN_LEVEL,
+  MAX_SUBSTATS,
+  SUBSTAT_TYPE_NAMES,
+  maxLevelForRarity,
+  type SubstatTypeName,
+} from "./artifact-rules";
 import {
   filterAndSortOwnedArtifacts,
   type OwnedArtifactItem,
@@ -17,7 +29,6 @@ import {
   type StatTypeOption,
 } from "./filter-sort";
 
-const SLOTS = Object.values(ArtifactSlot);
 const PAGE_SIZE = 10;
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
@@ -44,7 +55,59 @@ function SubstatValueInput({ value, onCommit }: { value: number; onCommit: (valu
   );
 }
 
+// Compact grid card, same rarity-gradient-square treatment as Characters and
+// Weapons. Unlike those, an artifact has too much editable state (level plus
+// up to 4 substats) to fit inline in a small square -- clicking the card
+// expands OwnedArtifactDetails as a full-width panel below it instead, via
+// CSS Grid's column-span-full rather than a modal (see CLAUDE.md's reasoning
+// against a second modal system for the add-artifact form; the same call
+// applies here).
 function OwnedArtifactCard({
+  artifact,
+  isExpanded,
+  onToggleExpand,
+}: {
+  artifact: OwnedArtifactItem;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        aria-pressed={isExpanded}
+        aria-expanded={isExpanded}
+        className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 text-left shadow ${
+          isExpanded ? "border-blue-500" : "border-gray-600"
+        } ${rarityGradientClasses(artifact.rarity)}`}
+      >
+        {artifact.iconUrl && (
+          <Image
+            src={artifact.iconUrl}
+            alt=""
+            fill
+            sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+            className="object-contain p-4"
+          />
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 space-y-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
+          <p className="truncate text-center text-sm font-semibold text-white">{artifact.setName}</p>
+          <p className="truncate text-center text-xs text-gray-300">
+            {artifact.slot} · +{artifact.level}
+          </p>
+        </div>
+      </button>
+    </li>
+  );
+}
+
+// The expanded editing panel -- spans every column of the grid (CSS Grid
+// places the next item on a fresh row after a full-span item, no JS
+// reordering needed), so it gets the same amount of room the old row-based
+// layout gave it instead of squeezing into the card above.
+function OwnedArtifactDetails({
   artifact,
   statTypes,
   onUpdateLevel,
@@ -70,7 +133,7 @@ function OwnedArtifactCard({
   const levels = Array.from({ length: maxLevel - MIN_LEVEL + 1 }, (_, i) => MIN_LEVEL + i);
 
   return (
-    <li className="space-y-2 rounded border p-3">
+    <li className="col-span-full space-y-2 rounded border p-3">
       <div className="flex items-center gap-3">
         <div
           className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg p-1.5 ${rarityGradientClasses(artifact.rarity)}`}
@@ -148,11 +211,23 @@ export function OwnedArtifactManager({
 
   const [search, setSearch] = useState("");
   const [slotFilter, setSlotFilter] = useState<Set<ArtifactSlot>>(new Set());
+  const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [substatFilter, setSubstatFilter] = useState<Set<SubstatTypeName>>(new Set());
+  const [mainStatFilter, setMainStatFilter] = useState("");
   const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [page, setPage] = useState(1);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const filtered = filterAndSortOwnedArtifacts(owned, { search, slotFilter, substatFilter, sortKey });
+  const filtered = filterAndSortOwnedArtifacts(owned, {
+    search,
+    slotFilter,
+    rarityFilter,
+    substatFilter,
+    mainStatFilter,
+    sortKey,
+    sortDirection,
+  });
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
 
   function handleUpdateLevel(ownedArtifactId: number, level: number) {
@@ -169,6 +244,7 @@ export function OwnedArtifactManager({
       danger: true,
     });
     if (!confirmed) return;
+    setExpandedId((current) => (current === ownedArtifactId ? null : current));
     startTransition(() => {
       const previous = owned;
       setOwned((prev) => prev.filter((a) => a.id !== ownedArtifactId));
@@ -229,36 +305,51 @@ export function OwnedArtifactManager({
         <select
           value={sortKey}
           onChange={(event) => setSortKey(event.target.value as OwnedSortKey)}
-          className="rounded border bg-white px-3 py-2 text-sm text-black"
+          className="rounded border bg-white px-2 py-1 text-sm text-black"
         >
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
           <option value="level">Sort: Level</option>
           {SUBSTAT_TYPE_NAMES.map((name) => (
             <option key={name} value={name}>
-              Sort: Highest {name}
+              Sort: {name}
+            </option>
+          ))}
+        </select>
+        <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+        <select
+          value={mainStatFilter}
+          onChange={(event) => {
+            setMainStatFilter(event.target.value);
+            setPage(1);
+          }}
+          className="rounded border bg-white px-2 py-1 text-sm text-black"
+        >
+          <option value="">Main stat: Any</option>
+          {MAIN_STAT_NAMES.map((name) => (
+            <option key={name} value={name}>
+              Main stat: {name}
             </option>
           ))}
         </select>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {SLOTS.map((slot) => (
-          <button
-            key={slot}
-            type="button"
-            onClick={() => {
-              setSlotFilter((prev) => toggleInSet(prev, slot));
-              setPage(1);
-            }}
-            className={`rounded-full border px-3 py-1 text-xs ${
-              slotFilter.has(slot) ? "bg-foreground text-background" : ""
-            }`}
-          >
-            {slot}
-          </button>
-        ))}
-      </div>
+      <ArtifactSlotFilterRow
+        slotFilter={slotFilter}
+        onToggle={(slot) => {
+          setSlotFilter((prev) => toggleInSet(prev, slot));
+          setPage(1);
+        }}
+      />
+
+      <RarityFilterRow
+        rarities={ARTIFACT_RARITIES}
+        rarityFilter={rarityFilter}
+        onToggle={(rarity) => {
+          setRarityFilter((prev) => toggleInSet(prev, rarity));
+          setPage(1);
+        }}
+      />
 
       <div className="flex flex-wrap gap-2">
         {SUBSTAT_TYPE_NAMES.map((name) => (
@@ -282,20 +373,31 @@ export function OwnedArtifactManager({
         {filtered.length} artifact{filtered.length === 1 ? "" : "s"}
       </p>
 
-      <ul className="space-y-2">
-        {pageItems.map((artifact) => (
-          <OwnedArtifactCard
-            key={artifact.id}
-            artifact={artifact}
-            statTypes={statTypes}
-            onUpdateLevel={(level) => handleUpdateLevel(artifact.id, level)}
-            onRemoveArtifact={() => handleRemoveArtifact(artifact.id)}
-            onUpdateSubstatValue={(substatId, value) => handleUpdateSubstatValue(artifact.id, substatId, value)}
-            onRemoveSubstat={(substatId) => handleRemoveSubstat(artifact.id, substatId)}
-            onAddSubstat={(statTypeId) => handleAddSubstatToOwned(artifact.id, statTypeId)}
-          />
-        ))}
-        {pageItems.length === 0 && <p className="text-sm text-gray-500">No artifacts match these filters.</p>}
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        {pageItems.map((artifact) => {
+          const isExpanded = expandedId === artifact.id;
+          return (
+            <Fragment key={artifact.id}>
+              <OwnedArtifactCard
+                artifact={artifact}
+                isExpanded={isExpanded}
+                onToggleExpand={() => setExpandedId((current) => (current === artifact.id ? null : artifact.id))}
+              />
+              {isExpanded && (
+                <OwnedArtifactDetails
+                  artifact={artifact}
+                  statTypes={statTypes}
+                  onUpdateLevel={(level) => handleUpdateLevel(artifact.id, level)}
+                  onRemoveArtifact={() => handleRemoveArtifact(artifact.id)}
+                  onUpdateSubstatValue={(substatId, value) => handleUpdateSubstatValue(artifact.id, substatId, value)}
+                  onRemoveSubstat={(substatId) => handleRemoveSubstat(artifact.id, substatId)}
+                  onAddSubstat={(statTypeId) => handleAddSubstatToOwned(artifact.id, statTypeId)}
+                />
+              )}
+            </Fragment>
+          );
+        })}
+        {pageItems.length === 0 && <p className="col-span-full text-sm text-gray-500">No artifacts match these filters.</p>}
       </ul>
 
       <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />

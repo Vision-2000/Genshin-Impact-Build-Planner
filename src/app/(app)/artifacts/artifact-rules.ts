@@ -1,5 +1,10 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
 
+// Artifact sets are seeded at 4-5 star only (see prisma/seed.ts), so this is
+// every rarity a set (or a piece from it) can ever be -- shared by the
+// catalog's and the owned list's rarity filter badges.
+export const ARTIFACT_RARITIES = [5, 4];
+
 // Which StatType names each slot can actually roll as a main stat in-game.
 // Flower/Feather are fixed and never vary; Sands/Goblet/Circlet each draw
 // from their own subset. Not enforced by the schema (mainStatId is just an
@@ -26,6 +31,11 @@ export const SLOT_MAIN_STATS: Record<ArtifactSlot, readonly string[]> = {
   ],
   [ArtifactSlot.Circlet]: ["HP%", "ATK%", "DEF%", "Elemental Mastery", "Crit Rate%", "Crit DMG%", "Healing Bonus%"],
 };
+
+// Every main-stat name that can appear on any slot, deduplicated -- backs the
+// owned-artifacts page's main-stat filter dropdown (a piece could have any of
+// these depending on its slot, so the filter isn't scoped to one slot).
+export const MAIN_STAT_NAMES = [...new Set(Object.values(SLOT_MAIN_STATS).flat())];
 
 // The only StatType names that can ever appear as a substat — elemental DMG
 // bonuses, Healing Bonus%, and Physical DMG Bonus% are Goblet/Circlet main

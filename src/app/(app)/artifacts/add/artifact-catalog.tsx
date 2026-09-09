@@ -8,6 +8,7 @@ import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { addArtifact } from "../actions";
 import {
+  ARTIFACT_RARITIES,
   MAX_SUBSTATS,
   MIN_LEVEL,
   MAX_LEVEL,
@@ -26,8 +27,6 @@ import {
 } from "../filter-sort";
 
 const SLOTS = Object.values(ArtifactSlot);
-// Artifact sets are seeded at 4-5 star (see prisma/seed.ts).
-const RARITIES = [5, 4];
 
 // statTypeId is null for a row left on its default "None" option -- the row
 // still exists (there are always exactly MAX_SUBSTATS rows) but contributes
@@ -190,7 +189,7 @@ export function ArtifactCatalog({
         className="rounded border bg-white px-3 py-2 text-sm text-black"
       />
 
-      <RarityFilterRow rarities={RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
+      <RarityFilterRow rarities={ARTIFACT_RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 
       <p className="text-sm text-gray-500">
         {filtered.length} set{filtered.length === 1 ? "" : "s"}

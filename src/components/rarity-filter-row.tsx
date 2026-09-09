@@ -1,8 +1,16 @@
 "use client";
 
 function StarIcon({ className }: { className?: string }) {
+  // The path's bounding box is vertically centered at y=12, but a 5-pointed
+  // star's filled area isn't -- its visual center of mass (computed via the
+  // polygon centroid formula) sits at y≈13.03, about 1 unit lower. Centering
+  // this box with flexbox (which centers by bounding box, not ink weight)
+  // makes the star read as slightly lower than an adjacent text glyph, whose
+  // own weight sits close to its box center. Shifting the viewBox's origin
+  // down by that same ~1 unit re-centers the star's actual visual weight
+  // instead of its bounding box.
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <svg viewBox="0 1.03 24 24" fill="currentColor" className={className}>
       <path d="M12 2 L14.9 9.1 L22.5 9.7 L16.7 14.6 L18.5 22 L12 17.8 L5.5 22 L7.3 14.6 L1.5 9.7 L9.1 9.1 Z" />
     </svg>
   );
