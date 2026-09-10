@@ -4,7 +4,7 @@ import { ArtifactSlot } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL, maxLevelForRarity } from "./artifact-rules";
-import { toOwnedArtifactItem, type OwnedArtifactItem, type OwnedArtifactSubstatItem } from "./filter-sort";
+import { toOwnedArtifactItem, type OwnedArtifactItem } from "./filter-sort";
 
 type SubstatInput = { statTypeId: number; value: number };
 
@@ -66,21 +66,45 @@ export async function addArtifact(
   return toOwnedArtifactItem(created);
 }
 
-export async function updateArtifactLevel(ownedArtifactId: number, level: number) {
+// One call for the whole edit form (level + all substats), mirroring
+// addArtifact -- the edit modal drafts changes locally and commits them in a
+// batch, same as the add flow, rather than firing a request per keystroke.
+// Substats are replaced wholesale: a piece's substats carry no identity
+// beyond their stat + value, so delete-and-recreate is invisible to the user
+// and simpler than diffing.
+export async function updateArtifact(
+  ownedArtifactId: number,
+  level: number,
+  mainStatId: number,
+  substats: SubstatInput[]
+): Promise<OwnedArtifactItem | null> {
   const profile = await requireActiveProfile();
 
-  const artifact = await prisma.ownedArtifact.findFirst({
+  const existing = await prisma.ownedArtifact.findFirst({
     where: { id: ownedArtifactId, gameProfileId: profile.id },
     select: { artifactSet: { select: { rarity: true } } },
   });
-  if (!artifact) return;
+  if (!existing) return null;
 
-  const maxLevel = maxLevelForRarity(artifact.artifactSet.rarity);
+  const maxLevel = maxLevelForRarity(existing.artifactSet.rarity);
 
-  await prisma.ownedArtifact.updateMany({
-    where: { id: ownedArtifactId, gameProfileId: profile.id },
-    data: { level: clamp(level, MIN_LEVEL, maxLevel) },
+  const updated = await prisma.ownedArtifact.update({
+    where: { id: ownedArtifactId },
+    data: {
+      level: clamp(level, MIN_LEVEL, maxLevel),
+      mainStatId,
+      substats: {
+        deleteMany: {},
+        create: sanitizeSubstats(substats, mainStatId).map((s) => ({
+          statTypeId: s.statTypeId,
+          value: s.value,
+        })),
+      },
+    },
+    include: { artifactSet: true, mainStat: true, substats: { include: { statType: true } } },
   });
+
+  return toOwnedArtifactItem(updated);
 }
 
 export async function removeArtifact(ownedArtifactId: number) {
@@ -89,57 +113,4 @@ export async function removeArtifact(ownedArtifactId: number) {
   await prisma.ownedArtifact.deleteMany({
     where: { id: ownedArtifactId, gameProfileId: profile.id },
   });
-}
-
-// Ownership is verified via a join through OwnedArtifact.gameProfileId,
-// since OwnedArtifactSubstat has no gameProfileId of its own.
-async function ownedArtifactIdFor(ownedArtifactSubstatId: number, gameProfileId: number) {
-  const substat = await prisma.ownedArtifactSubstat.findFirst({
-    where: { id: ownedArtifactSubstatId, ownedArtifact: { gameProfileId } },
-    select: { ownedArtifactId: true },
-  });
-  return substat?.ownedArtifactId ?? null;
-}
-
-export async function addSubstat(
-  ownedArtifactId: number,
-  statTypeId: number,
-  value: number
-): Promise<OwnedArtifactSubstatItem | null> {
-  const profile = await requireActiveProfile();
-
-  const artifact = await prisma.ownedArtifact.findFirst({
-    where: { id: ownedArtifactId, gameProfileId: profile.id },
-    include: { substats: true },
-  });
-  if (!artifact) return null;
-  if (artifact.substats.length >= MAX_SUBSTATS) return null;
-  if (statTypeId === artifact.mainStatId) return null;
-  if (artifact.substats.some((s) => s.statTypeId === statTypeId)) return null;
-
-  const created = await prisma.ownedArtifactSubstat.create({
-    data: { ownedArtifactId, statTypeId, value },
-    include: { statType: true },
-  });
-
-  return { id: created.id, statTypeId: created.statTypeId, statTypeName: created.statType.name, value: created.value };
-}
-
-export async function updateSubstatValue(ownedArtifactSubstatId: number, value: number) {
-  const profile = await requireActiveProfile();
-  const ownedArtifactId = await ownedArtifactIdFor(ownedArtifactSubstatId, profile.id);
-  if (!ownedArtifactId) return;
-
-  await prisma.ownedArtifactSubstat.update({
-    where: { id: ownedArtifactSubstatId },
-    data: { value },
-  });
-}
-
-export async function removeSubstat(ownedArtifactSubstatId: number) {
-  const profile = await requireActiveProfile();
-  const ownedArtifactId = await ownedArtifactIdFor(ownedArtifactSubstatId, profile.id);
-  if (!ownedArtifactId) return;
-
-  await prisma.ownedArtifactSubstat.delete({ where: { id: ownedArtifactSubstatId } });
 }
