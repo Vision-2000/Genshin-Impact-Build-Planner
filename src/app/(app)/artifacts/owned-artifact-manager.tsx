@@ -80,7 +80,7 @@ function OwnedArtifactCard({
         onClick={onToggleExpand}
         aria-pressed={isExpanded}
         aria-expanded={isExpanded}
-        className={`block w-full overflow-hidden rounded-xl border-8 text-left shadow ${
+        className={`@container block w-full overflow-hidden rounded-xl border-8 text-left shadow ${
           isExpanded ? "border-blue-500" : "border-gray-600"
         } ${rarityGradientClasses(artifact.rarity)}`}
       >
@@ -114,7 +114,7 @@ function OwnedArtifactCard({
             <span className="font-semibold">{artifact.mainStatName}</span>
           </p>
           <p className="mb-1.5 text-[10px] uppercase tracking-wide text-gray-400">Substats</p>
-          <div className="grid min-h-[2.5rem] grid-cols-2 gap-x-2 gap-y-1">
+          <div className="grid min-h-[4.5rem] grid-cols-1 gap-x-2 gap-y-1 @[18rem]:min-h-[2.5rem] @[18rem]:grid-cols-2">
             {artifact.substats.map((substat) => (
               <p key={substat.id} className="truncate text-[11px] leading-tight text-foreground/75">
                 {substat.statTypeName} +{substat.value.toFixed(substat.statTypeName.endsWith("%") ? 1 : 0)}
