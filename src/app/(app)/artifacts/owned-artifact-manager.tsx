@@ -3,6 +3,7 @@
 import { Fragment, useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
+import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
 import { paginate } from "@/lib/paginate";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { useDialogs } from "@/components/dialog-provider";
@@ -56,12 +57,13 @@ function SubstatValueInput({ value, onCommit }: { value: number; onCommit: (valu
 }
 
 // Compact grid card, same rarity-gradient-square treatment as Characters and
-// Weapons. Unlike those, an artifact has too much editable state (level plus
-// up to 4 substats) to fit inline in a small square -- clicking the card
-// expands OwnedArtifactDetails as a full-width panel below it instead, via
-// CSS Grid's column-span-full rather than a modal (see CLAUDE.md's reasoning
-// against a second modal system for the add-artifact form; the same call
-// applies here).
+// Weapons, except the square only holds the icon -- main stat and substats
+// are what most people actually recognize a piece by, so they're always
+// shown as a plain-text block below it rather than hidden behind a click.
+// Clicking the card still expands OwnedArtifactDetails as a full-width panel
+// (via CSS Grid's column-span-full, not a modal -- see CLAUDE.md's reasoning
+// against a second modal system for the add-artifact form; same call here),
+// but that's now purely for editing level/substats, not for viewing them.
 function OwnedArtifactCard({
   artifact,
   isExpanded,
@@ -78,25 +80,47 @@ function OwnedArtifactCard({
         onClick={onToggleExpand}
         aria-pressed={isExpanded}
         aria-expanded={isExpanded}
-        className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 text-left shadow ${
+        className={`block w-full overflow-hidden rounded-xl border-8 text-left shadow ${
           isExpanded ? "border-blue-500" : "border-gray-600"
         } ${rarityGradientClasses(artifact.rarity)}`}
       >
-        {artifact.iconUrl && (
-          <Image
-            src={artifact.iconUrl}
-            alt=""
-            fill
-            sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-            className="object-contain p-4"
-          />
-        )}
+        <div className="relative aspect-[4/3] w-full">
+          {artifact.iconUrl && (
+            <Image
+              src={artifact.iconUrl}
+              alt=""
+              fill
+              sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+              className="object-contain p-4"
+            />
+          )}
 
-        <div className="absolute inset-x-0 bottom-0 space-y-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
-          <p className="truncate text-center text-sm font-semibold text-white">{artifact.setName}</p>
-          <p className="truncate text-center text-xs text-gray-300">
-            {artifact.slot} · +{artifact.level}
+          <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
+            <Image src={ARTIFACT_SLOT_ICON_URL[artifact.slot]} alt={artifact.slot} width={26} height={26} />
+          </span>
+
+          <span className="absolute right-2 top-2 flex h-8 items-center justify-center rounded-md bg-black/70 px-2 shadow">
+            <span className="mt-0.5 text-sm font-semibold leading-none text-white">+{artifact.level}</span>
+          </span>
+
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
+            <p className="truncate text-center text-sm font-semibold text-white">{artifact.setName}</p>
+          </div>
+        </div>
+
+        <div className="bg-background px-2 py-1.5">
+          <p className="-mx-2 mb-2.5 truncate bg-foreground/10 px-2 pb-1 pt-1.5 text-xs text-foreground">
+            <span className="text-gray-400">MAIN STAT:</span>{" "}
+            <span className="font-semibold">{artifact.mainStatName}</span>
           </p>
+          <p className="mb-1.5 text-[10px] uppercase tracking-wide text-gray-400">Substats</p>
+          <div className="grid min-h-[2.5rem] grid-cols-2 gap-x-2 gap-y-1">
+            {artifact.substats.map((substat) => (
+              <p key={substat.id} className="truncate text-[11px] leading-tight text-foreground/75">
+                {substat.statTypeName} +{substat.value.toFixed(substat.statTypeName.endsWith("%") ? 1 : 0)}
+              </p>
+            ))}
+          </div>
         </div>
       </button>
     </li>
@@ -373,7 +397,7 @@ export function OwnedArtifactManager({
         {filtered.length} artifact{filtered.length === 1 ? "" : "s"}
       </p>
 
-      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {pageItems.map((artifact) => {
           const isExpanded = expandedId === artifact.id;
           return (
