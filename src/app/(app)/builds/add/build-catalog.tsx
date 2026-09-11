@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
+import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import type { SortDirection } from "@/lib/sort";
@@ -25,6 +26,31 @@ const RARITIES = [5, 4];
 
 type SlotSelections = Partial<Record<ArtifactSlot, number>>;
 
+type Draft = {
+  expandedId: number;
+  name: string;
+  weaponId: number | null;
+  slots: SlotSelections;
+  weaponPickerOpen: boolean;
+};
+
+// Leaving the page to add a missing weapon/artifact (via the picker's "Add
+// weapon/artifact page" links) is a full navigation, which unmounts this
+// component -- so the in-progress draft is stashed in sessionStorage and
+// restored on mount, surviving both a browser Back and a manual refresh
+// (needed anyway for the newly-added piece to show up in the picker).
+export const DRAFT_KEY = "build-catalog-draft";
+
+function readDraft(): Draft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as Draft) : null;
+  } catch {
+    return null;
+  }
+}
+
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
   if (next.has(value)) next.delete(value);
@@ -41,6 +67,7 @@ export function BuildCatalog({
   weapons: OwnedWeaponOption[];
   artifacts: OwnedArtifactOption[];
 }) {
+  useRefreshOnBackNavigation();
   const [, startTransition] = useTransition();
   const { message, visible, showToast } = useToast();
 
@@ -68,17 +95,70 @@ export function BuildCatalog({
       return direction * a.name.localeCompare(b.name);
     });
 
+  // Always start from the SSR-safe default -- reading sessionStorage inside
+  // a useState initializer would run during hydration too (window exists on
+  // the client but not the server), making the client's first render differ
+  // from what the server sent. Restoring happens in an effect instead, which
+  // only ever runs post-hydration.
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [weaponId, setWeaponId] = useState<number | null>(null);
   const [slots, setSlots] = useState<SlotSelections>({});
+  const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [errors, setErrors] = useState<CreateBuildErrors>({});
+
+  // Runs once, right after the initial (SSR-matching) render: apply a
+  // restored draft, if any. This is a deliberate exception to
+  // react-hooks/set-state-in-effect -- restoring state from an external
+  // store (sessionStorage) on mount is the "synchronize with an external
+  // system" case the hook is meant for, not the "derived state"
+  // anti-pattern the rule targets.
+  useEffect(() => {
+    const draft = readDraft();
+    if (draft) {
+      // The rule only needs one exception per effect -- the calls below are
+      // batched into the same cascading render as this one.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExpandedId(draft.expandedId);
+      setName(draft.name);
+      setWeaponId(draft.weaponId);
+      setSlots(draft.slots);
+      setWeaponPickerOpen(draft.weaponPickerOpen);
+      // Freshness of characters/weapons/artifacts after returning here (e.g.
+      // via Back after following a picker's "Add weapon/artifact page" link)
+      // is handled by useRefreshOnBackNavigation() above, which refetches on
+      // browser Back/Forward regardless of this draft-restore path.
+    }
+  }, []);
+
+  // Scrolls the expanded row into view whenever a form opens -- for a
+  // character near the bottom of the list, the newly revealed form can
+  // extend below the viewport otherwise. Deliberately its own effect keyed
+  // on expandedId (rather than inlined into the click handler or the
+  // restore effect above) so it runs after the DOM already reflects the
+  // expanded content's real height, not the collapsed row's.
+  useEffect(() => {
+    if (expandedId === null) return;
+    document.getElementById(`build-character-${expandedId}`)?.scrollIntoView({ block: "nearest" });
+  }, [expandedId]);
+
+  // Persisted whenever the open draft changes, and cleared once there's no
+  // open draft to save (form closed, whether by submitting or collapsing).
+  useEffect(() => {
+    if (expandedId === null) {
+      sessionStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+    const draft: Draft = { expandedId, name, weaponId, slots, weaponPickerOpen };
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [expandedId, name, weaponId, slots, weaponPickerOpen]);
 
   function openForm(character: OwnedCharacterOption) {
     setExpandedId(character.ownedCharacterId);
     setName("");
     setWeaponId(null);
     setSlots({});
+    setWeaponPickerOpen(false);
     setErrors({});
   }
 
@@ -207,7 +287,11 @@ export function BuildCatalog({
             }
 
             return (
-              <li key={character.ownedCharacterId} className="rounded border p-3">
+              <li
+                key={character.ownedCharacterId}
+                id={`build-character-${character.ownedCharacterId}`}
+                className="rounded border p-3"
+              >
                 <div
                   role="button"
                   tabIndex={0}
@@ -268,6 +352,8 @@ export function BuildCatalog({
                           weapons={weapons}
                           value={weaponId}
                           onChange={setWeaponId}
+                          autoOpen={weaponPickerOpen}
+                          onOpenChange={setWeaponPickerOpen}
                         />
                       </div>
                       <p className="text-sm font-medium">Artifacts</p>

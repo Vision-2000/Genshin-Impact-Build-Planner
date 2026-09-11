@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { HelpButton } from "@/components/help-button";
 import { slotIconUrl } from "../artifacts/filter-sort";
+import { AddBuildLink } from "./add-build-link";
 import { OwnedBuildManager } from "./owned-build-manager";
 import { toBuildItem, type OwnedWeaponOption, type OwnedArtifactOption } from "./filter-sort";
 
@@ -19,7 +19,7 @@ export default async function BuildsPage() {
   const [ownedWeapons, ownedArtifacts, builds] = await Promise.all([
     prisma.ownedWeapon.findMany({
       where: { gameProfileId: profile.id },
-      include: { weapon: true },
+      include: { weapon: { include: { secondaryStat: true } } },
       orderBy: { weapon: { name: "asc" } },
     }),
     prisma.ownedArtifact.findMany({
@@ -45,6 +45,7 @@ export default async function BuildsPage() {
     weaponType: owned.weapon.weaponType,
     refinement: owned.refinement,
     rarity: owned.weapon.rarity,
+    secondaryStatName: owned.weapon.secondaryStat?.name ?? null,
   }));
 
   const artifactOptions: OwnedArtifactOption[] = ownedArtifacts.map((owned) => ({
@@ -70,12 +71,7 @@ export default async function BuildsPage() {
           </div>
           <p className="text-sm text-gray-500">Managing builds for {profile.name}</p>
         </div>
-        <Link
-          href="/builds/add"
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
-        >
-          <span className="text-base leading-none">+</span> Add build
-        </Link>
+        <AddBuildLink />
       </div>
       <OwnedBuildManager weapons={weaponOptions} artifacts={artifactOptions} initialBuilds={buildItems} />
     </div>
