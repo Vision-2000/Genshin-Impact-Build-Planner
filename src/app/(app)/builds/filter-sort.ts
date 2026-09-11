@@ -21,6 +21,7 @@ export type OwnedWeaponOption = {
   weaponType: WeaponType;
   refinement: number;
   rarity: number;
+  secondaryStatName: string | null;
 };
 
 export type OwnedArtifactOption = {

@@ -12,11 +12,15 @@ export function Modal({
   onClose,
   title,
   children,
+  maxWidthClassName = "max-w-md",
 }: {
   open: boolean;
   onClose: () => void;
   title?: React.ReactNode;
   children: React.ReactNode;
+  // Overridable for content that needs more room than a typical form, e.g. a
+  // picker showing a grid of cards instead of a simple list.
+  maxWidthClassName?: string;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -39,7 +43,7 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border bg-background p-5 text-foreground shadow-lg"
+        className={`relative max-h-[90vh] w-full overflow-y-auto rounded-lg border bg-background p-5 text-foreground shadow-lg ${maxWidthClassName}`}
       >
         <button
           type="button"

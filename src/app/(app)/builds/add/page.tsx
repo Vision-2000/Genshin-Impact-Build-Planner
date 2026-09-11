@@ -24,7 +24,7 @@ export default async function AddBuildPage() {
     }),
     prisma.ownedWeapon.findMany({
       where: { gameProfileId: profile.id },
-      include: { weapon: true },
+      include: { weapon: { include: { secondaryStat: true } } },
       orderBy: { weapon: { name: "asc" } },
     }),
     prisma.ownedArtifact.findMany({
@@ -51,6 +51,7 @@ export default async function AddBuildPage() {
     weaponType: owned.weapon.weaponType,
     refinement: owned.refinement,
     rarity: owned.weapon.rarity,
+    secondaryStatName: owned.weapon.secondaryStat?.name ?? null,
   }));
 
   const artifactOptions: OwnedArtifactOption[] = ownedArtifacts.map((owned) => ({

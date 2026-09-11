@@ -21,12 +21,20 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   return next;
 }
 
-export function WeaponCatalog({ catalog }: { catalog: WeaponCatalogItem[] }) {
+export function WeaponCatalog({
+  catalog,
+  initialWeaponType,
+}: {
+  catalog: WeaponCatalogItem[];
+  initialWeaponType?: WeaponType;
+}) {
   const [, startTransition] = useTransition();
   const { message, visible, showToast } = useToast();
 
   const [search, setSearch] = useState("");
-  const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
+  const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(
+    () => new Set(initialWeaponType ? [initialWeaponType] : [])
+  );
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [sortKey, setSortKey] = useState<CatalogSortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
