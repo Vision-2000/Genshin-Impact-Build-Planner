@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Element, WeaponType } from "@/generated/prisma/enums";
 import { filterAndSortBuilds, type BuildItem } from "./filter-sort";
 
 function buildItem(overrides: Partial<BuildItem>): BuildItem {
@@ -8,16 +9,20 @@ function buildItem(overrides: Partial<BuildItem>): BuildItem {
     ownedCharacterId: 1,
     characterName: "Test Character",
     characterIconUrl: null,
+    characterElement: Element.Pyro,
+    characterRarity: 5,
+    characterWeaponType: WeaponType.Polearm,
     ownedWeaponId: null,
     weaponName: null,
     weaponIconUrl: null,
     weaponRefinement: null,
+    weaponRarity: null,
     artifacts: [],
     ...overrides,
   };
 }
 
-const baseFilters = { search: "", sortKey: "name" as const };
+const baseFilters = { search: "", sortKey: "name" as const, sortDirection: "asc" as const };
 
 describe("filterAndSortBuilds", () => {
   const builds: BuildItem[] = [
@@ -54,5 +59,19 @@ describe("filterAndSortBuilds", () => {
   it("returns an empty array when nothing matches", () => {
     const result = filterAndSortBuilds(builds, { ...baseFilters, search: "nonexistent" });
     expect(result).toEqual([]);
+  });
+
+  it("sorts by name descending", () => {
+    const result = filterAndSortBuilds(builds, { ...baseFilters, sortDirection: "desc" });
+    expect(result.map((b) => b.name)).toEqual(["Support", "Main DPS", "Alt Build"]);
+  });
+
+  it("sorts by character descending, breaking ties by build name ascending", () => {
+    const result = filterAndSortBuilds(builds, { ...baseFilters, sortKey: "character", sortDirection: "desc" });
+    expect(result.map((b) => `${b.characterName}: ${b.name}`)).toEqual([
+      "Kazuha: Support",
+      "Hu Tao: Alt Build",
+      "Hu Tao: Main DPS",
+    ]);
   });
 });

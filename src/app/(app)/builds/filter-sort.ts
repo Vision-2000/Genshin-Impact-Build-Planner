@@ -1,5 +1,8 @@
-import { ArtifactSlot, WeaponType } from "@/generated/prisma/enums";
+import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
+import type { SortDirection } from "@/lib/sort";
 import { slotIconUrl } from "../artifacts/filter-sort";
+
+export type { SortDirection };
 
 export type OwnedCharacterOption = {
   ownedCharacterId: number;
@@ -7,6 +10,8 @@ export type OwnedCharacterOption = {
   name: string;
   iconUrl: string | null;
   weaponType: WeaponType;
+  element: Element;
+  rarity: number;
 };
 
 export type OwnedWeaponOption = {
@@ -15,6 +20,7 @@ export type OwnedWeaponOption = {
   iconUrl: string | null;
   weaponType: WeaponType;
   refinement: number;
+  rarity: number;
 };
 
 export type OwnedArtifactOption = {
@@ -41,10 +47,14 @@ export type BuildItem = {
   ownedCharacterId: number;
   characterName: string;
   characterIconUrl: string | null;
+  characterElement: Element;
+  characterRarity: number;
+  characterWeaponType: WeaponType;
   ownedWeaponId: number | null;
   weaponName: string | null;
   weaponIconUrl: string | null;
   weaponRefinement: number | null;
+  weaponRarity: number | null;
   artifacts: BuildArtifactSlotItem[];
 };
 
@@ -63,8 +73,13 @@ type BuildRow = {
   name: string;
   ownedCharacterId: number;
   ownedWeaponId: number | null;
-  ownedCharacter: { character: { name: string; iconUrl: string | null } };
-  ownedWeapon: { refinement: number; weapon: { name: string; iconUrl: string | null } } | null;
+  ownedCharacter: {
+    character: { name: string; iconUrl: string | null; element: Element; rarity: number; weaponType: WeaponType };
+  };
+  ownedWeapon: {
+    refinement: number;
+    weapon: { name: string; iconUrl: string | null; rarity: number };
+  } | null;
   buildArtifacts: {
     slot: ArtifactSlot;
     ownedArtifact: { id: number; artifactSet: { name: string } & ArtifactSetIcons; mainStat: { name: string } };
@@ -78,10 +93,14 @@ export function toBuildItem(row: BuildRow): BuildItem {
     ownedCharacterId: row.ownedCharacterId,
     characterName: row.ownedCharacter.character.name,
     characterIconUrl: row.ownedCharacter.character.iconUrl,
+    characterElement: row.ownedCharacter.character.element,
+    characterRarity: row.ownedCharacter.character.rarity,
+    characterWeaponType: row.ownedCharacter.character.weaponType,
     ownedWeaponId: row.ownedWeaponId,
     weaponName: row.ownedWeapon?.weapon.name ?? null,
     weaponIconUrl: row.ownedWeapon?.weapon.iconUrl ?? null,
     weaponRefinement: row.ownedWeapon?.refinement ?? null,
+    weaponRarity: row.ownedWeapon?.weapon.rarity ?? null,
     artifacts: SLOTS.map((slot) => {
       const buildArtifact = row.buildArtifacts.find((ba) => ba.slot === slot);
       const artifact = buildArtifact?.ownedArtifact;
@@ -101,9 +120,13 @@ export type BuildSortKey = "name" | "character";
 export type BuildFilters = {
   search: string;
   sortKey: BuildSortKey;
+  sortDirection: SortDirection;
 };
 
-export function filterAndSortBuilds(builds: BuildItem[], { search, sortKey }: BuildFilters): BuildItem[] {
+export function filterAndSortBuilds(
+  builds: BuildItem[],
+  { search, sortKey, sortDirection }: BuildFilters
+): BuildItem[] {
   let result = builds;
 
   const query = search.trim().toLowerCase();
@@ -113,10 +136,12 @@ export function filterAndSortBuilds(builds: BuildItem[], { search, sortKey }: Bu
     );
   }
 
+  const direction = sortDirection === "desc" ? -1 : 1;
+
   return [...result].sort((a, b) => {
     if (sortKey === "character") {
-      return a.characterName.localeCompare(b.characterName) || a.name.localeCompare(b.name);
+      return direction * a.characterName.localeCompare(b.characterName) || a.name.localeCompare(b.name);
     }
-    return a.name.localeCompare(b.name);
+    return direction * a.name.localeCompare(b.name);
   });
 }
