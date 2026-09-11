@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { WeaponType } from "@/generated/prisma/enums";
 import { useDialogs } from "@/components/dialog-provider";
+import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import type { SortDirection } from "@/lib/sort";
@@ -22,7 +23,21 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
 }
 
 export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapons: OwnedWeaponItem[] }) {
+  useRefreshOnBackNavigation();
   const [owned, setOwned] = useState(initialOwnedWeapons);
+  // useState(initialOwnedWeapons) only ever consults that argument on the
+  // very first mount -- a later re-render with a fresh prop (e.g. from
+  // router.refresh() after a back/forward bfcache restore) is otherwise
+  // silently ignored, leaving this stuck on stale data even once the
+  // server-fetched prop itself is correct again. Per React's own guidance,
+  // this belongs during render (comparing against a mirrored "previous
+  // prop" value), not in an effect -- an effect would apply the fresh data
+  // one render late, visibly flashing the stale version first.
+  const [prevInitialOwnedWeapons, setPrevInitialOwnedWeapons] = useState(initialOwnedWeapons);
+  if (initialOwnedWeapons !== prevInitialOwnedWeapons) {
+    setPrevInitialOwnedWeapons(initialOwnedWeapons);
+    setOwned(initialOwnedWeapons);
+  }
   const [, startTransition] = useTransition();
   const { confirm } = useDialogs();
 

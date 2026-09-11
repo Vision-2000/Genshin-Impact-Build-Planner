@@ -6,6 +6,7 @@ import { ArtifactSlot, WeaponType } from "@/generated/prisma/enums";
 import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { paginate } from "@/lib/paginate";
+import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
@@ -274,7 +275,21 @@ export function OwnedBuildManager({
   artifacts: OwnedArtifactOption[];
   initialBuilds: BuildItem[];
 }) {
+  useRefreshOnBackNavigation();
   const [builds, setBuilds] = useState(initialBuilds);
+  // useState(initialBuilds) only ever consults that argument on the very
+  // first mount -- a later re-render with a fresh prop (e.g. from
+  // router.refresh() after a back/forward bfcache restore) is otherwise
+  // silently ignored, leaving this stuck on stale data even once the
+  // server-fetched prop itself is correct again. Per React's own guidance,
+  // this belongs during render (comparing against a mirrored "previous
+  // prop" value), not in an effect -- an effect would apply the fresh data
+  // one render late, visibly flashing the stale version first.
+  const [prevInitialBuilds, setPrevInitialBuilds] = useState(initialBuilds);
+  if (initialBuilds !== prevInitialBuilds) {
+    setPrevInitialBuilds(initialBuilds);
+    setBuilds(initialBuilds);
+  }
   const [, startTransition] = useTransition();
   const { confirm } = useDialogs();
 

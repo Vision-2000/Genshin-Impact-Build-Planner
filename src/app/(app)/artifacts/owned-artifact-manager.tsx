@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
 import { paginate } from "@/lib/paginate";
+import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
@@ -388,7 +389,21 @@ export function OwnedArtifactManager({
   statTypes: StatTypeOption[];
   initialOwnedArtifacts: OwnedArtifactItem[];
 }) {
+  useRefreshOnBackNavigation();
   const [owned, setOwned] = useState(initialOwnedArtifacts);
+  // useState(initialOwnedArtifacts) only ever consults that argument on the
+  // very first mount -- a later re-render with a fresh prop (e.g. from
+  // router.refresh() after a back/forward bfcache restore) is otherwise
+  // silently ignored, leaving this stuck on stale data even once the
+  // server-fetched prop itself is correct again. Per React's own guidance,
+  // this belongs during render (comparing against a mirrored "previous
+  // prop" value), not in an effect -- an effect would apply the fresh data
+  // one render late, visibly flashing the stale version first.
+  const [prevInitialOwnedArtifacts, setPrevInitialOwnedArtifacts] = useState(initialOwnedArtifacts);
+  if (initialOwnedArtifacts !== prevInitialOwnedArtifacts) {
+    setPrevInitialOwnedArtifacts(initialOwnedArtifacts);
+    setOwned(initialOwnedArtifacts);
+  }
   const [, startTransition] = useTransition();
   const { confirm } = useDialogs();
 
