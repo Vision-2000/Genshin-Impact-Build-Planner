@@ -24,7 +24,7 @@ export default async function BuildsPage() {
     }),
     prisma.ownedArtifact.findMany({
       where: { gameProfileId: profile.id },
-      include: { artifactSet: true, mainStat: true },
+      include: { artifactSet: true, mainStat: true, substats: { include: { statType: true } } },
       orderBy: { artifactSet: { name: "asc" } },
     }),
     prisma.build.findMany({
@@ -55,6 +55,7 @@ export default async function BuildsPage() {
     iconUrl: slotIconUrl(owned.artifactSet, owned.slot),
     rarity: owned.artifactSet.rarity,
     level: owned.level,
+    substats: owned.substats.map((s) => ({ statTypeName: s.statType.name, value: s.value })),
   }));
 
   const buildItems = builds.map(toBuildItem);

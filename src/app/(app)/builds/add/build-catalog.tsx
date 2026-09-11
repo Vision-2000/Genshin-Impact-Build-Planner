@@ -12,6 +12,8 @@ import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import type { SortDirection } from "@/lib/sort";
 import { ELEMENT_ICON_URL } from "../../characters/element-icons";
 import { createBuild } from "../actions";
+import { ArtifactSlotPicker } from "../artifact-slot-picker";
+import { WeaponSlotPicker } from "../weapon-slot-picker";
 import type { CreateBuildErrors } from "../schemas";
 import type { OwnedArtifactOption, OwnedCharacterOption, OwnedWeaponOption } from "../filter-sort";
 
@@ -198,7 +200,6 @@ export function BuildCatalog({
         <ul className="space-y-2">
           {filtered.map((character) => {
             const isExpanded = expandedId === character.ownedCharacterId;
-            const weaponOptions = weapons.filter((w) => w.weaponType === character.weaponType);
 
             function toggleExpanded() {
               if (isExpanded) closeForm();
@@ -246,7 +247,7 @@ export function BuildCatalog({
                 {isExpanded && (
                   <div className="mt-3 max-w-2xl space-y-3 border-t pt-3">
                     <label className="block text-sm">
-                      Name
+                      Name:
                       <input
                         type="text"
                         value={name}
@@ -259,49 +260,30 @@ export function BuildCatalog({
                       <p className="text-xs text-red-600">{errors.ownedCharacterId[0]}</p>
                     )}
 
-                    <label className="block text-sm">
-                      Weapon
-                      <select
-                        value={weaponId ?? ""}
-                        onChange={(event) => setWeaponId(event.target.value ? Number(event.target.value) : null)}
-                        className="ml-1 h-8 w-56 rounded border bg-white px-2 text-sm text-black"
-                      >
-                        <option value="">None</option>
-                        {weaponOptions.map((weapon) => (
-                          <option key={weapon.ownedWeaponId} value={weapon.ownedWeaponId}>
-                            {weapon.name} (R{weapon.refinement})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <div className="space-y-1">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Weapon</p>
+                      <div className="flex flex-wrap gap-2">
+                        <WeaponSlotPicker
+                          weaponType={character.weaponType}
+                          weapons={weapons}
+                          value={weaponId}
+                          onChange={setWeaponId}
+                        />
+                      </div>
                       <p className="text-sm font-medium">Artifacts</p>
-                      {SLOTS.map((slot) => {
-                        const options = artifacts.filter((a) => a.slot === slot);
-                        return (
-                          <label key={slot} className="flex items-center gap-2 text-sm">
-                            <span className="w-16 shrink-0 text-gray-500">{slot}:</span>
-                            <select
-                              value={slots[slot] ?? ""}
-                              onChange={(event) =>
-                                setSlots((prev) => ({
-                                  ...prev,
-                                  [slot]: event.target.value ? Number(event.target.value) : undefined,
-                                }))
-                              }
-                              className="h-8 w-72 rounded border bg-white px-2 text-sm text-black"
-                            >
-                              <option value="">None</option>
-                              {options.map((option) => (
-                                <option key={option.ownedArtifactId} value={option.ownedArtifactId}>
-                                  {option.setName} ({option.mainStatName})
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        );
-                      })}
+                      <div className="flex flex-wrap gap-2">
+                        {SLOTS.map((slot) => (
+                          <ArtifactSlotPicker
+                            key={slot}
+                            slot={slot}
+                            artifacts={artifacts}
+                            value={slots[slot] ?? null}
+                            onChange={(ownedArtifactId) =>
+                              setSlots((prev) => ({ ...prev, [slot]: ownedArtifactId ?? undefined }))
+                            }
+                          />
+                        ))}
+                      </div>
                     </div>
 
                     <button

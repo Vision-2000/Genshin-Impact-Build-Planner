@@ -31,6 +31,7 @@ export type OwnedArtifactOption = {
   iconUrl: string | null;
   rarity: number;
   level: number;
+  substats: { statTypeName: string; value: number }[];
 };
 
 export type BuildArtifactSlotItem = {

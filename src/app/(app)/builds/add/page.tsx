@@ -29,7 +29,7 @@ export default async function AddBuildPage() {
     }),
     prisma.ownedArtifact.findMany({
       where: { gameProfileId: profile.id },
-      include: { artifactSet: true, mainStat: true },
+      include: { artifactSet: true, mainStat: true, substats: { include: { statType: true } } },
       orderBy: { artifactSet: { name: "asc" } },
     }),
   ]);
@@ -61,6 +61,7 @@ export default async function AddBuildPage() {
     iconUrl: slotIconUrl(owned.artifactSet, owned.slot),
     rarity: owned.artifactSet.rarity,
     level: owned.level,
+    substats: owned.substats.map((s) => ({ statTypeName: s.statType.name, value: s.value })),
   }));
 
   return (

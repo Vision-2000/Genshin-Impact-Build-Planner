@@ -13,6 +13,8 @@ import type { SortDirection } from "@/lib/sort";
 import { PaginationControls } from "../pagination-controls";
 import { ELEMENT_ICON_URL } from "../characters/element-icons";
 import { updateBuildName, updateBuildWeapon, setBuildArtifact, deleteBuild, getBuildContainerNames } from "./actions";
+import { ArtifactSlotPicker } from "./artifact-slot-picker";
+import { WeaponSlotPicker } from "./weapon-slot-picker";
 import {
   filterAndSortBuilds,
   type BuildItem,
@@ -194,7 +196,6 @@ function BuildEditor({
   onDelete: () => void;
 }) {
   const [name, setName] = useState(build.name);
-  const matchingWeapons = weapons.filter((w) => w.weaponType === weaponType);
 
   return (
     <div className="space-y-4">
@@ -210,7 +211,7 @@ function BuildEditor({
       </div>
 
       <label className="flex items-center gap-2 text-sm">
-        Name
+        Name:
         <input
           type="text"
           value={name}
@@ -224,45 +225,31 @@ function BuildEditor({
         />
       </label>
 
-      <label className="flex items-center gap-2 text-sm">
-        Weapon
-        <select
-          value={build.ownedWeaponId ?? ""}
-          onChange={(event) => onUpdateWeapon(event.target.value ? Number(event.target.value) : null)}
-          className="h-8 w-56 rounded border bg-white px-2 text-sm text-black"
-        >
-          <option value="">None</option>
-          {matchingWeapons.map((weapon) => (
-            <option key={weapon.ownedWeaponId} value={weapon.ownedWeaponId}>
-              {weapon.name} (R{weapon.refinement})
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="space-y-1">
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Weapon</p>
+        <div className="flex flex-wrap gap-2">
+          <WeaponSlotPicker
+            weaponType={weaponType}
+            weapons={weapons}
+            value={build.ownedWeaponId}
+            onChange={onUpdateWeapon}
+          />
+        </div>
         <p className="text-sm font-medium">Artifacts</p>
-        {SLOTS.map((slot) => {
-          const current = build.artifacts.find((a) => a.slot === slot);
-          const options = artifacts.filter((a) => a.slot === slot);
-          return (
-            <label key={slot} className="flex items-center gap-2 text-sm">
-              <span className="w-16 shrink-0 text-gray-500">{slot}:</span>
-              <select
-                value={current?.ownedArtifactId ?? ""}
-                onChange={(event) => onUpdateArtifact(slot, event.target.value ? Number(event.target.value) : null)}
-                className="h-8 w-72 rounded border bg-white px-2 text-sm text-black"
-              >
-                <option value="">None</option>
-                {options.map((option) => (
-                  <option key={option.ownedArtifactId} value={option.ownedArtifactId}>
-                    {option.setName} ({option.mainStatName})
-                  </option>
-                ))}
-              </select>
-            </label>
-          );
-        })}
+        <div className="flex flex-wrap gap-2">
+          {SLOTS.map((slot) => {
+            const current = build.artifacts.find((a) => a.slot === slot);
+            return (
+              <ArtifactSlotPicker
+                key={slot}
+                slot={slot}
+                artifacts={artifacts}
+                value={current?.ownedArtifactId ?? null}
+                onChange={(ownedArtifactId) => onUpdateArtifact(slot, ownedArtifactId)}
+              />
+            );
+          })}
+        </div>
       </div>
 
       <div className="border-t pt-3">
