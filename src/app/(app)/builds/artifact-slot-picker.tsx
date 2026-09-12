@@ -2,16 +2,71 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
-import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
 import { Modal } from "@/components/modal";
+import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import type { SortDirection } from "@/lib/sort";
+import { ARTIFACT_RARITIES } from "../artifacts/artifact-rules";
+import { ArtifactCard } from "../artifacts/artifact-card";
 import type { OwnedArtifactOption } from "./filter-sort";
 
+type SortKey = "name" | "rarity" | "level";
+
+function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
+  const next = new Set(set);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
+
+// Sits alongside the real ArtifactCard entries in the picker's grid so "no
+// piece" is just another option to click, not a separate row above the
+// grid. Kept local rather than folded into ArtifactCard itself -- the owned-
+// artifacts page always represents a real piece, so an "empty" variant would
+// only ever be exercised here. Mirrors ArtifactCard's exact structure (icon
+// area, then the stat block below it) rather than just its icon area, so
+// this card comes out the same total height as its neighbors -- the stat
+// block's content is invisible (nothing to show for "no piece") but still
+// occupies the same space.
+function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
+  return (
+    <li>
+      <div
+        onClick={onSelect}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onSelect();
+        }}
+        className="@container relative w-full cursor-pointer overflow-hidden rounded-xl border-8 border-gray-600 bg-foreground/10 shadow hover:opacity-90"
+      >
+        <div className="aspect-[4/3] w-full" />
+        <div aria-hidden="true" className="invisible bg-background px-2 py-1.5">
+          <p className="-mx-2 mb-2.5 truncate bg-foreground/10 px-2 pb-1 pt-1.5 text-xs">MAIN STAT: placeholder</p>
+          <p className="mb-1.5 text-[10px] uppercase tracking-wide">Substats</p>
+          <div className="min-h-[4.5rem] @[18rem]:min-h-[2.5rem]" />
+        </div>
+        <span className="absolute inset-0 flex items-center justify-center text-lg font-semibold text-gray-400">
+          None
+        </span>
+      </div>
+    </li>
+  );
+}
+
 // Replaces a plain <select> -- a dropdown only has room for a set name and
-// main stat, which isn't enough to tell two same-set pieces apart. This shows
-// the full stat block (main stat + every substat) for each candidate, same as
-// the owned-artifacts card, so you can actually pick the right physical piece.
+// main stat, which isn't enough to tell two same-set pieces apart. Mirrors
+// WeaponSlotPicker's grid-of-cards pattern (search, rarity filter, sort, a
+// link to the add page for a missing piece), reusing the same ArtifactCard
+// the owned-artifacts page uses so a piece looks the same wherever it's
+// shown -- with its full stat block still visible, since that's what
+// actually distinguishes two same-set pieces from each other.
 export function ArtifactSlotPicker({
   slot,
   artifacts,
@@ -25,10 +80,24 @@ export function ArtifactSlotPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const options = artifacts.filter((a) => a.slot === slot);
   const selected = value !== null ? options.find((a) => a.ownedArtifactId === value) : undefined;
-  const filtered = options.filter((a) => a.setName.toLowerCase().includes(search.trim().toLowerCase()));
+
+  const query = search.trim().toLowerCase();
+  const direction = sortDirection === "desc" ? -1 : 1;
+  const filtered = options
+    .filter(
+      (a) => a.setName.toLowerCase().includes(query) && (rarityFilter.size === 0 || rarityFilter.has(a.rarity))
+    )
+    .sort((a, b) => {
+      if (sortKey === "rarity") return direction * (a.rarity - b.rarity) || a.setName.localeCompare(b.setName);
+      if (sortKey === "level") return direction * (a.level - b.level) || a.setName.localeCompare(b.setName);
+      return direction * a.setName.localeCompare(b.setName);
+    });
 
   function select(ownedArtifactId: number | null) {
     onChange(ownedArtifactId);
@@ -37,103 +106,95 @@ export function ArtifactSlotPicker({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title={
-          selected
-            ? `${selected.setName} +${selected.level} (${selected.mainStatName})`
-            : `Choose ${slot.toLowerCase()}`
-        }
-        className={`relative flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white p-1 hover:opacity-90 ${
-          selected ? rarityGradientClasses(selected.rarity) : "bg-foreground/10"
-        }`}
-      >
-        {selected ? (
-          <Image src={selected.iconUrl ?? ARTIFACT_SLOT_ICON_URL[slot]} alt="" width={104} height={104} />
-        ) : (
-          <>
-            <Image src={ARTIFACT_SLOT_ICON_URL[slot]} alt="" fill className="object-contain p-1 opacity-30" />
-            <svg
-              viewBox="0 0 16 16"
-              width={64}
-              height={64}
-              className="relative text-foreground [animation:blink_2.5s_ease-in-out_infinite]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <path d="M8 2v12M2 8h12" />
-            </svg>
-          </>
-        )}
-      </button>
-
-      <Modal open={open} onClose={() => setOpen(false)} title={`Choose ${slot.toLowerCase()}`}>
-        <div className="space-y-3">
-          <input
-            type="text"
-            autoFocus
-            placeholder="Search by set name..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="w-full rounded border bg-white px-3 py-2 text-sm text-black"
+      {selected ? (
+        // Wider than the weapon slot's w-32 -- ArtifactCard has a stat block
+        // below its icon whose height barely shrinks with width, so at w-32
+        // the collapsed slot came out tall and narrow. w-56 (224px) x5 plus
+        // gaps fits exactly on one line in the character row's max-w-6xl
+        // container (see build-catalog.tsx) while getting noticeably closer
+        // to square than w-32 did.
+        <ul className="w-56 shrink-0">
+          <ArtifactCard
+            setName={selected.setName}
+            slot={slot}
+            rarity={selected.rarity}
+            level={selected.level}
+            mainStatName={selected.mainStatName}
+            iconUrl={selected.iconUrl}
+            substats={selected.substats}
+            onSelect={() => setOpen(true)}
+            showSetName={false}
+            showSlotBadge={false}
           />
-          <ul className="max-h-96 space-y-1 overflow-y-auto">
-            <li>
-              <button
-                type="button"
-                onClick={() => select(null)}
-                className="flex w-full items-center gap-3 rounded p-2 text-left text-sm hover:bg-black/5"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-foreground/10 text-gray-400">
-                  —
-                </div>
-                None
-              </button>
-            </li>
+        </ul>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          title="Choose artifact"
+          className="relative flex h-56 w-56 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90"
+        >
+          <Image src={ARTIFACT_SLOT_ICON_URL[slot]} alt="" fill className="object-contain p-1 opacity-30" />
+          <BlinkingPlusIcon />
+        </button>
+      )}
+
+      <Modal open={open} onClose={() => setOpen(false)} title="Choose artifact" maxWidthClassName="max-w-4xl">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              autoFocus
+              placeholder="Search by set name..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="min-w-0 flex-1 rounded border bg-white px-3 py-2 text-sm text-black"
+            />
+            <select
+              value={sortKey}
+              onChange={(event) => setSortKey(event.target.value as SortKey)}
+              className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+            >
+              <option value="name">Sort: Name</option>
+              <option value="rarity">Sort: Rarity</option>
+              <option value="level">Sort: Level</option>
+            </select>
+            <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+          </div>
+
+          <RarityFilterRow
+            rarities={ARTIFACT_RARITIES}
+            rarityFilter={rarityFilter}
+            onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
+          />
+
+          <p className="text-sm text-gray-500">
+            Cannot find a piece? Add one on the{" "}
+            <Link href="/artifacts/add" className="underline hover:text-foreground">
+              Add artifact page
+            </Link>
+            .
+          </p>
+
+          <ul className="grid max-h-96 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 md:grid-cols-4">
+            <NoneArtifactCard onSelect={() => select(null)} />
             {filtered.map((artifact) => (
-              <li key={artifact.ownedArtifactId}>
-                <button
-                  type="button"
-                  onClick={() => select(artifact.ownedArtifactId)}
-                  className="flex w-full items-start gap-3 rounded p-2 text-left hover:bg-black/5"
-                >
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded p-1 ${rarityGradientClasses(artifact.rarity)}`}
-                  >
-                    <Image
-                      src={artifact.iconUrl ?? ARTIFACT_SLOT_ICON_URL[artifact.slot]}
-                      alt=""
-                      width={32}
-                      height={32}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {artifact.setName} <span className="text-gray-400">+{artifact.level}</span>
-                    </p>
-                    <p className="truncate text-xs text-gray-500">
-                      {artifact.rarity}★ · Main: {artifact.mainStatName}
-                    </p>
-                    {artifact.substats.length > 0 && (
-                      <div className="mt-0.5 grid grid-cols-2 gap-x-2 text-[11px] text-gray-500">
-                        {artifact.substats.map((substat) => (
-                          <p key={substat.statTypeName} className="truncate">
-                            {substat.statTypeName} +
-                            {substat.value.toFixed(substat.statTypeName.endsWith("%") ? 1 : 0)}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              </li>
+              <ArtifactCard
+                key={artifact.ownedArtifactId}
+                setName={artifact.setName}
+                slot={slot}
+                rarity={artifact.rarity}
+                level={artifact.level}
+                mainStatName={artifact.mainStatName}
+                iconUrl={artifact.iconUrl}
+                substats={artifact.substats}
+                onSelect={() => select(artifact.ownedArtifactId)}
+                showSetName={false}
+                showSlotBadge={false}
+              />
             ))}
-            {filtered.length === 0 && <p className="p-2 text-sm text-gray-500">No artifacts match this search.</p>}
           </ul>
+          {filtered.length === 0 && <p className="p-2 text-sm text-gray-500">No artifacts match this search.</p>}
         </div>
       </Modal>
     </>

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { WeaponType } from "@/generated/prisma/enums";
-import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
+import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
 import { Modal } from "@/components/modal";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
@@ -23,6 +23,31 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   if (next.has(value)) next.delete(value);
   else next.add(value);
   return next;
+}
+
+// Sits alongside the real WeaponCard entries in the picker's grid so "no
+// weapon" is just another option to click, not a separate row above the
+// grid. Kept local rather than folded into WeaponCard itself -- WeaponCard's
+// other two call sites (owned weapons, add-weapon catalog) always represent
+// a real weapon, so an "empty" variant would only ever be exercised here.
+function NoneWeaponCard({ onSelect }: { onSelect: () => void }) {
+  return (
+    <li>
+      <div
+        onClick={onSelect}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onSelect();
+        }}
+        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border-8 border-gray-600 bg-foreground/10 shadow hover:opacity-90"
+      >
+        <span className="text-lg font-semibold text-gray-400">None</span>
+      </div>
+    </li>
+  );
 }
 
 // Replaces a plain <select> -- a dropdown only has room for a weapon's name
@@ -95,40 +120,33 @@ export function WeaponSlotPicker({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title={selected ? `${selected.name} (R${selected.refinement})` : "Choose weapon"}
-        className={`relative flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white p-1 hover:opacity-90 ${
-          selected ? rarityGradientClasses(selected.rarity) : "bg-foreground/10"
-        }`}
-      >
-        {selected ? (
-          selected.iconUrl && <Image src={selected.iconUrl} alt="" width={104} height={104} />
-        ) : (
-          <>
-            <Image
-              src={WEAPON_TYPE_ICON_URL[weaponType]}
-              alt=""
-              fill
-              className="object-contain p-1 opacity-30"
-            />
-            <svg
-              viewBox="0 0 16 16"
-              width={64}
-              height={64}
-              className="relative text-foreground [animation:blink_2.5s_ease-in-out_infinite]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <path d="M8 2v12M2 8h12" />
-            </svg>
-          </>
-        )}
-      </button>
+      {selected ? (
+        // Matches the artifact slot's w-56 width -- WeaponCard is a plain
+        // aspect-square card, so this alone keeps it a 224x224 square.
+        <ul className="w-56 shrink-0">
+          <WeaponCard
+            name={selected.name}
+            weaponType={weaponType}
+            rarity={selected.rarity}
+            secondaryStatName={selected.secondaryStatName}
+            iconUrl={selected.iconUrl}
+            refinement={selected.refinement}
+            onSelect={() => setOpen(true)}
+            showName={false}
+            showWeaponTypeBadge={false}
+          />
+        </ul>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          title="Choose weapon"
+          className="relative flex h-56 w-56 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90"
+        >
+          <Image src={WEAPON_TYPE_ICON_URL[weaponType]} alt="" fill className="object-contain p-1 opacity-30" />
+          <BlinkingPlusIcon />
+        </button>
+      )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Choose weapon" maxWidthClassName="max-w-4xl">
         <div className="space-y-3">
@@ -167,18 +185,8 @@ export function WeaponSlotPicker({
             .
           </p>
 
-          <button
-            type="button"
-            onClick={() => select(null)}
-            className="flex w-full items-center gap-3 rounded border p-2 text-left text-sm hover:bg-black/5"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-foreground/10 text-gray-400">
-              —
-            </div>
-            None
-          </button>
-
           <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4 md:grid-cols-5">
+            <NoneWeaponCard onSelect={() => select(null)} />
             {filtered.map((weapon) => (
               <WeaponCard
                 key={weapon.ownedWeaponId}
@@ -189,6 +197,8 @@ export function WeaponSlotPicker({
                 iconUrl={weapon.iconUrl}
                 refinement={weapon.refinement}
                 onSelect={() => select(weapon.ownedWeaponId)}
+                showName={false}
+                showWeaponTypeBadge={false}
               />
             ))}
           </ul>

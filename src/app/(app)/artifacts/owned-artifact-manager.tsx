@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
-import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
 import { paginate } from "@/lib/paginate";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
@@ -14,6 +13,7 @@ import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import type { SortDirection } from "@/lib/sort";
 import { PaginationControls } from "../pagination-controls";
 import { removeArtifact, updateArtifact } from "./actions";
+import { ArtifactCard } from "./artifact-card";
 import { ArtifactSlotFilterRow } from "./artifact-slot-filter-row";
 import {
   ARTIFACT_RARITIES,
@@ -41,136 +41,6 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   if (next.has(value)) next.delete(value);
   else next.add(value);
   return next;
-}
-
-function PencilIcon() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10.5 2.5l3 3L6 13l-3.5 1L4 10.5z" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2.5 4h11M6 4V2.5h4V4M4 4l.6 9.5h6.8L12 4" />
-    </svg>
-  );
-}
-
-// Display-only grid card, same rarity-gradient-square treatment as Characters
-// and Weapons but with a plain-text block below the icon for the main stat and
-// substats -- what people actually recognize a piece by. Viewing needs no
-// interaction; the two actions (edit, delete) are small buttons revealed on
-// hover/focus, since editing is rare and shouldn't be one stray click away.
-function OwnedArtifactCard({
-  artifact,
-  isActive,
-  onEdit,
-  onDelete,
-}: {
-  artifact: OwnedArtifactItem;
-  // The card whose edit modal / delete confirm is currently open. Its action
-  // buttons stay put and it keeps a highlighted border, so once the mouse
-  // leaves for the dialog it's still obvious which piece is being operated on.
-  isActive: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <li className="group relative">
-      <div
-        className={`@container w-full overflow-hidden rounded-xl border-8 shadow ${
-          isActive ? "border-blue-500" : "border-gray-600"
-        } ${rarityGradientClasses(artifact.rarity)}`}
-      >
-        <div className="relative aspect-[4/3] w-full">
-          {artifact.iconUrl && (
-            <Image
-              src={artifact.iconUrl}
-              alt=""
-              fill
-              sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-              className="object-contain p-4"
-            />
-          )}
-
-          <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
-            <Image src={ARTIFACT_SLOT_ICON_URL[artifact.slot]} alt={artifact.slot} width={26} height={26} />
-          </span>
-
-          <span
-            className={`absolute right-2 top-2 flex h-8 items-center justify-center rounded-md bg-black/70 px-2 shadow transition-transform duration-200 group-hover:translate-y-6 group-focus-within:translate-y-6 ${
-              isActive ? "translate-y-6" : ""
-            }`}
-          >
-            <span className="mt-0.5 text-sm font-semibold leading-none text-white">+{artifact.level}</span>
-          </span>
-
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
-            <p className="truncate text-center text-sm font-semibold text-white">{artifact.setName}</p>
-          </div>
-        </div>
-
-        <div className="bg-background px-2 py-1.5">
-          <p className="-mx-2 mb-2.5 truncate bg-foreground/10 px-2 pb-1 pt-1.5 text-xs text-foreground">
-            <span className="text-gray-400">MAIN STAT:</span>{" "}
-            <span className="font-semibold">{artifact.mainStatName}</span>
-          </p>
-          <p className="mb-1.5 text-[10px] uppercase tracking-wide text-gray-400">Substats</p>
-          <div className="grid min-h-[4.5rem] grid-cols-1 gap-x-2 gap-y-1 @[18rem]:min-h-[2.5rem] @[18rem]:grid-cols-2">
-            {artifact.substats.map((substat) => (
-              <p key={substat.id} className="truncate text-[11px] leading-tight text-foreground/75">
-                {substat.statTypeName} +{substat.value.toFixed(substat.statTypeName.endsWith("%") ? 1 : 0)}
-              </p>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div
-        className={`absolute right-1.5 top-1.5 z-20 flex gap-1 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 ${
-          isActive ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={`Edit ${artifact.setName}`}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow hover:bg-black"
-        >
-          <PencilIcon />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={`Delete ${artifact.setName}`}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow hover:bg-red-600"
-        >
-          <TrashIcon />
-        </button>
-      </div>
-    </li>
-  );
 }
 
 type DraftSubstat = { statTypeId: number | null; value: number };
@@ -573,9 +443,15 @@ export function OwnedArtifactManager({
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {pageItems.map((artifact) => (
-          <OwnedArtifactCard
+          <ArtifactCard
             key={artifact.id}
-            artifact={artifact}
+            setName={artifact.setName}
+            slot={artifact.slot}
+            rarity={artifact.rarity}
+            level={artifact.level}
+            mainStatName={artifact.mainStatName}
+            iconUrl={artifact.iconUrl}
+            substats={artifact.substats}
             isActive={artifact.id === activeId}
             onEdit={() => setEditingId(artifact.id)}
             onDelete={() => handleRemoveArtifact(artifact.id)}

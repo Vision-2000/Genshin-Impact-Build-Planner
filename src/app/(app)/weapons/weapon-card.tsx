@@ -25,6 +25,8 @@ export function WeaponCard({
   onAction,
   danger = false,
   onSelect,
+  showName = true,
+  showWeaponTypeBadge = true,
 }: {
   name: string;
   weaponType: WeaponType;
@@ -37,6 +39,15 @@ export function WeaponCard({
   onAction?: () => void;
   danger?: boolean;
   onSelect?: () => void;
+  // The choose-weapon picker's grid is dense enough (up to 5 columns) that
+  // the name mostly just truncates -- it's still available on hover via the
+  // title attribute below. The other two call sites (owned weapons,
+  // add-weapon catalog) keep the visible name.
+  showName?: boolean;
+  // Every candidate in the picker already matches the character's own
+  // weapon type (see WeaponSlotPicker), so the badge would never say
+  // anything the user doesn't already know there.
+  showWeaponTypeBadge?: boolean;
 }) {
   return (
     <li>
@@ -44,6 +55,7 @@ export function WeaponCard({
         onClick={onSelect}
         role={onSelect ? "button" : undefined}
         tabIndex={onSelect ? 0 : undefined}
+        title={name}
         onKeyDown={
           onSelect
             ? (event) => {
@@ -60,30 +72,34 @@ export function WeaponCard({
         {iconUrl && (
           <Image
             src={iconUrl}
-            alt=""
+            alt={name}
             fill
             sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
             className="object-cover"
           />
         )}
 
-        <span className="absolute left-2 top-2 h-9 w-9 rounded-full shadow">
-          <Image
-            src={WEAPON_TYPE_ICON_URL[weaponType]}
-            alt={weaponType}
-            width={36}
-            height={36}
-            className="rounded-full"
-          />
-        </span>
+        {showWeaponTypeBadge && (
+          <span className="absolute left-2 top-2 h-9 w-9 rounded-full shadow">
+            <Image
+              src={WEAPON_TYPE_ICON_URL[weaponType]}
+              alt={weaponType}
+              width={36}
+              height={36}
+              className="rounded-full"
+            />
+          </span>
+        )}
 
         <div className="absolute inset-x-0 bottom-0 space-y-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
-          <div>
-            <p className="truncate text-center text-base font-semibold text-white">{name}</p>
-            {secondaryStatName && (
-              <p className="truncate text-center text-xs text-gray-300">{secondaryStatName}</p>
-            )}
-          </div>
+          {(showName || secondaryStatName) && (
+            <div>
+              {showName && <p className="truncate text-center text-base font-semibold text-white">{name}</p>}
+              {secondaryStatName && (
+                <p className="truncate text-center text-xs text-gray-300">{secondaryStatName}</p>
+              )}
+            </div>
+          )}
           {(refinement !== undefined || actionLabel) && (
             <div className="flex items-center justify-center gap-2">
               {refinement !== undefined &&
