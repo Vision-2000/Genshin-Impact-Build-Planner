@@ -329,7 +329,9 @@ export function BuildCatalog({
                 </div>
 
                 {isExpanded && (
-                  <div className="mt-3 max-w-2xl space-y-3 border-t pt-3">
+                  /* Wide enough for 5 artifact cards (w-56 each) plus gaps
+                     to sit on one line -- see artifact-slot-picker.tsx. */
+                  <div className="mt-3 max-w-6xl space-y-3 border-t pt-3">
                     <label className="block text-sm">
                       Name:
                       <input
@@ -375,7 +377,7 @@ export function BuildCatalog({
                     <button
                       type="button"
                       onClick={() => handleSubmit(character)}
-                      className="rounded border border-white bg-black px-3 py-1 text-sm text-white"
+                      className="rounded border border-white bg-black px-3 py-1 text-sm text-white hover:bg-gray-800"
                     >
                       Save build
                     </button>
