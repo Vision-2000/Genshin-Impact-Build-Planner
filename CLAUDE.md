@@ -36,13 +36,63 @@ user-editable.
 
 **Master/reference data (shared, static, seeded once)**
 - Character — all playable characters (name, element, weapon type, rarity,
-  `iconUrl`, `exclusivityGroup`). Seed excludes Manekin/Manekina (non-buildable,
-  no real loadout). `exclusivityGroup` is nullable and null for nearly every
-  character — see Traveler handling below for the one exception.
-- Weapon — all weapons (name, type, rarity, secondary stat, passive text,
-  `iconUrl`). Seed excludes 1★/2★ weapons (no meaningful build relevance) and
-  the Prized Isshin Blade (story-quest-only, never obtainable as a real player
-  weapon).
+  `iconUrl`, `exclusivityGroup`, and `ascensionStatId` — a nullable FK to
+  StatType for the fixed special stat this character's ascension unlocks,
+  e.g. Bennett's is Energy Recharge%; the value at each phase lives on
+  CharacterLevelStat, not here). Seed excludes Manekin/Manekina
+  (non-buildable, no real loadout). `exclusivityGroup` is nullable and null
+  for nearly every character — see Traveler handling below for the one
+  exception.
+- CharacterLevelStat — one row per character per (level, ascension phase)
+  it can actually be at: hp, attack, defense, and the ascension-stat value
+  (0 before that phase is reached). The 6 ascension-breakpoint levels
+  (20/40/50/60/70/80) get two rows each (pre- and post-ascension), every
+  other level gets one — sourced by sampling genshin-db's own
+  `character.stats(level, ascension)` at seed time (see Key decisions on
+  why this is a snapshot of genshin-db's output, not our own curve math).
+- Talent — one row per character per talent slot: Normal Attack, Skill,
+  Burst (normalized to these three regardless of genshin-db's per-character
+  naming quirks like `combatsp`/`combatju`), and each Passive. Just name,
+  icon, and the level-independent flavor `description` — the level-scaling
+  numbers live in TalentAttribute, not here.
+- TalentAttribute — child rows (talentId, label, formatCode,
+  `values: Float[]`) for combat talents only (Normal Attack/Skill/Burst
+  have levels; Passives don't). One row per labeled stat genshin-db
+  reports (e.g. "1-Hit DMG", "Charged Attack Stamina Cost"), each holding
+  all of that label's per-level values together (index 0 = talent level 1)
+  — display-only string formatting (`formatCode` says how, e.g. `F1P` = one
+  decimal, shown as a percentage), never fed into any damage formula (see
+  Key decisions on calculation scope).
+- TalentStatBonus — optional child rows (talentId, statTypeId, value) for
+  the subset of Passive talents whose effect is an unconditional bonus that
+  actually appears on the in-game character stat screen. Zero rows is the
+  default/common case; conditional or proc-based effects (most passives)
+  stay text-only and are excluded from any computed total.
+- Constellation — one row per character per constellation (1-6): name,
+  icon, description. Modeled separately from Talent (not as extra talent
+  slots) since genshin-db treats them as a structurally distinct concept —
+  no levels, no attributes, always a fixed effect once unlocked.
+- ConstellationStatBonus — same idea and same rarity as TalentStatBonus,
+  for the subset of constellations (a bit more common than passives, e.g.
+  "increases Elemental Mastery by X") that are unconditional stat bonuses.
+- Weapon — all weapons (name, type, rarity, secondary stat, `passiveName`,
+  `iconUrl`). Seed excludes 1★/2★ weapons (no meaningful build relevance)
+  and the Prized Isshin Blade (story-quest-only, never obtainable as a real
+  player weapon). No `passiveText` column — genshin-db already provides a
+  fully-rendered description per refinement rather than one template we'd
+  need to fill in ourselves, so that text lives entirely in
+  WeaponRefinementEffect instead.
+- WeaponRefinementEffect — child rows (weaponId, refinement 1-5,
+  description) holding genshin-db's own pre-rendered passive text for each
+  refinement level — no templating needed on our side at all.
+- WeaponLevelStat — same idea as CharacterLevelStat but for weapons: one
+  row per (weaponId, level, ascension phase) with attack and the secondary
+  stat's value at that point, sourced the same way (sampling
+  `weapon.stats(level, ascension)` at seed time).
+- WeaponStatBonus — same idea as TalentStatBonus, for the subset of weapon
+  passives that grant an unconditional stat-screen bonus, plus a
+  `refinement` column since that bonus (when one exists) almost always
+  scales by refinement too, same as the passive text does.
 - ArtifactSet — all artifact sets (name, fixed rarity, 2-piece/4-piece effect
   text, one icon URL column per slot: `flowerIconUrl`, `featherIconUrl`,
   `sandsIconUrl`, `gobletIconUrl`, `circletIconUrl` — not one column per set,
@@ -55,13 +105,23 @@ user-editable.
   relevance" reasoning as the weapon rarity cutoff. `rarity` is
   `max(rarityList)` from genshin-db — the same value already computed for
   that exclusion check.
+- ArtifactSetStatBonus — optional child rows (artifactSetId, piece: TWO |
+  FOUR, statTypeId, value) for the subset of 2pc/4pc effects that are
+  unconditional stat bonuses. Almost always true for 2pc effects; rarely
+  true for 4pc, since most 4pc effects are conditional/proc-based and stay
+  text-only, excluded from any computed total — same reasoning as
+  TalentStatBonus/WeaponStatBonus/ConstellationStatBonus, applied to
+  artifacts.
 - StatType — shared pool of stat types (Crit Rate, Crit DMG, ATK%, EM, elemental
   DMG bonus, etc.) — used by both weapon secondary stats and artifact main/substats
 
 **Owned inventory (profile-scoped)**
-- OwnedCharacter — links GameProfile to Character, with an `is_owned` boolean flag
-- OwnedWeapon — one row per physical copy owned, each with its own refinement
-  (never a quantity field)
+- OwnedCharacter — links GameProfile to Character, with an `is_owned`
+  boolean flag, plus level, ascension phase, per-talent level, and
+  constellation — needed to compute final stats and to substitute the right
+  numbers into talent descriptions.
+- OwnedWeapon — one row per physical copy owned, each with its own
+  refinement (never a quantity field), plus level and ascension phase.
 - OwnedArtifact — one row per physical piece: slot, level, main stat. No
   rarity column — rarity is fixed per ArtifactSet, not chosen per piece (see
   Key decisions below)
@@ -219,6 +279,50 @@ user-editable.
   no benefit. This intentionally doesn't model that a 5-star set can in
   theory still drop lower-rarity copies in-game; not something this tracker
   represents.
+- Final-stats calculation is scoped to aggregate stat totals (HP/ATK/DEF/EM/
+  Crit Rate/Crit DMG/Energy Recharge/elemental DMG%) summed from character
+  base + weapon + artifacts — not full damage-per-hit output. Actual damage
+  needs talent multiplier tables classified by scaling stat/hit type, enemy
+  stats/RES, and the elemental reaction system on top of this; that's a
+  separate, much larger effort and stays under "Damage simulation" in
+  Deferred, not folded into this work.
+- Static/always-on stat bonuses from passive talents, constellations,
+  weapon passives, and artifact 2pc/4pc effects are modeled as small
+  relational child tables (TalentStatBonus, ConstellationStatBonus,
+  WeaponStatBonus, ArtifactSetStatBonus), not a JSON column — consistent
+  with the rest of this schema being fully relational (StatType is already
+  a shared reference table these all point at), zero rows cleanly
+  represents "no bonus" (the common case), and multiple rows handles the
+  rare multi-stat effect without needing extra shape. Only the subset of
+  effects that are unconditional and actually shown on the in-game stat
+  screen get a row here; conditional/proc-based effects (most passives and
+  4pc effects) stay descriptive text only and are excluded from any
+  computed total.
+- Character/weapon base HP/ATK/DEF and secondary/ascension stat values are
+  stored as a precomputed per-level lookup table (CharacterLevelStat/
+  WeaponLevelStat), sampled once at seed time directly from genshin-db's
+  own `stats(level, ascension)` function, rather than reimplementing
+  Genshin's internal growth-curve formulas ourselves. genshin-db's actual
+  per-curve raw multiplier tables aren't part of its public API surface, so
+  reproducing them would mean depending on undocumented internals for no
+  benefit — the values are just official static reference data (no
+  algorithm of our own to demonstrate here), consistent with how this
+  schema already treats genshin-db as a data source, not something whose
+  internals get reimplemented.
+- Weapon refinement text needs no templating on our side: genshin-db
+  already provides a fully-rendered description per refinement level
+  (`r1..r5`), so WeaponRefinementEffect stores those 5 strings directly.
+  Combat talent numbers work differently and do need our own display
+  logic: genshin-db exposes them as a list of labeled attributes (e.g.
+  "1-Hit DMG"), each with its own per-level value array and a format code
+  saying how to render it (e.g. one decimal, as a percentage) — modeled as
+  TalentAttribute, formatted at display time. Neither of these numbers is
+  ever used in a stat or damage total, only rendered as text.
+- Hover-card detail popovers (see build order) are sequenced after master
+  data completeness, not before — the point of building them is to absorb
+  the stats/talents/effects data landing on top of the current cards, so
+  building the data first means the popover only needs to be built once,
+  against real content, instead of guessing at its shape.
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs
@@ -231,11 +335,23 @@ user-editable.
    artifact add (with substats) — establishes reusable list/filter/sort/search
    patterns for all three pages
 5. Builds — compose owned character + weapon + artifacts
-6. Teams — assemble builds, enforce per-character uniqueness, show overlap
-   warnings live during selection
-7. Rosters — same pattern as Teams, no build cap
-8. Lineups — save Team combinations; ephemeral-vs-saved validation
-9. Visual polish, deploy to Vercel, README
+6. Master data completeness: CharacterLevelStat, WeaponLevelStat, Talent +
+   TalentAttribute, Constellation, WeaponRefinementEffect, and the four
+   `*StatBonus` tables — seeded from genshin-db, master data only, no
+   owned-side fields yet
+7. Owned-side leveling: OwnedCharacter/OwnedWeapon gain level, ascension
+   phase, talent levels, and constellation, with UI to set them
+8. Final-stats calculation module (pure function: build -> aggregate stat
+   totals) + a "Final Stats" block on the build page
+9. Hover-card UI: a shared hover-on-desktop/tap-on-touch detail popover,
+   retrofitted into WeaponCard/ArtifactCard (and a future CharacterCard) so
+   each card's always-visible face can shrink back down as more data lands
+   on top of it
+10. Teams — assemble builds, enforce per-character uniqueness, show overlap
+    warnings live during selection
+11. Rosters — same pattern as Teams, no build cap
+12. Lineups — save Team combinations; ephemeral-vs-saved validation
+13. Visual polish, deploy to Vercel, README
 
 ## Deferred / not designed yet — don't build ahead of these
 - Build editing's copy-vs-force-edit prompt when an edit would break a Team
@@ -246,8 +362,10 @@ user-editable.
 - Home page task/reminder list
 - Custom validation rules for Lineups (e.g. Imaginary Theatre's 3-element +
   guest-character restrictions per season)
-- Damage simulation, elemental resonance display
-- Extended character/weapon stats: levels, talents, ascension materials
+- Damage simulation, elemental resonance display, and everything that
+  requires (talent multiplier tables classified by scaling stat/hit type,
+  enemy stats/RES, the elemental reaction system). The aggregate stat totals
+  from build order step 8 are a prerequisite for this, not this itself.
 
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over

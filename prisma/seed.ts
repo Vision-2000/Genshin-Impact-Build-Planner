@@ -279,15 +279,16 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
       ? statTypeIds.get(FIGHT_PROP_TO_STAT_TYPE[weapon.mainStatType]) ?? null
       : null;
 
-    // R1 refinement text is used as the reference passive description;
-    // low-rarity weapons have no passive at all.
-    const passiveText = weapon.r1?.description ?? null;
+    // Low-rarity weapons have no passive at all. Per-refinement passive
+    // text is seeded separately into WeaponRefinementEffect -- see
+    // seedWeaponRefinementEffects.
+    const passiveName = weapon.effectName ?? null;
     const iconUrl = enkaIconUrl(weapon.images.filename_icon);
 
     await prisma.weapon.upsert({
       where: { name: weapon.name },
-      create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveText, iconUrl },
-      update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveText, iconUrl },
+      create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
+      update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
     });
     count++;
   }

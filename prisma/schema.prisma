@@ -42,6 +42,25 @@ enum ArtifactSlot {
   Circlet
 }
 
+// The game's 3 real combat talent slots. genshin-db names these
+// combat1/combat2/combat3 for most characters but combatsp/combatju for a
+// handful of exceptions (Mona/Ayaka, Ororon) -- normalized to these 3 values
+// at seed time so app code never needs to know about that naming quirk.
+enum TalentSlot {
+  NormalAttack
+  Skill
+  Burst
+  Passive1
+  Passive2
+  Passive3
+  Passive4
+}
+
+enum ArtifactSetPiece {
+  Two
+  Four
+}
+
 // ---------------------------------------------------------------------------
 // Accounts
 // ---------------------------------------------------------------------------
@@ -116,12 +135,138 @@ model Character {
   // can't express that. Reuse this field for any future character that needs
   // the same "only one of this group at a time" mechanic.
   exclusivityGroup String?    @map("exclusivity_group")
+  // The fixed special stat this character's ascension phases unlock (e.g.
+  // Bennett's is Energy Recharge%) -- always the same stat for a given
+  // character, only the VALUE scales by phase (see CharacterLevelStat).
+  ascensionStatId  Int?       @map("ascension_stat_id")
   iconUrl          String?    @map("icon_url")
 
+  ascensionStat   StatType?            @relation("CharacterAscensionStat", fields: [ascensionStatId], references: [id])
   gameProfiles    GameProfile[]
   ownedCharacters OwnedCharacter[]
+  levelStats      CharacterLevelStat[]
+  talents         Talent[]
+  constellations  Constellation[]
 
   @@map("characters")
+}
+
+// One row per character per (level, ascension phase) it can actually be at.
+// The 6 ascension-breakpoint levels (20/40/50/60/70/80) get two rows each
+// (pre- and post-ascension); every other level gets one. Sourced by sampling
+// genshin-db's own character.stats(level, ascension) at seed time -- see
+// CLAUDE.md's Key decisions for why this is a snapshot of genshin-db's
+// output rather than our own reimplementation of Genshin's growth curves.
+model CharacterLevelStat {
+  id                 Int   @id @default(autoincrement())
+  characterId        Int   @map("character_id")
+  level              Int
+  ascensionPhase     Int   @map("ascension_phase")
+  hp                 Float
+  attack             Float
+  defense            Float
+  // The ascensionStat's value at this phase -- 0 before that phase unlocks
+  // it. Meaningless (always 0) if the character has no ascensionStatId.
+  ascensionStatValue Float @map("ascension_stat_value")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, level, ascensionPhase])
+  @@map("character_level_stats")
+}
+
+// One row per character per talent slot (Normal Attack, Skill, Burst, each
+// Passive). Combat talents (Normal/Skill/Burst) have level-scaling numbers
+// in TalentAttribute; Passives don't (unlocked or not, fixed effect).
+model Talent {
+  id          Int        @id @default(autoincrement())
+  characterId Int        @map("character_id")
+  slot        TalentSlot
+  name        String
+  // Level-independent flavor text. The level-scaling numbers (combat
+  // talents only) live in TalentAttribute, not here.
+  description String
+  iconUrl     String?    @map("icon_url")
+
+  character   Character         @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  attributes  TalentAttribute[]
+  statBonuses TalentStatBonus[]
+
+  @@unique([characterId, slot])
+  @@map("talents")
+}
+
+// Combat-talent-only child rows: one per labeled stat genshin-db reports
+// (e.g. "1-Hit DMG", "Charged Attack Stamina Cost"), holding every talent
+// level's value for that label together (index 0 = talent level 1) rather
+// than one row per level -- these are always read as a single ordered list,
+// never queried by individual level. formatCode says how to render a value
+// (e.g. "F1P" = one decimal, shown as a percentage) -- see
+// src/lib/talent-format.ts once written. Purely for display: these numbers
+// are never used in any stat or damage calculation.
+model TalentAttribute {
+  id         Int     @id @default(autoincrement())
+  talentId   Int     @map("talent_id")
+  label      String
+  formatCode String  @map("format_code")
+  values     Float[]
+  // Preserves genshin-db's own label ordering for display.
+  order      Int
+
+  talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
+
+  @@map("talent_attributes")
+}
+
+// Optional child rows for the subset of Passive talents whose effect is an
+// unconditional bonus that actually appears on the in-game character stat
+// screen. Zero rows is the default/common case -- most passives are
+// conditional/situational and stay text-only in Talent.description,
+// excluded from any computed total.
+model TalentStatBonus {
+  id         Int   @id @default(autoincrement())
+  talentId   Int   @map("talent_id")
+  statTypeId Int   @map("stat_type_id")
+  value      Float
+
+  talent   Talent   @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  statType StatType @relation("TalentStatBonusOn", fields: [statTypeId], references: [id])
+
+  @@map("talent_stat_bonuses")
+}
+
+// One row per character per constellation (1-6). Modeled separately from
+// Talent (not extra talent slots) since genshin-db treats these as a
+// structurally distinct concept -- no levels, no attributes, always a fixed
+// effect once unlocked.
+model Constellation {
+  id          Int     @id @default(autoincrement())
+  characterId Int     @map("character_id")
+  number      Int
+  name        String
+  description String
+  iconUrl     String? @map("icon_url")
+
+  character   Character                @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  statBonuses ConstellationStatBonus[]
+
+  @@unique([characterId, number])
+  @@map("constellations")
+}
+
+// Same idea as TalentStatBonus, for the subset of constellations (a bit
+// more common than passives, e.g. "increases Elemental Mastery by X") that
+// are unconditional stat bonuses.
+model ConstellationStatBonus {
+  id              Int   @id @default(autoincrement())
+  constellationId Int   @map("constellation_id")
+  statTypeId      Int   @map("stat_type_id")
+  value           Float
+
+  constellation Constellation @relation(fields: [constellationId], references: [id], onDelete: Cascade)
+  statType      StatType      @relation("ConstellationStatBonusOn", fields: [statTypeId], references: [id])
+
+  @@map("constellation_stat_bonuses")
 }
 
 model Weapon {
@@ -130,13 +275,71 @@ model Weapon {
   weaponType      WeaponType @map("weapon_type")
   rarity          Int
   secondaryStatId Int?       @map("secondary_stat_id")
-  passiveText     String?    @map("passive_text")
+  // The passive's fixed name (e.g. Prototype Rancour's is "Smith's
+  // Certification"). No passiveText column here -- genshin-db already
+  // provides a fully-rendered description per refinement rather than one
+  // template we'd fill in ourselves, so that text lives entirely in
+  // WeaponRefinementEffect. Null for low-rarity weapons with no passive.
+  passiveName     String?    @map("passive_name")
   iconUrl         String?    @map("icon_url")
 
-  secondaryStat StatType?     @relation(fields: [secondaryStatId], references: [id])
-  ownedWeapons  OwnedWeapon[]
+  secondaryStat     StatType?                @relation(fields: [secondaryStatId], references: [id])
+  ownedWeapons      OwnedWeapon[]
+  levelStats        WeaponLevelStat[]
+  refinementEffects WeaponRefinementEffect[]
+  statBonuses       WeaponStatBonus[]
 
   @@map("weapons")
+}
+
+// One row per weapon per (level, ascension phase) it can actually be at --
+// same shape/sourcing as CharacterLevelStat (sampling genshin-db's own
+// weapon.stats(level, ascension) at seed time). secondaryStatValue is the
+// weapon's secondaryStat at that point.
+model WeaponLevelStat {
+  id                 Int   @id @default(autoincrement())
+  weaponId           Int   @map("weapon_id")
+  level              Int
+  ascensionPhase     Int   @map("ascension_phase")
+  attack             Float
+  secondaryStatValue Float @map("secondary_stat_value")
+
+  weapon Weapon @relation(fields: [weaponId], references: [id], onDelete: Cascade)
+
+  @@unique([weaponId, level, ascensionPhase])
+  @@map("weapon_level_stats")
+}
+
+// genshin-db's own pre-rendered passive description per refinement level
+// (1-5) -- no templating needed on our side at all.
+model WeaponRefinementEffect {
+  id          Int    @id @default(autoincrement())
+  weaponId    Int    @map("weapon_id")
+  refinement  Int
+  description String
+
+  weapon Weapon @relation(fields: [weaponId], references: [id], onDelete: Cascade)
+
+  @@unique([weaponId, refinement])
+  @@map("weapon_refinement_effects")
+}
+
+// Same idea as TalentStatBonus, for the subset of weapon passives that
+// grant an unconditional stat-screen bonus. Has its own refinement column
+// (unlike Talent/ConstellationStatBonus) since that bonus, when one exists,
+// almost always scales by refinement too, same as the passive text does.
+model WeaponStatBonus {
+  id         Int   @id @default(autoincrement())
+  weaponId   Int   @map("weapon_id")
+  statTypeId Int   @map("stat_type_id")
+  refinement Int
+  value      Float
+
+  weapon   Weapon   @relation(fields: [weaponId], references: [id], onDelete: Cascade)
+  statType StatType @relation("WeaponStatBonusOn", fields: [statTypeId], references: [id])
+
+  @@unique([weaponId, statTypeId, refinement])
+  @@map("weapon_stat_bonuses")
 }
 
 // One icon URL column per slot rather than one per set, since each slot has
@@ -160,8 +363,27 @@ model ArtifactSet {
   circletIconUrl  String? @map("circlet_icon_url")
 
   ownedArtifacts OwnedArtifact[]
+  statBonuses    ArtifactSetStatBonus[]
 
   @@map("artifact_sets")
+}
+
+// Optional child rows for the subset of 2pc/4pc effects that are
+// unconditional stat bonuses. Almost always true for 2pc effects; rarely
+// true for 4pc, since most 4pc effects are conditional/proc-based and stay
+// text-only in ArtifactSet.twoPieceEffect/fourPieceEffect, excluded from
+// any computed total -- same reasoning as Talent/Constellation/WeaponStatBonus.
+model ArtifactSetStatBonus {
+  id            Int              @id @default(autoincrement())
+  artifactSetId Int              @map("artifact_set_id")
+  piece         ArtifactSetPiece
+  statTypeId    Int              @map("stat_type_id")
+  value         Float
+
+  artifactSet ArtifactSet @relation(fields: [artifactSetId], references: [id], onDelete: Cascade)
+  statType    StatType    @relation("ArtifactSetStatBonusOn", fields: [statTypeId], references: [id])
+
+  @@map("artifact_set_stat_bonuses")
 }
 
 // Shared pool of stat types (Crit Rate, Crit DMG, ATK%, EM, elemental DMG
@@ -170,9 +392,14 @@ model StatType {
   id   Int    @id @default(autoincrement())
   name String @unique
 
-  weapons            Weapon[]
-  artifactMainStatOn OwnedArtifact[]        @relation("ArtifactMainStat")
-  artifactSubstatOn  OwnedArtifactSubstat[]
+  weapons                  Weapon[]
+  artifactMainStatOn       OwnedArtifact[]          @relation("ArtifactMainStat")
+  artifactSubstatOn        OwnedArtifactSubstat[]
+  characterAscensionStatOn Character[]              @relation("CharacterAscensionStat")
+  talentStatBonusOn        TalentStatBonus[]        @relation("TalentStatBonusOn")
+  constellationStatBonusOn ConstellationStatBonus[] @relation("ConstellationStatBonusOn")
+  weaponStatBonusOn        WeaponStatBonus[]        @relation("WeaponStatBonusOn")
+  artifactSetStatBonusOn   ArtifactSetStatBonus[]   @relation("ArtifactSetStatBonusOn")
 
   @@map("stat_types")
 }
