@@ -8,7 +8,7 @@
 import "dotenv/config";
 import * as genshindb from "genshin-db";
 import { prisma } from "../src/lib/prisma";
-import { Element, WeaponType, TalentSlot } from "../src/generated/prisma/enums";
+import { Element, WeaponType, TalentSlot, ArtifactSetPiece } from "../src/generated/prisma/enums";
 
 // ---------------------------------------------------------------------------
 // StatType: fixed canonical vocabulary, not sourced from genshin-db.
@@ -356,7 +356,92 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
   console.log(`Seeded ${count} characters (with level stats)`);
 }
 
-async function seedArtifactSets() {
+// genshin-db gives 2pc/4pc effects as plain prose, with no structured
+// breakdown at all. Checked directly against all 56 currently-seeded sets
+// before writing this: every single 4pc effect is genuinely conditional/
+// proc-based (stacks, on-field, HP thresholds, reaction triggers -- not one
+// is a simple stat bonus), so no parser is attempted for 4pc at all. 2pc
+// effects are far more regular -- most follow one of a handful of
+// near-identical phrasings -- so a small pattern-based parser handles the
+// common case, falling back to "no bonus row" (same as any conditional
+// effect) for anything that doesn't match or references a stat category
+// outside this app's tracked final-stats list (e.g. Elemental Skill/Burst
+// DMG Bonus%, RES%, Shield Strength% -- not in scope, see CLAUDE.md's Key
+// decisions on calculation scope).
+
+// English-phrase equivalent of FIGHT_PROP_TO_STAT_TYPE above, since 2pc
+// effect text has no FIGHT_PROP_* keys to key off of at all.
+const TWO_PIECE_STAT_TEXT_TO_STAT_TYPE: Record<string, StatTypeName> = {
+  ATK: "ATK%",
+  DEF: "DEF%",
+  HP: "HP%",
+  "CRIT Rate": "Crit Rate%",
+  "CRIT DMG": "Crit DMG%",
+  "Energy Recharge": "Energy Recharge%",
+  "Physical DMG": "Physical DMG Bonus%",
+  "Healing Bonus": "Healing Bonus%",
+  "Character Healing Effectiveness": "Healing Bonus%",
+  "Elemental Mastery": "Elemental Mastery",
+  "Pyro DMG Bonus": "Pyro DMG Bonus%",
+  "Hydro DMG Bonus": "Hydro DMG Bonus%",
+  "Electro DMG Bonus": "Electro DMG Bonus%",
+  "Cryo DMG Bonus": "Cryo DMG Bonus%",
+  "Anemo DMG Bonus": "Anemo DMG Bonus%",
+  "Geo DMG Bonus": "Geo DMG Bonus%",
+  "Dendro DMG Bonus": "Dendro DMG Bonus%",
+};
+
+// Tried in order -- matches the 4 phrasings actually seen across all 56
+// currently-seeded 2pc effects (verified directly, not assumed):
+// "<Stat> +N%.", "Gain a N% <Stat>.", "Increases <Stat> by N.",
+// "<Stat> is increased by N%." (Pale Flame is the only current set phrased
+// this way -- everything else granting a DMG% bonus uses "<Stat> +N%.",
+// e.g. Bloodstained Chivalry's otherwise-identical Physical DMG bonus).
+function parseTwoPieceEffect(text: string): { statText: string; value: number } | null {
+  const suffixMatch = text.match(/^(.+?)\s*\+(\d+(?:\.\d+)?)%\.?$/);
+  if (suffixMatch) return { statText: suffixMatch[1].trim(), value: Number(suffixMatch[2]) };
+
+  const gainMatch = text.match(/^Gain a (\d+(?:\.\d+)?)% (.+?)\.?$/);
+  if (gainMatch) return { statText: gainMatch[2].trim(), value: Number(gainMatch[1]) };
+
+  const increasesMatch = text.match(/^Increases (.+?) by (\d+(?:\.\d+)?)\.?$/);
+  if (increasesMatch) return { statText: increasesMatch[1].trim(), value: Number(increasesMatch[2]) };
+
+  const isIncreasedMatch = text.match(/^(.+?) is increased by (\d+(?:\.\d+)?)%\.?$/);
+  if (isIncreasedMatch) return { statText: isIncreasedMatch[1].trim(), value: Number(isIncreasedMatch[2]) };
+
+  return null;
+}
+
+async function seedArtifactSetTwoPieceBonus(
+  artifactSetId: number,
+  setName: string,
+  twoPieceEffect: string,
+  statTypeIds: Map<StatTypeName, number>
+) {
+  await prisma.artifactSetStatBonus.deleteMany({ where: { artifactSetId, piece: ArtifactSetPiece.Two } });
+
+  const parsed = parseTwoPieceEffect(twoPieceEffect);
+  if (!parsed) {
+    console.warn(`"${setName}" 2pc effect didn't match a known pattern, left unbonused: "${twoPieceEffect}"`);
+    return;
+  }
+
+  const statTypeName = TWO_PIECE_STAT_TEXT_TO_STAT_TYPE[parsed.statText];
+  const statTypeId = statTypeName ? statTypeIds.get(statTypeName) : undefined;
+  if (!statTypeId) {
+    console.warn(
+      `"${setName}" 2pc effect references an untracked stat ("${parsed.statText}"), left unbonused: "${twoPieceEffect}"`
+    );
+    return;
+  }
+
+  await prisma.artifactSetStatBonus.create({
+    data: { artifactSetId, piece: ArtifactSetPiece.Two, statTypeId, value: parsed.value },
+  });
+}
+
+async function seedArtifactSets(statTypeIds: Map<StatTypeName, number>) {
   const artifactSets = genshindb.artifacts("names", {
     matchCategories: true,
     verboseCategories: true,
@@ -387,7 +472,7 @@ async function seedArtifactSets() {
     const gobletIconUrl = enkaIconUrl(artifactSet.images.filename_goblet);
     const circletIconUrl = enkaIconUrl(artifactSet.images.filename_circlet);
 
-    await prisma.artifactSet.upsert({
+    const dbArtifactSet = await prisma.artifactSet.upsert({
       where: { name: artifactSet.name },
       create: {
         name: artifactSet.name,
@@ -411,6 +496,7 @@ async function seedArtifactSets() {
         circletIconUrl,
       },
     });
+    await seedArtifactSetTwoPieceBonus(dbArtifactSet.id, artifactSet.name, artifactSet.effect2Pc, statTypeIds);
     count++;
   }
 
@@ -501,7 +587,7 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
 async function main() {
   const statTypeIds = await seedStatTypes();
   await seedCharacters(statTypeIds);
-  await seedArtifactSets();
+  await seedArtifactSets(statTypeIds);
   await seedWeapons(statTypeIds);
 }
 
