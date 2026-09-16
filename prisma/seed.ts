@@ -1,6 +1,14 @@
+// Running this script directly (npx tsx prisma/seed.ts) doesn't go through
+// Prisma CLI, which is what normally loads .env via prisma.config.ts's own
+// "dotenv/config" import -- src/lib/prisma.ts reads process.env.DATABASE_URL
+// directly with no loading of its own, relying on Next.js's built-in .env
+// handling in the app itself. Without this import here, DATABASE_URL is
+// undefined for a standalone run, surfacing as a confusing SASL/password
+// error from the Postgres driver rather than a clear "env var missing" one.
+import "dotenv/config";
 import * as genshindb from "genshin-db";
 import { prisma } from "../src/lib/prisma";
-import { Element, WeaponType } from "../src/generated/prisma/enums";
+import { Element, WeaponType, TalentSlot } from "../src/generated/prisma/enums";
 
 // ---------------------------------------------------------------------------
 // StatType: fixed canonical vocabulary, not sourced from genshin-db.
@@ -126,7 +134,144 @@ async function seedStatTypes() {
   return statTypeIds;
 }
 
-async function seedCharacters() {
+// The 6 ascension-breakpoint levels can be at either the phase just reached
+// or the one before it (same level, different stats) -- every other level
+// has exactly one valid phase, which genshin-db's stats() infers correctly
+// regardless of which ascension flag is passed (verified directly: passing
+// '-' or '+' at a non-breakpoint level returns the same, correct result).
+const ASCENSION_BREAKPOINTS = [20, 40, 50, 60, 70, 80];
+
+// Samples genshin-db's own stats(level, ascension) at every (level, phase)
+// pair a character/weapon can actually be at, rather than reimplementing
+// Genshin's growth-curve formulas ourselves -- see CLAUDE.md's Key
+// decisions for why. Always trusts the function's own returned `ascension`
+// field for the phase number, never our own guess.
+async function seedCharacterLevelStats(characterId: number, statFn: genshindb.StatFunction) {
+  const rows = [];
+  for (let level = 1; level <= 90; level++) {
+    const flags: ("-" | "+")[] = ASCENSION_BREAKPOINTS.includes(level) ? ["-", "+"] : ["-"];
+    for (const flag of flags) {
+      const result = statFn(level, flag);
+      rows.push({
+        characterId,
+        level: result.level,
+        ascensionPhase: result.ascension,
+        hp: result.hp ?? 0,
+        attack: result.attack ?? 0,
+        defense: result.defense ?? 0,
+        ascensionStatValue: result.specialized ?? 0,
+      });
+    }
+  }
+
+  // Delete-and-recreate rather than 96 individual upserts -- this data is
+  // wholly owned by the seed (never user-edited), so there's nothing to
+  // preserve across a re-run.
+  await prisma.characterLevelStat.deleteMany({ where: { characterId } });
+  await prisma.characterLevelStat.createMany({ data: rows });
+}
+
+// Matches every {paramN:formatCode} placeholder in one of genshin-db's
+// "Label Name|{param1:F1P}" attribute-label strings. Most labels reference
+// exactly one param, but a few combine two (e.g.
+// "Low/High Plunge DMG|{param10:P}/{param11:P}") -- those get split into
+// multiple TalentAttribute rows (suffixed "(1)", "(2)", ...) since this
+// schema stores one number series per row, not per label.
+const TALENT_PARAM_REGEX = /\{(\w+):(\w+)\}/g;
+
+function parseAttributeLabel(rawLabel: string): { name: string; paramKey: string; formatCode: string }[] {
+  const [name, template] = rawLabel.split("|");
+  const matches = [...template.matchAll(TALENT_PARAM_REGEX)];
+  return matches.map((match, index) => ({
+    name: matches.length > 1 ? `${name} (${index + 1})` : name,
+    paramKey: match[1],
+    formatCode: match[2],
+  }));
+}
+
+async function seedTalentAttributes(talentId: number, attributes: genshindb.CombatTalentDetail["attributes"]) {
+  const rows: { talentId: number; label: string; formatCode: string; values: number[]; order: number }[] = [];
+  let order = 0;
+  for (const rawLabel of attributes.labels) {
+    for (const { name, paramKey, formatCode } of parseAttributeLabel(rawLabel)) {
+      const values = attributes.parameters[paramKey];
+      if (!values) continue;
+      rows.push({ talentId, label: name, formatCode, values, order: order++ });
+    }
+  }
+
+  // Delete-and-recreate, same reasoning as CharacterLevelStat: wholly
+  // seed-owned data, never user-edited.
+  await prisma.talentAttribute.deleteMany({ where: { talentId } });
+  if (rows.length > 0) await prisma.talentAttribute.createMany({ data: rows });
+}
+
+// One Talent row per slot this character actually has. combatsp/combatju
+// (Mona/Ayaka/Ororon's extra special-move slot, layered on top of the
+// normal Normal Attack/Skill/Burst 3) is deliberately not seeded -- it's a
+// genuine 4th leveled combat move that doesn't fit this schema's 3-slot
+// model, a rare kit quirk affecting a handful of characters rather than
+// core to "which talent do I invest in."
+async function seedTalents(characterId: number, characterName: string) {
+  const talent = genshindb.talents(characterName, { verboseCategories: true });
+  if (!talent) {
+    console.warn(`No talent data for "${characterName}"`);
+    return;
+  }
+
+  const slots: {
+    slot: TalentSlot;
+    detail: genshindb.CombatTalentDetail | genshindb.PassiveTalentDetail | undefined;
+    iconFilename: string | undefined;
+  }[] = [
+    { slot: TalentSlot.NormalAttack, detail: talent.combat1, iconFilename: talent.images?.filename_combat1 },
+    { slot: TalentSlot.Skill, detail: talent.combat2, iconFilename: talent.images?.filename_combat2 },
+    { slot: TalentSlot.Burst, detail: talent.combat3, iconFilename: talent.images?.filename_combat3 },
+    { slot: TalentSlot.Passive1, detail: talent.passive1, iconFilename: talent.images?.filename_passive1 },
+    { slot: TalentSlot.Passive2, detail: talent.passive2, iconFilename: talent.images?.filename_passive2 },
+    { slot: TalentSlot.Passive3, detail: talent.passive3, iconFilename: talent.images?.filename_passive3 },
+    { slot: TalentSlot.Passive4, detail: talent.passive4, iconFilename: talent.images?.filename_passive4 },
+  ];
+
+  for (const { slot, detail, iconFilename } of slots) {
+    if (!detail) continue;
+    const iconUrl = enkaIconUrl(iconFilename);
+
+    const dbTalent = await prisma.talent.upsert({
+      where: { characterId_slot: { characterId, slot } },
+      create: { characterId, slot, name: detail.name, description: detail.description, iconUrl },
+      update: { name: detail.name, description: detail.description, iconUrl },
+    });
+
+    // Only combat talents (Normal Attack/Skill/Burst) have level-scaling
+    // attributes -- Passives are a fixed effect, no `attributes` field.
+    if ("attributes" in detail) {
+      await seedTalentAttributes(dbTalent.id, detail.attributes);
+    }
+  }
+}
+
+async function seedConstellations(characterId: number, characterName: string) {
+  const constellation = genshindb.constellations(characterName, { verboseCategories: true });
+  if (!constellation) {
+    console.warn(`No constellation data for "${characterName}"`);
+    return;
+  }
+
+  const numbers = [1, 2, 3, 4, 5, 6] as const;
+  for (const number of numbers) {
+    const detail = constellation[`c${number}`];
+    const iconUrl = enkaIconUrl(constellation.images?.[`filename_c${number}`]);
+
+    await prisma.constellation.upsert({
+      where: { characterId_number: { characterId, number } },
+      create: { characterId, number, name: detail.name, description: detail.description, iconUrl },
+      update: { name: detail.name, description: detail.description, iconUrl },
+    });
+  }
+}
+
+async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
   const characters = genshindb.characters("names", {
     matchCategories: true,
     verboseCategories: true,
@@ -146,8 +291,9 @@ async function seedCharacters() {
     }
 
     const iconUrl = enkaIconUrl(character.images.filename_icon);
+    const ascensionStatId = statTypeIds.get(FIGHT_PROP_TO_STAT_TYPE[character.substatType]) ?? null;
 
-    await prisma.character.upsert({
+    const dbCharacter = await prisma.character.upsert({
       where: { name: character.name },
       create: {
         name: character.name,
@@ -155,22 +301,30 @@ async function seedCharacters() {
         weaponType,
         rarity: character.rarity,
         exclusivityGroup: null,
+        ascensionStatId,
         iconUrl,
       },
-      update: { element, weaponType, rarity: character.rarity, iconUrl },
+      update: { element, weaponType, rarity: character.rarity, ascensionStatId, iconUrl },
     });
+    await seedCharacterLevelStats(dbCharacter.id, character.stats);
+    await seedTalents(dbCharacter.id, character.name);
+    await seedConstellations(dbCharacter.id, character.name);
     count++;
   }
 
-  // All 6 visions share Lumine's icon: genshin-db has no per-vision icon
-  // breakdown, and the base Traveler icon doesn't actually change with
-  // element in-game.
-  const lumine = genshindb.characters("Lumine", { verboseCategories: true });
-  const travelerIconUrl = enkaIconUrl(lumine?.images.filename_icon);
+  // All 6 visions share Lumine's icon and base stats: genshin-db has no
+  // per-vision breakdown for either (a vision's kit differs, but HP/ATK/DEF
+  // growth and the ascension stat don't), and neither actually changes with
+  // element in-game. "Traveler (Anemo)" etc. aren't valid characters()
+  // query names in genshin-db (only Lumine/Aether are), so Lumine's own
+  // stats function is reused for every vision row.
+  const lumine = genshindb.characters("Lumine", { verboseCategories: true })!;
+  const travelerIconUrl = enkaIconUrl(lumine.images.filename_icon);
+  const travelerAscensionStatId = statTypeIds.get(FIGHT_PROP_TO_STAT_TYPE[lumine.substatType]) ?? null;
 
   for (const element of TRAVELER_VISIONS) {
     const name = `Traveler (${element})`;
-    await prisma.character.upsert({
+    const dbCharacter = await prisma.character.upsert({
       where: { name },
       create: {
         name,
@@ -178,6 +332,7 @@ async function seedCharacters() {
         weaponType: WeaponType.Sword,
         rarity: 5,
         exclusivityGroup: TRAVELER_EXCLUSIVITY_GROUP,
+        ascensionStatId: travelerAscensionStatId,
         iconUrl: travelerIconUrl,
       },
       update: {
@@ -185,13 +340,20 @@ async function seedCharacters() {
         weaponType: WeaponType.Sword,
         rarity: 5,
         exclusivityGroup: TRAVELER_EXCLUSIVITY_GROUP,
+        ascensionStatId: travelerAscensionStatId,
         iconUrl: travelerIconUrl,
       },
     });
+    await seedCharacterLevelStats(dbCharacter.id, lumine.stats);
+    // Unlike base stats, genshin-db DOES have per-vision talent/
+    // constellation data, queryable under this same "Traveler (Element)"
+    // name -- each vision's kit genuinely differs, unlike its stat growth.
+    await seedTalents(dbCharacter.id, name);
+    await seedConstellations(dbCharacter.id, name);
     count++;
   }
 
-  console.log(`Seeded ${count} characters`);
+  console.log(`Seeded ${count} characters (with level stats)`);
 }
 
 async function seedArtifactSets() {
@@ -255,6 +417,44 @@ async function seedArtifactSets() {
   console.log(`Seeded ${count} artifact sets (skipped ${skipped} single-piece or low-rarity sets)`);
 }
 
+// Same idea and sourcing as seedCharacterLevelStats -- weapons have no
+// hp/defense, just attack and their secondary stat's value.
+async function seedWeaponLevelStats(weaponId: number, statFn: genshindb.StatFunction) {
+  const rows = [];
+  for (let level = 1; level <= 90; level++) {
+    const flags: ("-" | "+")[] = ASCENSION_BREAKPOINTS.includes(level) ? ["-", "+"] : ["-"];
+    for (const flag of flags) {
+      const result = statFn(level, flag);
+      rows.push({
+        weaponId,
+        level: result.level,
+        ascensionPhase: result.ascension,
+        attack: result.attack ?? 0,
+        secondaryStatValue: result.specialized ?? 0,
+      });
+    }
+  }
+
+  await prisma.weaponLevelStat.deleteMany({ where: { weaponId } });
+  await prisma.weaponLevelStat.createMany({ data: rows });
+}
+
+// genshin-db's own pre-rendered passive description per refinement -- no
+// templating needed on our side. Some weapons (typically very low rarity,
+// already excluded by MIN_WEAPON_RARITY) have no refinements at all.
+async function seedWeaponRefinementEffects(weaponId: number, weapon: genshindb.Weapon) {
+  const refinements = [1, 2, 3, 4, 5] as const;
+  const rows: { weaponId: number; refinement: number; description: string }[] = [];
+  for (const refinement of refinements) {
+    const detail = weapon[`r${refinement}`];
+    if (!detail) continue;
+    rows.push({ weaponId, refinement, description: detail.description });
+  }
+
+  await prisma.weaponRefinementEffect.deleteMany({ where: { weaponId } });
+  if (rows.length > 0) await prisma.weaponRefinementEffect.createMany({ data: rows });
+}
+
 async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
   const weapons = genshindb.weapons("names", {
     matchCategories: true,
@@ -285,20 +485,22 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
     const passiveName = weapon.effectName ?? null;
     const iconUrl = enkaIconUrl(weapon.images.filename_icon);
 
-    await prisma.weapon.upsert({
+    const dbWeapon = await prisma.weapon.upsert({
       where: { name: weapon.name },
       create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
       update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
     });
+    await seedWeaponLevelStats(dbWeapon.id, weapon.stats);
+    await seedWeaponRefinementEffects(dbWeapon.id, weapon);
     count++;
   }
 
-  console.log(`Seeded ${count} weapons (skipped ${skipped} below ${MIN_WEAPON_RARITY}★)`);
+  console.log(`Seeded ${count} weapons (with level stats/refinement effects, skipped ${skipped} below ${MIN_WEAPON_RARITY}★)`);
 }
 
 async function main() {
   const statTypeIds = await seedStatTypes();
-  await seedCharacters();
+  await seedCharacters(statTypeIds);
   await seedArtifactSets();
   await seedWeapons(statTypeIds);
 }
