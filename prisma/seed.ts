@@ -251,7 +251,7 @@ async function seedTalents(characterId: number, characterName: string) {
   }
 }
 
-async function seedConstellations(characterId: number, characterName: string) {
+async function seedConstellations(characterId: number, characterName: string, statTypeIds: Map<StatTypeName, number>) {
   const constellation = genshindb.constellations(characterName, { verboseCategories: true });
   if (!constellation) {
     console.warn(`No constellation data for "${characterName}"`);
@@ -263,11 +263,12 @@ async function seedConstellations(characterId: number, characterName: string) {
     const detail = constellation[`c${number}`];
     const iconUrl = enkaIconUrl(constellation.images?.[`filename_c${number}`]);
 
-    await prisma.constellation.upsert({
+    const dbConstellation = await prisma.constellation.upsert({
       where: { characterId_number: { characterId, number } },
       create: { characterId, number, name: detail.name, description: detail.description, iconUrl },
       update: { name: detail.name, description: detail.description, iconUrl },
     });
+    await seedConstellationStatBonuses(dbConstellation.id, detail.description, statTypeIds);
   }
 }
 
@@ -308,7 +309,7 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
     });
     await seedCharacterLevelStats(dbCharacter.id, character.stats);
     await seedTalents(dbCharacter.id, character.name);
-    await seedConstellations(dbCharacter.id, character.name);
+    await seedConstellations(dbCharacter.id, character.name, statTypeIds);
     count++;
   }
 
@@ -349,7 +350,7 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
     // constellation data, queryable under this same "Traveler (Element)"
     // name -- each vision's kit genuinely differs, unlike its stat growth.
     await seedTalents(dbCharacter.id, name);
-    await seedConstellations(dbCharacter.id, name);
+    await seedConstellations(dbCharacter.id, name, statTypeIds);
     count++;
   }
 
@@ -525,6 +526,26 @@ async function seedWeaponLevelStats(weaponId: number, statFn: genshindb.StatFunc
   await prisma.weaponLevelStat.createMany({ data: rows });
 }
 
+// One-off, hand-verified data quirks in genshin-db's raw text -- e.g.
+// Skyward Blade's R2 uses a comma where every other refinement (and every
+// other weapon) uses a period ("CRIT Rate increased by 5%, Gains
+// Skypiercing Might..." instead of "...5%. Gains..."), merging what should
+// be two sentences into one. Caught by seedWeaponStatBonuses's own
+// partial-match warning below, not assumed -- fixed narrowly here (both
+// for the displayed text and for sentence-splitting) rather than loosening
+// sentence-splitting in a way that could misparse other, correctly-
+// punctuated descriptions.
+const WEAPON_TEXT_FIXES: Record<string, (text: string) => string> = {
+  "Skyward Blade": (text) => text.replace("increased by 5%, Gains", "increased by 5%. Gains"),
+};
+
+function getRefinementDescription(weapon: genshindb.Weapon, refinement: 1 | 2 | 3 | 4 | 5): string | undefined {
+  const description = weapon[`r${refinement}`]?.description;
+  if (!description) return description;
+  const fix = WEAPON_TEXT_FIXES[weapon.name];
+  return fix ? fix(description) : description;
+}
+
 // genshin-db's own pre-rendered passive description per refinement -- no
 // templating needed on our side. Some weapons (typically very low rarity,
 // already excluded by MIN_WEAPON_RARITY) have no refinements at all.
@@ -532,13 +553,145 @@ async function seedWeaponRefinementEffects(weaponId: number, weapon: genshindb.W
   const refinements = [1, 2, 3, 4, 5] as const;
   const rows: { weaponId: number; refinement: number; description: string }[] = [];
   for (const refinement of refinements) {
-    const detail = weapon[`r${refinement}`];
-    if (!detail) continue;
-    rows.push({ weaponId, refinement, description: detail.description });
+    const description = getRefinementDescription(weapon, refinement);
+    if (!description) continue;
+    rows.push({ weaponId, refinement, description });
   }
 
   await prisma.weaponRefinementEffect.deleteMany({ where: { weaponId } });
   if (rows.length > 0) await prisma.weaponRefinementEffect.createMany({ data: rows });
+}
+
+// Same problem as ArtifactSetStatBonus -- genshin-db gives weapon passive
+// and constellation text as plain prose, no structured breakdown (see
+// WeaponRefinementEffect above). Unlike artifact 2pc effects (almost
+// always one clean sentence), both of these are usually COMPOUND: an
+// unconditional stat bonus in one sentence (e.g. Absolution's "CRIT DMG
+// increased by 20%."), followed by one or more conditional/proc sentences
+// in the same description. So this parses sentence-by-sentence rather
+// than the whole text at once, and only extracts a bonus when a single
+// sentence's captured stat text is an EXACT match against a short, known
+// vocabulary of stat phrases -- checked directly against all ~230
+// weapons' and all 750 seeded constellations' actual text before relying
+// on this: that exact-match requirement is what correctly rejects a long
+// conditional/scaling clause without needing to separately detect every
+// conditional phrasing. For example Redhorn Stonethresher's "Normal and
+// Charged Attack DMG is increased by 40% of DEF." doesn't match at all
+// (the trailing "of DEF" breaks the pattern), Akuoumaru's "For every point
+// of the entire party's combined maximum Energy capacity, the Elemental
+// Burst DMG ... is increased by 0.12%." matches the regex shape but
+// captures that whole clause as the "stat text," which isn't equal to any
+// known stat name, and -- the single most common near-miss among
+// constellations -- "Increases the Level of <Talent> by 3." (C3/C5's
+// universal talent-level-up mechanic, not a stat bonus at all) never
+// matches a real stat name either. All of these are correctly skipped
+// rather than misread. Constellations turned out to almost never grant an
+// unconditional bonus to the character's own general stats at all -- of
+// all 750 seeded, only one survived this check for real: Traveler
+// (Anemo)'s C2, a flat +16% Energy Recharge with no conditions attached.
+const PROSE_STAT_TEXT_TO_STAT_TYPE: Record<string, StatTypeName> = {
+  ATK: "ATK%",
+  DEF: "DEF%",
+  HP: "HP%",
+  "CRIT Rate": "Crit Rate%",
+  "CRIT DMG": "Crit DMG%",
+  "Energy Recharge": "Energy Recharge%",
+  "Physical DMG": "Physical DMG Bonus%",
+  "Healing Bonus": "Healing Bonus%",
+  "Elemental Mastery": "Elemental Mastery",
+  "Pyro DMG Bonus": "Pyro DMG Bonus%",
+  "Hydro DMG Bonus": "Hydro DMG Bonus%",
+  "Electro DMG Bonus": "Electro DMG Bonus%",
+  "Cryo DMG Bonus": "Cryo DMG Bonus%",
+  "Anemo DMG Bonus": "Anemo DMG Bonus%",
+  "Geo DMG Bonus": "Geo DMG Bonus%",
+  "Dendro DMG Bonus": "Dendro DMG Bonus%",
+};
+
+// Tried per sentence, in order -- the phrasings actually seen across all
+// seeded weapons' refinement text, most commonly "<Stat> is increased by
+// N%." / "<Stat> increased by N%." (more common here than the "<Stat>
+// +N%." style that dominated artifact 2pc effects).
+function parseStatBonusSentence(sentence: string): { statText: string; value: number } | null {
+  const isIncreasedMatch = sentence.match(/^(.+?) is increased by (\d+(?:\.\d+)?)%\.?$/);
+  if (isIncreasedMatch) return { statText: isIncreasedMatch[1].trim(), value: Number(isIncreasedMatch[2]) };
+
+  const increasedMatch = sentence.match(/^(.+?) increased by (\d+(?:\.\d+)?)%\.?$/);
+  if (increasedMatch) return { statText: increasedMatch[1].trim(), value: Number(increasedMatch[2]) };
+
+  const increasesMatch = sentence.match(/^Increases (.+?) by (\d+(?:\.\d+)?)%?\.?$/);
+  if (increasesMatch) return { statText: increasesMatch[1].trim(), value: Number(increasesMatch[2]) };
+
+  const suffixMatch = sentence.match(/^(.+?)\s*\+(\d+(?:\.\d+)?)%\.?$/);
+  if (suffixMatch) return { statText: suffixMatch[1].trim(), value: Number(suffixMatch[2]) };
+
+  const gainMatch = sentence.match(/^Gain (?:a |an )?(\d+(?:\.\d+)?)% (.+?)\.?$/);
+  if (gainMatch) return { statText: gainMatch[2].trim(), value: Number(gainMatch[1]) };
+
+  return null;
+}
+
+// Splits on a period followed by whitespace (or end of string) -- good
+// enough for these short, simply-punctuated descriptions; there's no
+// abbreviation-style text in this domain to trip it up.
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=\.)\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+async function seedWeaponStatBonuses(weaponId: number, weaponName: string, weapon: genshindb.Weapon, statTypeIds: Map<StatTypeName, number>) {
+  await prisma.weaponStatBonus.deleteMany({ where: { weaponId } });
+
+  const refinements = [1, 2, 3, 4, 5] as const;
+  const rows: { weaponId: number; statTypeId: number; refinement: number; value: number }[] = [];
+  for (const refinement of refinements) {
+    const description = getRefinementDescription(weapon, refinement);
+    if (!description) continue;
+
+    for (const sentence of splitSentences(description)) {
+      const parsed = parseStatBonusSentence(sentence);
+      if (!parsed) continue;
+      const statTypeName = PROSE_STAT_TEXT_TO_STAT_TYPE[parsed.statText];
+      const statTypeId = statTypeName ? statTypeIds.get(statTypeName) : undefined;
+      if (!statTypeId) continue;
+      rows.push({ weaponId, statTypeId, refinement, value: parsed.value });
+      break; // first qualifying sentence per refinement -- every weapon seen so far has at most one
+    }
+  }
+
+  if (rows.length === 0) return;
+  // A weapon matching on only some refinements would mean either a
+  // genshin-db data gap or a bug in this parser -- every refinement of the
+  // same weapon shares the same sentence structure, just different
+  // numbers, so a real match should appear on all 5.
+  if (rows.length !== refinements.length) {
+    console.warn(`"${weaponName}" only matched a stat bonus on ${rows.length}/${refinements.length} refinements -- check manually`);
+  }
+  await prisma.weaponStatBonus.createMany({ data: rows });
+}
+
+// Same parser as seedWeaponStatBonuses, applied to a constellation's own
+// (single, level-less) description instead of 5 refinement variants -- see
+// the comment above PROSE_STAT_TEXT_TO_STAT_TYPE for why constellations
+// almost never actually produce a row here.
+async function seedConstellationStatBonuses(
+  constellationId: number,
+  description: string,
+  statTypeIds: Map<StatTypeName, number>
+) {
+  await prisma.constellationStatBonus.deleteMany({ where: { constellationId } });
+
+  for (const sentence of splitSentences(description)) {
+    const parsed = parseStatBonusSentence(sentence);
+    if (!parsed) continue;
+    const statTypeName = PROSE_STAT_TEXT_TO_STAT_TYPE[parsed.statText];
+    const statTypeId = statTypeName ? statTypeIds.get(statTypeName) : undefined;
+    if (!statTypeId) continue;
+    await prisma.constellationStatBonus.create({ data: { constellationId, statTypeId, value: parsed.value } });
+    return; // first qualifying sentence -- every constellation seen so far has at most one
+  }
 }
 
 async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
@@ -578,6 +731,7 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
     });
     await seedWeaponLevelStats(dbWeapon.id, weapon.stats);
     await seedWeaponRefinementEffects(dbWeapon.id, weapon);
+    await seedWeaponStatBonuses(dbWeapon.id, weapon.name, weapon, statTypeIds);
     count++;
   }
 
