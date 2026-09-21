@@ -409,12 +409,29 @@ model StatType {
 // ---------------------------------------------------------------------------
 
 model OwnedCharacter {
-  id            Int      @id @default(autoincrement())
-  gameProfileId Int      @map("game_profile_id")
-  characterId   Int      @map("character_id")
-  isOwned       Boolean  @default(false) @map("is_owned")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                Int      @id @default(autoincrement())
+  gameProfileId     Int      @map("game_profile_id")
+  characterId       Int      @map("character_id")
+  isOwned           Boolean  @default(false) @map("is_owned")
+  // Progression fields below default to a fresh, unascended, unleveled
+  // character (matching how a character actually starts) and are
+  // meaningless while isOwned is false, same as how OwnedWeapon/
+  // OwnedArtifact simply don't exist until something is actually owned --
+  // this row can already exist beforehand (toggling ownership never
+  // deletes it, see CLAUDE.md's Key decisions), so these need a real
+  // default rather than being nullable.
+  level             Int      @default(1)
+  ascensionPhase    Int      @default(0) @map("ascension_phase")
+  // 0-6: how many constellations are unlocked, not which specific ones --
+  // Constellation rows 1..constellation are considered active. Distinct
+  // from Talent's level fields below, which only apply to the 3 combat
+  // talents (Passives have no level at all, see the Talent model).
+  constellation     Int      @default(0)
+  normalAttackLevel Int      @default(1) @map("normal_attack_level")
+  skillLevel        Int      @default(1) @map("skill_level")
+  burstLevel        Int      @default(1) @map("burst_level")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   gameProfile  GameProfile   @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
   character    Character     @relation(fields: [characterId], references: [id])
@@ -429,12 +446,14 @@ model OwnedCharacter {
 // One row per physical copy owned — refinement lives on the copy, never a
 // quantity field.
 model OwnedWeapon {
-  id            Int      @id @default(autoincrement())
-  gameProfileId Int      @map("game_profile_id")
-  weaponId      Int      @map("weapon_id")
-  refinement    Int
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement())
+  gameProfileId  Int      @map("game_profile_id")
+  weaponId       Int      @map("weapon_id")
+  refinement     Int
+  level          Int      @default(1)
+  ascensionPhase Int      @default(0) @map("ascension_phase")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   gameProfile GameProfile @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
   weapon      Weapon      @relation(fields: [weaponId], references: [id])

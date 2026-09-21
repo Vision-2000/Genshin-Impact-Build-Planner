@@ -8,6 +8,7 @@
 import "dotenv/config";
 import * as genshindb from "genshin-db";
 import { prisma } from "../src/lib/prisma";
+import { ASCENSION_BREAKPOINTS } from "../src/lib/ascension";
 import { Element, WeaponType, TalentSlot, ArtifactSetPiece } from "../src/generated/prisma/enums";
 
 // ---------------------------------------------------------------------------
@@ -134,12 +135,13 @@ async function seedStatTypes() {
   return statTypeIds;
 }
 
-// The 6 ascension-breakpoint levels can be at either the phase just reached
-// or the one before it (same level, different stats) -- every other level
-// has exactly one valid phase, which genshin-db's stats() infers correctly
-// regardless of which ascension flag is passed (verified directly: passing
-// '-' or '+' at a non-breakpoint level returns the same, correct result).
-const ASCENSION_BREAKPOINTS = [20, 40, 50, 60, 70, 80];
+// ASCENSION_BREAKPOINTS is shared with src/lib/ascension.ts (used by the
+// owned-character/weapon level-editing UI) so seeding and validation can't
+// drift apart. genshin-db's stats() infers the correct phase regardless of
+// which ascension flag is passed at a non-breakpoint level (verified
+// directly: passing '-' or '+' there returns the same, correct result) --
+// only the 6 breakpoint levels are actually ambiguous (pre- vs.
+// post-ascension, same level, different stats).
 
 // Samples genshin-db's own stats(level, ascension) at every (level, phase)
 // pair a character/weapon can actually be at, rather than reimplementing
