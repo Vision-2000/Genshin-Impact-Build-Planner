@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { WeaponType } from "@/generated/prisma/enums";
 import { useDialogs } from "@/components/dialog-provider";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import { Modal } from "@/components/modal";
+import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { MIN_LEVEL, MAX_LEVEL, validAscensionPhasesForLevel } from "@/lib/ascension";
 import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "./weapon-type-filter-row";
 import { WeaponCard } from "./weapon-card";
-import { removeWeapon, updateWeaponRefinement } from "./actions";
+import { removeWeapon, updateWeaponRefinement, updateWeaponProgression } from "./actions";
 import { filterAndSortOwnedWeapons, type OwnedWeaponItem, type OwnedSortKey } from "./filter-sort";
 
 // Weapons are seeded from 3-5 star (see prisma/seed.ts).
@@ -20,6 +24,90 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   if (next.has(value)) next.delete(value);
   else next.add(value);
   return next;
+}
+
+// Modal body for editing level/ascension. A dropdown alone can't handle
+// refinement (see WeaponCard's inline <select>), but level+ascension need
+// even more room than that -- ascension is constrained by level (only one
+// or two valid phases, see src/lib/ascension.ts), so changing the level
+// slider snaps ascension to the closest still-valid phase, same idea as the
+// artifact editor snapping substat values when level changes.
+function WeaponProgressionEditor({
+  weapon,
+  onSave,
+}: {
+  weapon: OwnedWeaponItem;
+  onSave: (level: number, ascensionPhase: number) => void;
+}) {
+  const [level, setLevel] = useState(weapon.level);
+  const [ascensionPhase, setAscensionPhase] = useState(weapon.ascensionPhase);
+  const validPhases = validAscensionPhasesForLevel(level);
+  const maxValidPhase = Math.max(...validPhases);
+
+  function handleLevelChange(newLevel: number) {
+    setLevel(newLevel);
+    const phases = validAscensionPhasesForLevel(newLevel);
+    if (!phases.includes(ascensionPhase)) {
+      setAscensionPhase(phases[phases.length - 1]);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg p-1.5 ${rarityGradientClasses(weapon.rarity)}`}
+        >
+          {weapon.iconUrl && <Image src={weapon.iconUrl} alt="" width={56} height={56} />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-medium">{weapon.name}</p>
+        </div>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        Level
+        <input
+          type="range"
+          min={MIN_LEVEL}
+          max={MAX_LEVEL}
+          value={level}
+          onChange={(event) => handleLevelChange(Number(event.target.value))}
+          className="-mt-1 w-32"
+        />
+        <span className="w-8 text-gray-400">{level}</span>
+      </label>
+
+      {validPhases.length > 1 ? (
+        <label className="flex items-center gap-2 text-sm">
+          Ascension:
+          <select
+            value={ascensionPhase}
+            onChange={(event) => setAscensionPhase(Number(event.target.value))}
+            className="h-8 rounded border bg-white px-2 text-sm text-black"
+          >
+            {validPhases.map((phase) => (
+              <option key={phase} value={phase}>
+                Phase {phase} {phase === maxValidPhase ? "(ascended)" : "(pre-ascension)"}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="text-sm text-gray-500">Ascension: Phase {ascensionPhase}</p>
+      )}
+
+      <div className="flex justify-end border-t pt-3">
+        <button
+          type="button"
+          onClick={() => onSave(level, ascensionPhase)}
+          className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapons: OwnedWeaponItem[] }) {
@@ -46,6 +134,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const filtered = filterAndSortOwnedWeapons(owned, {
     search,
@@ -54,6 +143,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
     sortKey,
     sortDirection,
   });
+  const editingWeapon = editingId === null ? null : (owned.find((w) => w.id === editingId) ?? null);
 
   function handleUpdateRefinement(ownedWeaponId: number, refinement: number) {
     const previous = owned;
@@ -61,6 +151,21 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
 
     startTransition(() => {
       updateWeaponRefinement(ownedWeaponId, refinement).catch(() => setOwned(previous));
+    });
+  }
+
+  function handleUpdateProgression(ownedWeaponId: number, level: number, ascensionPhase: number) {
+    const previous = owned;
+    setOwned((prev) =>
+      prev.map((weapon) => (weapon.id === ownedWeaponId ? { ...weapon, level, ascensionPhase } : weapon))
+    );
+    setEditingId(null);
+
+    startTransition(async () => {
+      const result = await updateWeaponProgression(ownedWeaponId, { level, ascensionPhase }).catch(
+        () => ({ errors: {} }) as const
+      );
+      if ("errors" in result) setOwned(previous);
     });
   }
 
@@ -128,10 +233,23 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
             actionLabel="Remove"
             onAction={() => handleRemove(weapon.id)}
             danger
+            level={weapon.level}
+            onEdit={() => setEditingId(weapon.id)}
+            isActive={weapon.id === editingId}
           />
         ))}
         {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
       </ul>
+
+      <Modal open={editingWeapon !== null} onClose={() => setEditingId(null)}>
+        {editingWeapon && (
+          <WeaponProgressionEditor
+            key={editingWeapon.id}
+            weapon={editingWeapon}
+            onSave={(level, ascensionPhase) => handleUpdateProgression(editingWeapon.id, level, ascensionPhase)}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

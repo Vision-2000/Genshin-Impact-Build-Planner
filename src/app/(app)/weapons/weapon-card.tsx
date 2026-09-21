@@ -6,6 +6,23 @@ import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { REFINEMENTS } from "./filter-sort";
 
+function PencilIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10.5 2.5l3 3L6 13l-3.5 1L4 10.5z" />
+    </svg>
+  );
+}
+
 // Shared visual card for the owned-weapons list, the add-weapon catalog, and
 // weapon pickers -- same rarity-gradient/badge/overlay treatment as the
 // Characters cards. Not a single click-to-toggle button by default, since a
@@ -27,6 +44,9 @@ export function WeaponCard({
   onSelect,
   showName = true,
   showWeaponTypeBadge = true,
+  level,
+  onEdit,
+  isActive = false,
 }: {
   name: string;
   weaponType: WeaponType;
@@ -48,9 +68,17 @@ export function WeaponCard({
   // weapon type (see WeaponSlotPicker), so the badge would never say
   // anything the user doesn't already know there.
   showWeaponTypeBadge?: boolean;
+  // Only the owned-weapons page provides these -- level/ascension needs
+  // more room than fits inline (unlike refinement, a single dropdown), so
+  // it's edited in a modal instead, same pattern as ArtifactCard's
+  // edit/delete. The level badge and edit button share the same top-right
+  // corner, swapping via hover exactly like ArtifactCard's level badge does.
+  level?: number;
+  onEdit?: () => void;
+  isActive?: boolean;
 }) {
   return (
-    <li>
+    <li className="group relative">
       <div
         onClick={onSelect}
         role={onSelect ? "button" : undefined}
@@ -88,6 +116,16 @@ export function WeaponCard({
               height={36}
               className="rounded-full"
             />
+          </span>
+        )}
+
+        {level !== undefined && (
+          <span
+            className={`absolute right-2 top-2 flex h-8 items-center justify-center rounded-md bg-black/70 px-2 shadow transition-transform duration-200 group-hover:translate-y-6 group-focus-within:translate-y-6 ${
+              isActive ? "translate-y-6" : ""
+            }`}
+          >
+            <span className="mt-0.5 text-sm font-semibold leading-none text-white">Lv.{level}</span>
           </span>
         )}
 
@@ -138,6 +176,23 @@ export function WeaponCard({
           )}
         </div>
       </div>
+
+      {onEdit && (
+        <div
+          className={`absolute right-1.5 top-1.5 z-20 flex gap-1 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 ${
+            isActive ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`Edit ${name}`}
+            className="flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow hover:bg-black"
+          >
+            <PencilIcon />
+          </button>
+        </div>
+      )}
     </li>
   );
 }

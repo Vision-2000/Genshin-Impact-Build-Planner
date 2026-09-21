@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Weapons",
 };
 
-const HELP_TEXT = `This page shows the weapons you currently own. Change a weapon's refinement with its dropdown, or remove it entirely.`;
+const HELP_TEXT = `This page shows the weapons you currently own. Change a weapon's refinement with its dropdown, edit its level and ascension via the pencil icon, or remove it entirely.`;
 
 export default async function WeaponsPage() {
   const profile = await requireActiveProfile();
@@ -30,6 +30,8 @@ export default async function WeaponsPage() {
     secondaryStatName: ownedWeapon.weapon.secondaryStat?.name ?? null,
     iconUrl: ownedWeapon.weapon.iconUrl,
     refinement: ownedWeapon.refinement,
+    level: ownedWeapon.level,
+    ascensionPhase: ownedWeapon.ascensionPhase,
   }));
 
   return (

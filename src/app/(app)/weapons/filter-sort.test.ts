@@ -29,6 +29,8 @@ function ownedItem(overrides: Partial<OwnedWeaponItem>): OwnedWeaponItem {
     secondaryStatName: null,
     iconUrl: null,
     refinement: 1,
+    level: 1,
+    ascensionPhase: 0,
     ...overrides,
   };
 }

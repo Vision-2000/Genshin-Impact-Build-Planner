@@ -23,6 +23,8 @@ export type OwnedWeaponItem = {
   secondaryStatName: string | null;
   iconUrl: string | null;
   refinement: number;
+  level: number;
+  ascensionPhase: number;
 };
 
 export type CatalogSortKey = "name" | "rarity";
