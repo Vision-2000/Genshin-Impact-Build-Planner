@@ -220,9 +220,12 @@ user-editable.
   `/weapons/add` (the full catalog, for adding new copies) rather than one
   page with both sections stacked together. This isn't just a layout choice —
   `OwnedWeapon` is its own entity (one row per physical copy, each with its
-  own refinement), not a boolean flag on `Weapon` the way character ownership
-  is, so "browse the catalog" and "manage what you own" are genuinely
-  different interactions on different data, and deserve different views.
+  own refinement), so "browse the catalog" and "manage what you own" are
+  genuinely different interactions on different data, and deserve different
+  views. (Characters got a similarly-shaped split once its own owned-side
+  data grew past a plain ownership flag — see below — but via a differently
+  named secondary route, since toggling a character's ownership isn't the
+  same kind of action as adding a new weapon copy.)
   A separate page was chosen over a modal/overlay for the add flow: it matches
   this app's existing one-Server-Component-per-route architecture (each route
   fetches only what it needs), and a searchable ~230-item catalog is too much
@@ -265,6 +268,25 @@ user-editable.
   banner, since the created item lives on a different page's list" pattern
   Weapons' catalog introduced — Weapons' catalog was retrofitted to use it
   too instead of keeping its own copy.
+- Characters got a page split too, once `OwnedCharacter` grew level/
+  ascension/constellation/talent-level fields (build order step 7) — before
+  that, a single page combining the ownership toggle and (nonexistent)
+  editing was fine, since there was nothing to edit. `is_owned` is still
+  exactly the same plain boolean it always was (see above); what changed is
+  that there's now real per-owned state worth a dedicated view, the same
+  trigger Weapons/Artifacts split on.
+  The split isn't named the same way, though: `/characters` is the primary
+  page (owned characters only, click a card to edit its progression) and
+  `/characters/roster` is secondary (every character, click to toggle
+  ownership) — not `/characters/add`, because toggling a character's
+  ownership isn't creating a new row the way adding a weapon/artifact copy
+  is; it's flipping the same boolean back and forth, and the character
+  keeps its progression data across an accidental off/on either way (same
+  "never delete on toggle" reasoning `is_owned` already had). `CharacterCard`
+  (shared by both pages, mirroring `WeaponCard`/`ArtifactCard`) reflects
+  this split in its own props: `showOwnershipBorder` (green/gray, roster
+  page only) vs. `level`/`constellation` (shown as a second line under the
+  name, owned page only) are mutually exclusive per page, never both.
 - Artifact rarity moved from `OwnedArtifact` (originally a free-choice field
   set per piece when adding it) to `ArtifactSet` (fixed, seeded from
   genshin-db). Real in-game sets have a fixed max rarity — Instructor, The

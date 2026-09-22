@@ -1,8 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { Element, WeaponType } from "@/generated/prisma/enums";
-import { filterAndSortCharacters, type CharacterListItem } from "./filter-sort";
+import {
+  filterAndSortCharacterRoster,
+  filterAndSortOwnedCharacters,
+  type CharacterRosterItem,
+  type OwnedCharacterItem,
+} from "./filter-sort";
 
-function character(overrides: Partial<CharacterListItem>): CharacterListItem {
+function rosterItem(overrides: Partial<CharacterRosterItem>): CharacterRosterItem {
   return {
     id: 1,
     name: "Test Character",
@@ -11,6 +16,18 @@ function character(overrides: Partial<CharacterListItem>): CharacterListItem {
     rarity: 4,
     iconUrl: null,
     isOwned: false,
+    ...overrides,
+  };
+}
+
+function ownedItem(overrides: Partial<OwnedCharacterItem>): OwnedCharacterItem {
+  return {
+    id: 1,
+    name: "Test Character",
+    element: Element.Pyro,
+    weaponType: WeaponType.Sword,
+    rarity: 4,
+    iconUrl: null,
     level: 1,
     ascensionPhase: 0,
     constellation: 0,
@@ -21,7 +38,7 @@ function character(overrides: Partial<CharacterListItem>): CharacterListItem {
   };
 }
 
-const baseFilters = {
+const rosterBaseFilters = {
   search: "",
   elementFilter: new Set<Element>(),
   weaponTypeFilter: new Set<WeaponType>(),
@@ -31,58 +48,67 @@ const baseFilters = {
   sortDirection: "asc" as const,
 };
 
-const characters: CharacterListItem[] = [
-  character({ id: 1, name: "Hu Tao", element: Element.Pyro, weaponType: WeaponType.Polearm, rarity: 5, isOwned: true }),
-  character({ id: 2, name: "Kaeya", element: Element.Cryo, weaponType: WeaponType.Sword, rarity: 4, isOwned: false }),
-  character({ id: 3, name: "Xiangling", element: Element.Pyro, weaponType: WeaponType.Polearm, rarity: 4, isOwned: true }),
-  character({ id: 4, name: "Amber", element: Element.Pyro, weaponType: WeaponType.Bow, rarity: 4, isOwned: false }),
+const ownedBaseFilters = {
+  search: "",
+  elementFilter: new Set<Element>(),
+  weaponTypeFilter: new Set<WeaponType>(),
+  rarityFilter: new Set<number>(),
+  sortKey: "name" as const,
+  sortDirection: "asc" as const,
+};
+
+const roster: CharacterRosterItem[] = [
+  rosterItem({ id: 1, name: "Hu Tao", element: Element.Pyro, weaponType: WeaponType.Polearm, rarity: 5, isOwned: true }),
+  rosterItem({ id: 2, name: "Kaeya", element: Element.Cryo, weaponType: WeaponType.Sword, rarity: 4, isOwned: false }),
+  rosterItem({ id: 3, name: "Xiangling", element: Element.Pyro, weaponType: WeaponType.Polearm, rarity: 4, isOwned: true }),
+  rosterItem({ id: 4, name: "Amber", element: Element.Pyro, weaponType: WeaponType.Bow, rarity: 4, isOwned: false }),
 ];
 
-describe("filterAndSortCharacters", () => {
+describe("filterAndSortCharacterRoster", () => {
   it("returns everything, sorted by name, with no filters applied", () => {
-    const result = filterAndSortCharacters(characters, baseFilters);
+    const result = filterAndSortCharacterRoster(roster, rosterBaseFilters);
     expect(result.map((c) => c.name)).toEqual(["Amber", "Hu Tao", "Kaeya", "Xiangling"]);
   });
 
   it("filters by case-insensitive name substring", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, search: "  hu ta  " });
+    const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, search: "  hu ta  " });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao"]);
   });
 
   it("filters by element, matching any element in the set", () => {
-    const result = filterAndSortCharacters(characters, {
-      ...baseFilters,
+    const result = filterAndSortCharacterRoster(roster, {
+      ...rosterBaseFilters,
       elementFilter: new Set([Element.Cryo]),
     });
     expect(result.map((c) => c.name)).toEqual(["Kaeya"]);
   });
 
   it("filters by weapon type", () => {
-    const result = filterAndSortCharacters(characters, {
-      ...baseFilters,
+    const result = filterAndSortCharacterRoster(roster, {
+      ...rosterBaseFilters,
       weaponTypeFilter: new Set([WeaponType.Polearm]),
     });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Xiangling"]);
   });
 
   it("filters by rarity, matching any rarity in the set", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, rarityFilter: new Set([5]) });
+    const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, rarityFilter: new Set([5]) });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao"]);
   });
 
   it("filters to owned only", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, ownershipFilter: "owned" });
+    const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, ownershipFilter: "owned" });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Xiangling"]);
   });
 
   it("filters to unowned only", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, ownershipFilter: "unowned" });
+    const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, ownershipFilter: "unowned" });
     expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya"]);
   });
 
   it("combines multiple filters (AND, not OR)", () => {
-    const result = filterAndSortCharacters(characters, {
-      ...baseFilters,
+    const result = filterAndSortCharacterRoster(roster, {
+      ...rosterBaseFilters,
       elementFilter: new Set([Element.Pyro]),
       ownershipFilter: "owned",
     });
@@ -90,33 +116,95 @@ describe("filterAndSortCharacters", () => {
   });
 
   it("sorts by rarity ascending, breaking ties by name", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, sortKey: "rarity" });
+    const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, sortKey: "rarity" });
     expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Xiangling", "Hu Tao"]);
   });
 
   it("sorts by rarity descending, breaking ties by name", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, sortKey: "rarity", sortDirection: "desc" });
+    const result = filterAndSortCharacterRoster(roster, {
+      ...rosterBaseFilters,
+      sortKey: "rarity",
+      sortDirection: "desc",
+    });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
   });
 
-  it("sorts by level ascending, breaking ties by name", () => {
-    const withLevels: CharacterListItem[] = [
-      character({ id: 1, name: "Hu Tao", level: 80 }),
-      character({ id: 2, name: "Kaeya", level: 40 }),
-      character({ id: 3, name: "Xiangling", level: 80 }),
-      character({ id: 4, name: "Amber", level: 1 }),
-    ];
-    const result = filterAndSortCharacters(withLevels, { ...baseFilters, sortKey: "level" });
-    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Hu Tao", "Xiangling"]);
-  });
-
   it("sorts by name descending", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, sortDirection: "desc" });
+    const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, sortDirection: "desc" });
     expect(result.map((c) => c.name)).toEqual(["Xiangling", "Kaeya", "Hu Tao", "Amber"]);
   });
 
   it("returns an empty array when nothing matches", () => {
-    const result = filterAndSortCharacters(characters, { ...baseFilters, search: "nonexistent" });
+    const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, search: "nonexistent" });
+    expect(result).toEqual([]);
+  });
+});
+
+describe("filterAndSortOwnedCharacters", () => {
+  const owned: OwnedCharacterItem[] = [
+    ownedItem({ id: 1, name: "Hu Tao", element: Element.Pyro, weaponType: WeaponType.Polearm, rarity: 5, level: 80 }),
+    ownedItem({ id: 2, name: "Kaeya", element: Element.Cryo, weaponType: WeaponType.Sword, rarity: 4, level: 40 }),
+    ownedItem({ id: 3, name: "Xiangling", element: Element.Pyro, weaponType: WeaponType.Polearm, rarity: 4, level: 80 }),
+    ownedItem({ id: 4, name: "Amber", element: Element.Pyro, weaponType: WeaponType.Bow, rarity: 4, level: 1 }),
+  ];
+
+  it("returns everything, sorted by name, with no filters applied", () => {
+    const result = filterAndSortOwnedCharacters(owned, ownedBaseFilters);
+    expect(result.map((c) => c.name)).toEqual(["Amber", "Hu Tao", "Kaeya", "Xiangling"]);
+  });
+
+  it("filters by case-insensitive name substring", () => {
+    const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, search: "  hu ta  " });
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao"]);
+  });
+
+  it("filters by element, matching any element in the set", () => {
+    const result = filterAndSortOwnedCharacters(owned, {
+      ...ownedBaseFilters,
+      elementFilter: new Set([Element.Cryo]),
+    });
+    expect(result.map((c) => c.name)).toEqual(["Kaeya"]);
+  });
+
+  it("filters by weapon type", () => {
+    const result = filterAndSortOwnedCharacters(owned, {
+      ...ownedBaseFilters,
+      weaponTypeFilter: new Set([WeaponType.Polearm]),
+    });
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Xiangling"]);
+  });
+
+  it("filters by rarity, matching any rarity in the set", () => {
+    const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, rarityFilter: new Set([5]) });
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao"]);
+  });
+
+  it("sorts by rarity ascending, breaking ties by name", () => {
+    const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, sortKey: "rarity" });
+    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Xiangling", "Hu Tao"]);
+  });
+
+  it("sorts by rarity descending, breaking ties by name", () => {
+    const result = filterAndSortOwnedCharacters(owned, {
+      ...ownedBaseFilters,
+      sortKey: "rarity",
+      sortDirection: "desc",
+    });
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
+  });
+
+  it("sorts by level ascending, breaking ties by name", () => {
+    const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, sortKey: "level" });
+    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Hu Tao", "Xiangling"]);
+  });
+
+  it("sorts by name descending", () => {
+    const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, sortDirection: "desc" });
+    expect(result.map((c) => c.name)).toEqual(["Xiangling", "Kaeya", "Hu Tao", "Amber"]);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, search: "nonexistent" });
     expect(result).toEqual([]);
   });
 });

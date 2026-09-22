@@ -11,7 +11,7 @@ import { Modal } from "@/components/modal";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { MIN_LEVEL, MAX_LEVEL, validAscensionPhasesForLevel } from "@/lib/ascension";
 import type { SortDirection } from "@/lib/sort";
-import { WeaponTypeFilterRow } from "./weapon-type-filter-row";
+import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import { WeaponCard } from "./weapon-card";
 import { removeWeapon, updateWeaponRefinement, updateWeaponProgression } from "./actions";
 import { filterAndSortOwnedWeapons, type OwnedWeaponItem, type OwnedSortKey } from "./filter-sort";

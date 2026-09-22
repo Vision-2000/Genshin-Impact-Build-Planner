@@ -6,7 +6,7 @@ import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { useToast, Toast } from "@/components/toast";
 import type { SortDirection } from "@/lib/sort";
-import { WeaponTypeFilterRow } from "../weapon-type-filter-row";
+import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import { WeaponCard } from "../weapon-card";
 import { addWeapon } from "../actions";
 import { filterAndSortWeaponCatalog, type WeaponCatalogItem, type CatalogSortKey } from "../filter-sort";

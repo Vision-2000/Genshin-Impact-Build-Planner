@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
-import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
@@ -11,7 +10,6 @@ import { Modal } from "@/components/modal";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { MIN_LEVEL, MAX_LEVEL, validAscensionPhasesForLevel } from "@/lib/ascension";
 import {
-  setCharacterOwnership,
   updateCharacterProgression,
   getCharacterConstellationBoosts,
   type CharacterConstellationBoost,
@@ -23,38 +21,15 @@ import {
   type TalentLevelBounds,
   type UpdateCharacterProgressionInput,
 } from "./schemas";
-import { ELEMENT_ICON_URL } from "./element-icons";
-import {
-  filterAndSortCharacters,
-  type CharacterListItem,
-  type OwnershipFilter,
-  type SortKey,
-  type SortDirection,
-} from "./filter-sort";
+import { CharacterCard } from "./character-card";
+import { ElementFilterRow } from "./element-filter-row";
+import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
+import { filterAndSortOwnedCharacters, type OwnedCharacterItem, type OwnedSortKey, type SortDirection } from "./filter-sort";
 
-export type { CharacterListItem };
+export type { OwnedCharacterItem };
 
-const ELEMENTS = Object.values(Element);
-const WEAPON_TYPES = Object.values(WeaponType);
 // Playable characters are only ever seeded at 4-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4];
-
-function PencilIcon() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10.5 2.5l3 3L6 13l-3.5 1L4 10.5z" />
-    </svg>
-  );
-}
 
 // Shifts a talent level by the same amount its bounds just shifted (e.g.
 // +3 when its constellation just unlocked, -3 when it just got locked back
@@ -77,7 +52,7 @@ function CharacterProgressionEditor({
   character,
   onSave,
 }: {
-  character: CharacterListItem;
+  character: OwnedCharacterItem;
   onSave: (input: UpdateCharacterProgressionInput) => void;
 }) {
   const [level, setLevel] = useState(character.level);
@@ -132,7 +107,9 @@ function CharacterProgressionEditor({
         <div
           className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg ${rarityGradientClasses(character.rarity)}`}
         >
-          {character.iconUrl && <Image src={character.iconUrl} alt="" width={56} height={56} className="object-cover" />}
+          {character.iconUrl && (
+            <Image src={character.iconUrl} alt="" width={56} height={56} className="object-cover" />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-lg font-medium">{character.name}</p>
@@ -251,10 +228,10 @@ function CharacterProgressionEditor({
   );
 }
 
-export function CharacterRoster({ initialCharacters }: { initialCharacters: CharacterListItem[] }) {
+export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwnedCharacters: OwnedCharacterItem[] }) {
   useRefreshOnBackNavigation();
-  const [characters, setCharacters] = useState(initialCharacters);
-  // useState(initialCharacters) only ever consults that argument on the
+  const [characters, setCharacters] = useState(initialOwnedCharacters);
+  // useState(initialOwnedCharacters) only ever consults that argument on the
   // very first mount -- a later re-render with a fresh prop (e.g. from
   // router.refresh() after a back/forward bfcache restore) is otherwise
   // silently ignored, leaving this stuck on stale data even once the
@@ -262,17 +239,16 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
   // this belongs during render (comparing against a mirrored "previous
   // prop" value), not in an effect -- an effect would apply the fresh data
   // one render late, visibly flashing the stale version first.
-  const [prevInitialCharacters, setPrevInitialCharacters] = useState(initialCharacters);
-  if (initialCharacters !== prevInitialCharacters) {
-    setPrevInitialCharacters(initialCharacters);
-    setCharacters(initialCharacters);
+  const [prevInitialOwnedCharacters, setPrevInitialOwnedCharacters] = useState(initialOwnedCharacters);
+  if (initialOwnedCharacters !== prevInitialOwnedCharacters) {
+    setPrevInitialOwnedCharacters(initialOwnedCharacters);
+    setCharacters(initialOwnedCharacters);
   }
   const [search, setSearch] = useState("");
   const [elementFilter, setElementFilter] = useState<Set<Element>>(new Set());
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
-  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [, startTransition] = useTransition();
@@ -281,16 +257,15 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
 
   const filtered = useMemo(
     () =>
-      filterAndSortCharacters(characters, {
+      filterAndSortOwnedCharacters(characters, {
         search,
         elementFilter,
         weaponTypeFilter,
         rarityFilter,
-        ownershipFilter,
         sortKey,
         sortDirection,
       }),
-    [characters, search, elementFilter, weaponTypeFilter, rarityFilter, ownershipFilter, sortKey, sortDirection]
+    [characters, search, elementFilter, weaponTypeFilter, rarityFilter, sortKey, sortDirection]
   );
 
   function toggleElement(element: Element) {
@@ -320,25 +295,11 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
     });
   }
 
-  function handleToggleOwnership(characterId: number, nextIsOwned: boolean) {
-    setCharacters((prev) =>
-      prev.map((character) => (character.id === characterId ? { ...character, isOwned: nextIsOwned } : character))
-    );
-
-    startTransition(() => {
-      setCharacterOwnership(characterId, nextIsOwned).catch(() => {
-        setCharacters((prev) =>
-          prev.map((character) =>
-            character.id === characterId ? { ...character, isOwned: !nextIsOwned } : character
-          )
-        );
-      });
-    });
-  }
-
   function handleUpdateProgression(characterId: number, input: UpdateCharacterProgressionInput) {
     const previous = characters;
-    setCharacters((prev) => prev.map((character) => (character.id === characterId ? { ...character, ...input } : character)));
+    setCharacters((prev) =>
+      prev.map((character) => (character.id === characterId ? { ...character, ...input } : character))
+    );
     setEditingId(null);
 
     startTransition(async () => {
@@ -355,72 +316,22 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
           placeholder="Search by name..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="rounded border px-3 py-2 text-sm bg-white text-black"
+          className="rounded border bg-white px-3 py-2 text-sm text-black"
         />
-
-        <select
-          value={ownershipFilter}
-          onChange={(event) => setOwnershipFilter(event.target.value as OwnershipFilter)}
-          className="rounded border px-3 py-2 text-sm bg-white text-black"
-        >
-          <option value="all">All</option>
-          <option value="owned">Owned</option>
-          <option value="unowned">Not owned</option>
-        </select>
-
         <select
           value={sortKey}
-          onChange={(event) => setSortKey(event.target.value as SortKey)}
-          className="rounded border px-3 py-2 text-sm bg-white text-black"
+          onChange={(event) => setSortKey(event.target.value as OwnedSortKey)}
+          className="rounded border bg-white px-3 py-2 text-sm text-black"
         >
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
           <option value="level">Sort: Level</option>
         </select>
-
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {ELEMENTS.map((element) => (
-          <button
-            key={element}
-            type="button"
-            onClick={() => toggleElement(element)}
-            aria-pressed={elementFilter.has(element)}
-            title={element}
-            className={`flex h-10 w-10 items-center justify-center rounded-full bg-black/40 p-1.5 ring-2 ${
-              elementFilter.has(element) ? "ring-blue-500" : "ring-foreground"
-            }`}
-          >
-            <Image src={ELEMENT_ICON_URL[element]} alt={element} width={24} height={24} />
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {WEAPON_TYPES.map((weaponType) => (
-          <button
-            key={weaponType}
-            type="button"
-            onClick={() => toggleWeaponType(weaponType)}
-            aria-pressed={weaponTypeFilter.has(weaponType)}
-            title={weaponType}
-            className={`h-10 w-10 rounded-full ring-2 ${
-              weaponTypeFilter.has(weaponType) ? "ring-blue-500" : "ring-foreground"
-            }`}
-          >
-            <Image
-              src={WEAPON_TYPE_ICON_URL[weaponType]}
-              alt={weaponType}
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-          </button>
-        ))}
-      </div>
-
+      <ElementFilterRow elementFilter={elementFilter} onToggle={toggleElement} />
+      <WeaponTypeFilterRow weaponTypeFilter={weaponTypeFilter} onToggle={toggleWeaponType} />
       <RarityFilterRow rarities={RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 
       <p className="text-sm text-gray-500">
@@ -429,69 +340,17 @@ export function CharacterRoster({ initialCharacters }: { initialCharacters: Char
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {filtered.map((character) => (
-          <li key={character.id} className="group relative">
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => handleToggleOwnership(character.id, !character.isOwned)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                handleToggleOwnership(character.id, !character.isOwned);
-              }}
-              aria-pressed={character.isOwned}
-              className={`relative aspect-square w-full cursor-pointer overflow-hidden rounded-xl border-8 text-left shadow ${
-                character.isOwned ? "border-green-500" : "border-gray-600"
-              } ${rarityGradientClasses(character.rarity)}`}
-            >
-              {character.iconUrl && (
-                <Image
-                  src={character.iconUrl}
-                  alt=""
-                  fill
-                  sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-                  className="object-cover"
-                />
-              )}
-
-              <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
-                <Image src={ELEMENT_ICON_URL[character.element]} alt={character.element} width={26} height={26} />
-              </span>
-              <span className="absolute right-2 top-2 h-9 w-9 rounded-full shadow">
-                <Image
-                  src={WEAPON_TYPE_ICON_URL[character.weaponType]}
-                  alt={character.weaponType}
-                  width={36}
-                  height={36}
-                  className="rounded-full"
-                />
-              </span>
-
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-8">
-                <p className="truncate text-center text-lg font-semibold text-white">{character.name}</p>
-              </div>
-            </div>
-
-            {character.isOwned && (
-              <div
-                className={`absolute bottom-1.5 right-1.5 z-20 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 ${
-                  editingId === character.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setEditingId(character.id);
-                  }}
-                  aria-label={`Edit ${character.name}`}
-                  className="flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow hover:bg-black"
-                >
-                  <PencilIcon />
-                </button>
-              </div>
-            )}
-          </li>
+          <CharacterCard
+            key={character.id}
+            name={character.name}
+            element={character.element}
+            weaponType={character.weaponType}
+            rarity={character.rarity}
+            iconUrl={character.iconUrl}
+            level={character.level}
+            constellation={character.constellation}
+            onSelect={() => setEditingId(character.id)}
+          />
         ))}
         {filtered.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
       </ul>
