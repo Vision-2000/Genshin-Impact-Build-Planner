@@ -11,10 +11,20 @@ export type CharacterListItem = {
   rarity: number;
   iconUrl: string | null;
   isOwned: boolean;
+  // Progression fields below are meaningless while isOwned is false, same
+  // as OwnedWeapon/OwnedArtifact's fields -- default to a fresh, unascended
+  // character (matching OwnedCharacter's own DB defaults) for characters
+  // with no owned row yet.
+  level: number;
+  ascensionPhase: number;
+  constellation: number;
+  normalAttackLevel: number;
+  skillLevel: number;
+  burstLevel: number;
 };
 
 export type OwnershipFilter = "all" | "owned" | "unowned";
-export type SortKey = "name" | "rarity";
+export type SortKey = "name" | "rarity" | "level";
 
 export type CharacterFilters = {
   search: string;
@@ -56,6 +66,9 @@ export function filterAndSortCharacters(
   return [...result].sort((a, b) => {
     if (sortKey === "rarity") {
       return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+    }
+    if (sortKey === "level") {
+      return direction * (a.level - b.level) || a.name.localeCompare(b.name);
     }
     return direction * a.name.localeCompare(b.name);
   });

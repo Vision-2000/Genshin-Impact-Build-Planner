@@ -11,6 +11,12 @@ function character(overrides: Partial<CharacterListItem>): CharacterListItem {
     rarity: 4,
     iconUrl: null,
     isOwned: false,
+    level: 1,
+    ascensionPhase: 0,
+    constellation: 0,
+    normalAttackLevel: 1,
+    skillLevel: 1,
+    burstLevel: 1,
     ...overrides,
   };
 }
@@ -91,6 +97,17 @@ describe("filterAndSortCharacters", () => {
   it("sorts by rarity descending, breaking ties by name", () => {
     const result = filterAndSortCharacters(characters, { ...baseFilters, sortKey: "rarity", sortDirection: "desc" });
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
+  });
+
+  it("sorts by level ascending, breaking ties by name", () => {
+    const withLevels: CharacterListItem[] = [
+      character({ id: 1, name: "Hu Tao", level: 80 }),
+      character({ id: 2, name: "Kaeya", level: 40 }),
+      character({ id: 3, name: "Xiangling", level: 80 }),
+      character({ id: 4, name: "Amber", level: 1 }),
+    ];
+    const result = filterAndSortCharacters(withLevels, { ...baseFilters, sortKey: "level" });
+    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Hu Tao", "Xiangling"]);
   });
 
   it("sorts by name descending", () => {
