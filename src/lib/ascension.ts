@@ -34,3 +34,10 @@ export function validAscensionPhasesForLevel(level: number): number[] {
 export function isValidLevelAscension(level: number, ascensionPhase: number): boolean {
   return validAscensionPhasesForLevel(level).includes(ascensionPhase);
 }
+
+// The highest level reachable without ascending again, e.g. phase 2 (already
+// ascended past 40) caps out at 50. Used to show "Lv. X/Y" on the character
+// hover overlay.
+export function maxLevelForAscensionPhase(ascensionPhase: number): number {
+  return PHASE_MAX_LEVEL[ascensionPhase];
+}

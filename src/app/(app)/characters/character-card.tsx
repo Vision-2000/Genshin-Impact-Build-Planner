@@ -4,7 +4,19 @@ import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { maxLevelForAscensionPhase } from "@/lib/ascension";
 import { ELEMENT_ICON_URL } from "./element-icons";
+
+// Owned-page-only progression snapshot -- always passed as one object since
+// it's all-or-nothing (the roster/catalog page never has any of it).
+export type CharacterCardProgression = {
+  level: number;
+  ascensionPhase: number;
+  constellation: number;
+  normalAttackLevel: number;
+  skillLevel: number;
+  burstLevel: number;
+};
 
 // Shared visual card for the owned-characters page and the add-character
 // catalog -- same rarity-gradient/badge/overlay treatment as
@@ -21,8 +33,7 @@ export function CharacterCard({
   onSelect,
   isOwned,
   showOwnershipBorder = false,
-  level,
-  constellation,
+  progression,
 }: {
   name: string;
   element: Element;
@@ -35,10 +46,10 @@ export function CharacterCard({
   // glance -- the owned page's cards are all owned by definition, so they
   // use the same neutral border WeaponCard/ArtifactCard use.
   showOwnershipBorder?: boolean;
-  // Owned-page-only: shown as a second line under the name, mirroring how
-  // WeaponCard shows its secondary stat under the weapon name.
-  level?: number;
-  constellation?: number;
+  // Owned-page-only. The card face only ever shows the level (mirroring how
+  // WeaponCard shows its secondary stat under the weapon name); the rest
+  // (constellation, talent levels) is hover-only -- see the overlay below.
+  progression?: CharacterCardProgression;
 }) {
   return (
     <li>
@@ -57,7 +68,7 @@ export function CharacterCard({
             : undefined
         }
         aria-pressed={showOwnershipBorder ? isOwned : undefined}
-        className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 shadow ${
+        className={`group relative aspect-square w-full overflow-hidden rounded-xl border-8 shadow ${
           onSelect ? "cursor-pointer hover:opacity-90" : ""
         } ${showOwnershipBorder ? (isOwned ? "border-green-500" : "border-gray-600") : "border-gray-600"} ${rarityGradientClasses(rarity)}`}
       >
@@ -86,13 +97,20 @@ export function CharacterCard({
 
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-8">
           <p className="truncate text-center text-lg font-semibold text-white">{name}</p>
-          {level !== undefined && (
-            <p className="truncate text-center text-xs text-gray-300">
-              Lv. {level}
-              {constellation !== undefined && ` · C${constellation}`}
-            </p>
-          )}
+          {progression && <p className="truncate text-center text-xs text-gray-300">Lv. {progression.level}</p>}
         </div>
+
+        {progression && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/85 p-2 text-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <p className="text-sm font-semibold text-white">
+              Lv. {progression.level}/{maxLevelForAscensionPhase(progression.ascensionPhase)}
+            </p>
+            <p className="text-sm text-gray-200">Constellation {progression.constellation}</p>
+            <p className="text-xs text-gray-300">Normal Attack: Lv.{progression.normalAttackLevel}</p>
+            <p className="text-xs text-gray-300">Elemental Skill: Lv.{progression.skillLevel}</p>
+            <p className="text-xs text-gray-300">Elemental Burst: Lv.{progression.burstLevel}</p>
+          </div>
+        )}
       </div>
     </li>
   );

@@ -347,8 +347,14 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
             weaponType={character.weaponType}
             rarity={character.rarity}
             iconUrl={character.iconUrl}
-            level={character.level}
-            constellation={character.constellation}
+            progression={{
+              level: character.level,
+              ascensionPhase: character.ascensionPhase,
+              constellation: character.constellation,
+              normalAttackLevel: character.normalAttackLevel,
+              skillLevel: character.skillLevel,
+              burstLevel: character.burstLevel,
+            }}
             onSelect={() => setEditingId(character.id)}
           />
         ))}
