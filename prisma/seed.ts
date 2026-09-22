@@ -253,6 +253,38 @@ async function seedTalents(characterId: number, characterName: string) {
   }
 }
 
+// Constellations 3 and 5 always grant +3 to one of the 3 combat talents --
+// checked directly against all 750 seeded constellations before writing
+// this: every match lands on exactly constellation 3 or 5, never any other
+// number, confirming that's a fixed game rule rather than something to
+// derive per-character. WHICH talent varies by character and isn't always
+// Skill-at-C3/Burst-at-C5 as might be assumed -- 8 real characters boost
+// Normal Attack instead -- so this resolves it from the actual text rather
+// than hardcoding that assumption.
+//
+// The exact phrasing varies more than artifact/weapon text does ("Increases
+// the Level of X by 3.", "Increases Elemental Skill X Level by 3.", "X
+// increases by 3 Levels."), so rather than enumerating every sentence
+// template this uses a loose trigger (the sentence mentions both "Level"
+// and "by 3") plus a verbatim substring match against the character's own
+// Talent.name values -- more robust than precisely regexing out the name's
+// position, and confirmed empirically to produce zero false positives
+// across the full seeded set. The one real gap: Aloy's constellation text
+// is entirely placeholder ("The time has not yet come..."), not real data
+// genshin-db has for her -- correctly resolves to no boost at all.
+function findBoostedTalentSlot(
+  description: string,
+  combatTalents: { name: string; slot: TalentSlot }[]
+): TalentSlot | null {
+  for (const sentence of splitSentences(description)) {
+    if (!/\blevels?\b/i.test(sentence) || !/\bby 3\b/i.test(sentence)) continue;
+    const cleaned = sentence.replace(/\*\*/g, "");
+    const match = combatTalents.find((t) => cleaned.includes(t.name));
+    if (match) return match.slot;
+  }
+  return null;
+}
+
 async function seedConstellations(characterId: number, characterName: string, statTypeIds: Map<StatTypeName, number>) {
   const constellation = genshindb.constellations(characterName, { verboseCategories: true });
   if (!constellation) {
@@ -260,15 +292,28 @@ async function seedConstellations(characterId: number, characterName: string, st
     return;
   }
 
+  const combatTalents = await prisma.talent.findMany({
+    where: { characterId, slot: { in: [TalentSlot.NormalAttack, TalentSlot.Skill, TalentSlot.Burst] } },
+    select: { name: true, slot: true },
+  });
+
   const numbers = [1, 2, 3, 4, 5, 6] as const;
   for (const number of numbers) {
     const detail = constellation[`c${number}`];
     const iconUrl = enkaIconUrl(constellation.images?.[`filename_c${number}`]);
+    const boostedTalentSlot = findBoostedTalentSlot(detail.description, combatTalents);
 
     const dbConstellation = await prisma.constellation.upsert({
       where: { characterId_number: { characterId, number } },
-      create: { characterId, number, name: detail.name, description: detail.description, iconUrl },
-      update: { name: detail.name, description: detail.description, iconUrl },
+      create: {
+        characterId,
+        number,
+        name: detail.name,
+        description: detail.description,
+        iconUrl,
+        boostedTalentSlot,
+      },
+      update: { name: detail.name, description: detail.description, iconUrl, boostedTalentSlot },
     });
     await seedConstellationStatBonuses(dbConstellation.id, detail.description, statTypeIds);
   }

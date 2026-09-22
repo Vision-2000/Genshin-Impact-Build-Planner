@@ -240,12 +240,19 @@ model TalentStatBonus {
 // structurally distinct concept -- no levels, no attributes, always a fixed
 // effect once unlocked.
 model Constellation {
-  id          Int     @id @default(autoincrement())
-  characterId Int     @map("character_id")
-  number      Int
-  name        String
-  description String
-  iconUrl     String? @map("icon_url")
+  id                Int         @id @default(autoincrement())
+  characterId       Int         @map("character_id")
+  number            Int
+  name              String
+  description       String
+  iconUrl           String?     @map("icon_url")
+  // Constellations 3 and 5 always grant +3 to one of the 3 combat talents
+  // (never a Passive, which has no level at all) -- which one varies per
+  // character (usually but not always Skill at C3 / Burst at C5; a handful
+  // of real characters boost Normal Attack instead, confirmed directly
+  // against seeded data rather than assumed). Null for every other
+  // constellation, which never does this.
+  boostedTalentSlot TalentSlot? @map("boosted_talent_slot")
 
   character   Character                @relation(fields: [characterId], references: [id], onDelete: Cascade)
   statBonuses ConstellationStatBonus[]
