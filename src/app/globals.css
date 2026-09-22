@@ -3,11 +3,20 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Full-page tint so a "manage" page (owned items, editable -- Characters,
+     Weapons, Artifacts, Builds) reads as visually distinct at a glance from
+     its "add"/roster counterpart (catalog or ownership-toggle only), without
+     needing per-card changes. Applied to a full-bleed wrapper around each
+     page's own max-width content, not the cards themselves. */
+  --primary-page: #dbeafe;
+  --secondary-page: #ffedd5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary-page: var(--primary-page);
+  --color-secondary-page: var(--secondary-page);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,6 +25,8 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --primary-page: #0e1f37;
+    --secondary-page: #381408;
   }
 }
 

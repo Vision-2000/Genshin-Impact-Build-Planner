@@ -413,7 +413,7 @@ export function OwnedBuildManager({
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
       </div>
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-300">
         {filtered.length} build{filtered.length === 1 ? "" : "s"}
       </p>
 

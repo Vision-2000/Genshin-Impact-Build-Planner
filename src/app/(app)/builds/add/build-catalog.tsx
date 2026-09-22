@@ -214,7 +214,7 @@ export function BuildCatalog({
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
       </div>
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-300">
         Cannot find a character? Mark them owned on the{" "}
         <Link href="/characters" className="underline hover:text-foreground">
           Characters page

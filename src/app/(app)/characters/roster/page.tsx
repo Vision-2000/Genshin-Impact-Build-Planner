@@ -36,14 +36,15 @@ export default async function CharacterRosterPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
+    <div className="min-h-full bg-secondary-page">
+      <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">Character roster</h1>
             <HelpButton title="Character roster help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500">Managing ownership for {profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">Managing ownership for {profile.name}</p>
         </div>
         <Link
           href="/characters"
@@ -53,6 +54,7 @@ export default async function CharacterRosterPage() {
         </Link>
       </div>
       <CharacterRoster roster={roster} />
+      </div>
     </div>
   );
 }

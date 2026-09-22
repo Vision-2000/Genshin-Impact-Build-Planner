@@ -38,14 +38,15 @@ export default async function AddWeaponPage({
   }));
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
+    <div className="min-h-full bg-secondary-page">
+      <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">Add a weapon</h1>
             <HelpButton title="Add weapon help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500">Adding weapons for {profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">Adding weapons for {profile.name}</p>
         </div>
         <Link
           href="/weapons"
@@ -55,6 +56,7 @@ export default async function AddWeaponPage({
         </Link>
       </div>
       <WeaponCatalog catalog={catalog} initialWeaponType={initialWeaponType} />
+      </div>
     </div>
   );
 }

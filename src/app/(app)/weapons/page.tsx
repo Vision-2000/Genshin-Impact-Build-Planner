@@ -35,14 +35,15 @@ export default async function WeaponsPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
+    <div className="min-h-full bg-primary-page">
+      <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">Weapons</h1>
             <HelpButton title="Weapons page help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500">Managing weapons for {profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">Managing weapons for {profile.name}</p>
         </div>
         <Link
           href="/weapons/add"
@@ -52,6 +53,7 @@ export default async function WeaponsPage() {
         </Link>
       </div>
       <OwnedWeaponManager initialOwnedWeapons={owned} />
+      </div>
     </div>
   );
 }

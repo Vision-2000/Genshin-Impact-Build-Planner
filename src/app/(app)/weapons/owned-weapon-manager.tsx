@@ -215,7 +215,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
       />
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-300">
         {filtered.length} weapon{filtered.length === 1 ? "" : "s"}
       </p>
 

@@ -191,7 +191,7 @@ export function ArtifactCatalog({
 
       <RarityFilterRow rarities={ARTIFACT_RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-300">
         {filtered.length} set{filtered.length === 1 ? "" : "s"}
       </p>
 

@@ -39,14 +39,15 @@ export default async function AddArtifactPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
+    <div className="min-h-full bg-secondary-page">
+      <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">Add an artifact</h1>
             <HelpButton title="Add artifact help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500">Adding artifacts for {profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">Adding artifacts for {profile.name}</p>
         </div>
         <Link
           href="/artifacts"
@@ -56,6 +57,7 @@ export default async function AddArtifactPage() {
         </Link>
       </div>
       <ArtifactCatalog catalog={catalog} statTypes={statTypeOptions} />
+      </div>
     </div>
   );
 }

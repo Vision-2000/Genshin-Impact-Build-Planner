@@ -334,7 +334,7 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
       <WeaponTypeFilterRow weaponTypeFilter={weaponTypeFilter} onToggle={toggleWeaponType} />
       <RarityFilterRow rarities={RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-300">
         {filtered.length} character{filtered.length === 1 ? "" : "s"}
       </p>
 

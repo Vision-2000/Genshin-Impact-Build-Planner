@@ -66,14 +66,15 @@ export default async function AddBuildPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
+    <div className="min-h-full bg-secondary-page">
+      <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">Add a build</h1>
             <HelpButton title="Add build help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500">Adding builds for {profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">Adding builds for {profile.name}</p>
         </div>
         <Link
           href="/builds"
@@ -83,6 +84,7 @@ export default async function AddBuildPage() {
         </Link>
       </div>
       <BuildCatalog characters={characterOptions} weapons={weaponOptions} artifacts={artifactOptions} />
+      </div>
     </div>
   );
 }

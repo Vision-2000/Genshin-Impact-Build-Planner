@@ -32,14 +32,15 @@ export default async function ArtifactsPage() {
   const owned = ownedArtifacts.map(toOwnedArtifactItem);
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-3 p-4">
+    <div className="min-h-full bg-primary-page">
+      <div className="mx-auto max-w-[110rem] space-y-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">Artifacts</h1>
             <HelpButton title="Artifacts page help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500">Managing artifacts for {profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">Managing artifacts for {profile.name}</p>
         </div>
         <Link
           href="/artifacts/add"
@@ -49,6 +50,7 @@ export default async function ArtifactsPage() {
         </Link>
       </div>
       <OwnedArtifactManager statTypes={statTypeOptions} initialOwnedArtifacts={owned} />
+      </div>
     </div>
   );
 }
