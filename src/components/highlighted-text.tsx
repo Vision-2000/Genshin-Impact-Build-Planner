@@ -42,21 +42,27 @@ function stripDanglingAsterisks(value: string): string {
 
 // genshin-db wraps terms the game itself visually emphasizes -- talent
 // names, buff/effect names -- in its own markdown-style "**bold**" markers,
-// but only on the FIRST mention within a given description; a later, plain
-// repeat of the exact same term (e.g. "Revelation: Uncreated Light"
-// mentioned again two sentences later, unmarked) is still highlighted on
-// HoYoLAB. So: collect every term bolded anywhere in this text, then treat
-// any later unmarked repeat of one of those exact terms the same way.
-function buildPattern(text: string): RegExp {
+// but only on the FIRST mention within a given description, and not even
+// consistently then: Bennett's C6 mentions "Fantastic Voyage" (his own
+// Burst's name) with no ** anywhere in that description at all, yet
+// HoYoLAB still highlights it. So this combines two sources of "known
+// neutral names" for one description: genshin-db's own bolded terms in
+// THIS text (catches buff/effect names that aren't talent names at all,
+// e.g. "Grace of Kenosis"), plus every one of the character's own talent
+// names, passed in regardless of whether genshin-db ever bolded them here
+// (catches cases like Bennett's C6 that markers alone miss). Either way,
+// every occurrence of a name in this combined set gets highlighted, not
+// just the first.
+function buildPattern(text: string, talentNames: string[]): RegExp {
   const boldedTerms = [...text.matchAll(BOLD_TERM_PATTERN)].map((m) => m[1]);
   // Longest-first avoids a shorter term winning at a position where a
   // longer one also starts (rare, but matches HighlightedText's other
   // longest-first alternations).
-  const uniqueTerms = [...new Set(boldedTerms)].sort((a, b) => b.length - a.length);
+  const neutralNames = [...new Set([...boldedTerms, ...talentNames])].filter(Boolean).sort((a, b) => b.length - a.length);
 
   const alternatives = ["\\*\\*(?<bold>.+?)\\*\\*"];
-  if (uniqueTerms.length > 0) {
-    alternatives.push(`(?<repeat>${uniqueTerms.map(escapeRegExp).join("|")})`);
+  if (neutralNames.length > 0) {
+    alternatives.push(`(?<repeat>${neutralNames.map(escapeRegExp).join("|")})`);
   }
   alternatives.push(`(?<element>${ELEMENT_PATTERN})`);
 
@@ -65,11 +71,15 @@ function buildPattern(text: string): RegExp {
 
 // Highlights talent/constellation description text the way HoYoLAB does: a
 // neutral light yellow for genshin-db's own **bolded** terms (markers
-// stripped) and their later unmarked repeats, and the matching element
-// color for "<Element> DMG/damage/RES/resistance" phrases (e.g. "AoE Dendro
-// DMG", "Anemo resistance").
-export function HighlightedText({ text }: { text: string }): ReactNode {
-  const pattern = buildPattern(text);
+// stripped), every occurrence of the character's own talent names, and the
+// matching element color for "<Element> DMG/damage/RES/resistance" phrases
+// (e.g. "AoE Dendro DMG", "Anemo resistance"). `talentNames` should be
+// every one of the character's own talent names, not just the talent this
+// particular description belongs to -- one talent's description commonly
+// references another by name (e.g. a Burst referencing the Normal Attack
+// it empowers).
+export function HighlightedText({ text, talentNames }: { text: string; talentNames: string[] }): ReactNode {
+  const pattern = buildPattern(text, talentNames);
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
   let key = 0;

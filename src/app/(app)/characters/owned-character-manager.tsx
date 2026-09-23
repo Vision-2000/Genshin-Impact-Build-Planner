@@ -69,11 +69,13 @@ function ConstellationIcons({
   element,
   constellations,
   constellation,
+  talentNames,
   onChange,
 }: {
   element: Element;
   constellations: CharacterProgressionData["constellations"];
   constellation: number;
+  talentNames: string[];
   onChange: (value: number) => void;
 }) {
   const litClasses = elementGlowClasses(element);
@@ -90,7 +92,7 @@ function ConstellationIcons({
                   C{c.number} · {c.name}
                 </p>
                 <p className="mt-1.5 whitespace-pre-line text-gray-300">
-                  <HighlightedText text={c.description} />
+                  <HighlightedText text={c.description} talentNames={talentNames} />
                 </p>
                 <StatBonusList statBonuses={c.statBonuses} />
               </>
@@ -124,11 +126,13 @@ function CombatTalentRow({
   talent,
   level,
   bounds,
+  talentNames,
   onChange,
 }: {
   talent: CharacterProgressionData["talents"][number];
   level: number;
   bounds: TalentLevelBounds;
+  talentNames: string[];
   onChange: (level: number) => void;
 }) {
   return (
@@ -140,7 +144,7 @@ function CombatTalentRow({
           <>
             <p className="text-base font-semibold text-yellow-100">{talent.name}</p>
             <p className="mt-1.5 whitespace-pre-line text-gray-300">
-              <HighlightedText text={talent.description} />
+              <HighlightedText text={talent.description} talentNames={talentNames} />
             </p>
             {talent.attributes.length > 0 && (
               <>
@@ -173,7 +177,7 @@ function CombatTalentRow({
 // Passives have no level to invest in -- just an icon with a hover tooltip
 // (description, plus its stat bonus if it has one; most don't, see
 // TalentStatBonus's schema comment).
-function PassiveTalentIcon({ talent }: { talent: CharacterProgressionData["talents"][number] }) {
+function PassiveTalentIcon({ talent, talentNames }: { talent: CharacterProgressionData["talents"][number]; talentNames: string[] }) {
   return (
     <TooltipIcon
       iconUrl={talent.iconUrl}
@@ -182,7 +186,7 @@ function PassiveTalentIcon({ talent }: { talent: CharacterProgressionData["talen
         <>
           <p className="text-base font-semibold text-yellow-100">{talent.name}</p>
           <p className="mt-1.5 whitespace-pre-line text-gray-300">
-            <HighlightedText text={talent.description} />
+            <HighlightedText text={talent.description} talentNames={talentNames} />
           </p>
           <StatBonusList statBonuses={talent.statBonuses} />
         </>
@@ -216,6 +220,11 @@ function TalentsSection({
   const bounds = computeTalentLevelBounds(constellation, data.constellations);
   const talentBySlot = new Map(data.talents.map((t) => [t.slot, t]));
   const passives = data.talents.filter((t) => !COMBAT_TALENT_SLOTS.has(t.slot));
+  // Every one of the character's own talent names, not just the current
+  // talent's -- a description commonly references another talent by name,
+  // not always wrapped in genshin-db's own ** markers (see HighlightedText's
+  // own comment).
+  const talentNames = data.talents.map((t) => t.name);
 
   return (
     <div className="space-y-2">
@@ -224,6 +233,7 @@ function TalentsSection({
           talent={talentBySlot.get(TalentSlot.NormalAttack)!}
           level={normalAttackLevel}
           bounds={bounds.normalAttackLevel}
+          talentNames={talentNames}
           onChange={onChangeNormalAttackLevel}
         />
       )}
@@ -232,6 +242,7 @@ function TalentsSection({
           talent={talentBySlot.get(TalentSlot.Skill)!}
           level={skillLevel}
           bounds={bounds.skillLevel}
+          talentNames={talentNames}
           onChange={onChangeSkillLevel}
         />
       )}
@@ -240,13 +251,14 @@ function TalentsSection({
           talent={talentBySlot.get(TalentSlot.Burst)!}
           level={burstLevel}
           bounds={bounds.burstLevel}
+          talentNames={talentNames}
           onChange={onChangeBurstLevel}
         />
       )}
       {passives.length > 0 && (
         <div className="flex items-center gap-2.5 pt-1">
           {passives.map((t) => (
-            <PassiveTalentIcon key={t.id} talent={t} />
+            <PassiveTalentIcon key={t.id} talent={t} talentNames={talentNames} />
           ))}
         </div>
       )}
@@ -414,6 +426,7 @@ function CharacterProgressionEditor({
             element={character.element}
             constellations={data.constellations}
             constellation={constellation}
+            talentNames={data.talents.map((t) => t.name)}
             onChange={handleConstellationChange}
           />
         )}

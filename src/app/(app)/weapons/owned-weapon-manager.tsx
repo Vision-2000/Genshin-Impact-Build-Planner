@@ -83,7 +83,7 @@ function PassiveSection({ data, refinement }: { data: WeaponProgressionData; ref
     <div className="space-y-1 rounded border p-2 text-sm">
       <p className="font-medium text-yellow-100">{data.passiveName}</p>
       <p className="whitespace-pre-line text-gray-500 dark:text-gray-300">
-        <HighlightedText text={effect.description} />
+        <HighlightedText text={effect.description} talentNames={[data.passiveName]} />
       </p>
       <StatBonusList statBonuses={statBonuses} />
     </div>
