@@ -1,35 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import Image from "next/image";
-import { Element, WeaponType } from "@/generated/prisma/enums";
+import { Element, WeaponType, TalentSlot } from "@/generated/prisma/enums";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { Modal } from "@/components/modal";
+import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
+import { HighlightedText } from "@/components/highlighted-text";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
-import { MIN_LEVEL, MAX_LEVEL, validAscensionPhasesForLevel } from "@/lib/ascension";
 import {
-  updateCharacterProgression,
-  getCharacterConstellationBoosts,
-  type CharacterConstellationBoost,
-} from "./actions";
-import {
-  MIN_CONSTELLATION,
-  MAX_CONSTELLATION,
-  computeTalentLevelBounds,
-  type TalentLevelBounds,
-  type UpdateCharacterProgressionInput,
-} from "./schemas";
+  MIN_LEVEL,
+  MAX_LEVEL,
+  MAX_ASCENSION_PHASE,
+  validAscensionPhasesForLevel,
+  maxLevelForAscensionPhase,
+  minLevelForAscensionPhase,
+} from "@/lib/ascension";
+import { formatStatValue } from "@/lib/stat-format";
+import { elementGlowClasses } from "@/lib/element-colors";
+import { groupTalentAttributes } from "@/lib/talent-format";
+import { updateCharacterProgression, getCharacterProgressionData, type CharacterProgressionData } from "./actions";
+import { computeTalentLevelBounds, type TalentLevelBounds, type UpdateCharacterProgressionInput } from "./schemas";
 import { CharacterCard } from "./character-card";
 import { ElementFilterRow } from "./element-filter-row";
+import { ELEMENT_ICON_URL } from "./element-icons";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
+import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { filterAndSortOwnedCharacters, type OwnedCharacterItem, type OwnedSortKey, type SortDirection } from "./filter-sort";
 
 export type { OwnedCharacterItem };
 
 // Playable characters are only ever seeded at 4-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4];
+
+const COMBAT_TALENT_SLOTS = new Set<TalentSlot>([TalentSlot.NormalAttack, TalentSlot.Skill, TalentSlot.Burst]);
 
 // Shifts a talent level by the same amount its bounds just shifted (e.g.
 // +3 when its constellation just unlocked, -3 when it just got locked back
@@ -42,12 +48,279 @@ function adjustTalentLevel(value: number, oldBounds: TalentLevelBounds, newBound
   return Math.min(newBounds.max, Math.max(newBounds.min, shifted));
 }
 
-// Modal body for editing level/ascension/constellation/talent levels.
+function StatBonusList({ statBonuses }: { statBonuses: { statTypeName: string; value: number }[] }) {
+  if (statBonuses.length === 0) return null;
+  return (
+    <ul className="mt-2 space-y-1 text-gray-300">
+      {statBonuses.map((b) => (
+        <li key={b.statTypeName}>
+          +{formatStatValue(b.statTypeName, b.value)} {b.statTypeName}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TooltipIcon({ iconUrl, alt, content }: { iconUrl: string | null; alt: string; content: ReactNode }) {
+  return (
+    <MouseFollowTooltip content={content}>
+      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-gray-600 bg-black/30">
+        {iconUrl && <Image src={iconUrl} alt={alt} width={30} height={30} />}
+      </div>
+    </MouseFollowTooltip>
+  );
+}
+
+// 6 diamonds, one per ascension phase (phase 0 is "none lit" and isn't
+// clickable directly -- reached by clicking phase 1 again to toggle it off).
+// Clicking an already-lit diamond that's the current phase steps back down
+// one phase rather than doing nothing, so phase 0 stays reachable by mouse.
+function AscensionDiamonds({ ascensionPhase, onChange }: { ascensionPhase: number; onChange: (phase: number) => void }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      {Array.from({ length: MAX_ASCENSION_PHASE }, (_, i) => i + 1).map((phase) => {
+        const lit = phase <= ascensionPhase;
+        return (
+          <button
+            key={phase}
+            type="button"
+            aria-label={`Ascension phase ${phase}`}
+            aria-pressed={lit}
+            onClick={() => onChange(phase === ascensionPhase ? phase - 1 : phase)}
+            className={`h-4 w-4 rotate-45 border-2 transition-colors ${
+              lit ? "border-amber-400 bg-amber-400" : "border-gray-500 bg-transparent hover:border-gray-400"
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// Same toggle-to-step-down-by-one behavior as AscensionDiamonds, applied to
+// the 6 constellation icons instead of plain diamonds -- lit icons use the
+// character's own constellation art (from Constellation.iconUrl), unlit
+// ones are grayscaled rather than swapped for a placeholder.
+function ConstellationIcons({
+  element,
+  constellations,
+  constellation,
+  onChange,
+}: {
+  element: Element;
+  constellations: CharacterProgressionData["constellations"];
+  constellation: number;
+  onChange: (value: number) => void;
+}) {
+  const litClasses = elementGlowClasses(element);
+  return (
+    <div className="flex items-center gap-2.5">
+      {constellations.map((c) => {
+        const lit = c.number <= constellation;
+        return (
+          <MouseFollowTooltip
+            key={c.number}
+            content={
+              <>
+                <p className="text-base font-semibold text-yellow-100">
+                  C{c.number} · {c.name}
+                </p>
+                <p className="mt-1.5 whitespace-pre-line text-gray-300">
+                  <HighlightedText text={c.description} />
+                </p>
+                <StatBonusList statBonuses={c.statBonuses} />
+              </>
+            }
+          >
+            <button
+              type="button"
+              aria-label={`Constellation ${c.number}`}
+              aria-pressed={lit}
+              onClick={() => onChange(c.number === constellation ? c.number - 1 : c.number)}
+              className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 ${
+                lit ? litClasses : "border-gray-600 bg-black/30 opacity-50 grayscale"
+              }`}
+            >
+              {c.iconUrl && <Image src={c.iconUrl} alt={c.name} width={30} height={30} />}
+            </button>
+          </MouseFollowTooltip>
+        );
+      })}
+    </div>
+  );
+}
+
+// One combat talent's icon (hover for its description + the attribute
+// values at the currently-selected level) plus its existing level slider.
+// TalentAttribute.values is indexed from level 1 (index 0), same convention
+// documented on the schema -- clamped to the array's own length since a
+// constellation boost can push the level past 10 up toward the 15 genshin-db
+// stores.
+function CombatTalentRow({
+  talent,
+  level,
+  bounds,
+  onChange,
+}: {
+  talent: CharacterProgressionData["talents"][number];
+  level: number;
+  bounds: TalentLevelBounds;
+  onChange: (level: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <TooltipIcon
+        iconUrl={talent.iconUrl}
+        alt={talent.name}
+        content={
+          <>
+            <p className="text-base font-semibold text-yellow-100">{talent.name}</p>
+            <p className="mt-1.5 whitespace-pre-line text-gray-300">
+              <HighlightedText text={talent.description} />
+            </p>
+            {talent.attributes.length > 0 && (
+              <>
+                <hr className="mt-2 border-gray-700" />
+                <ul className="mt-2 space-y-1 text-gray-300">
+                  {groupTalentAttributes(talent.attributes, level).map((g) => (
+                    <li key={g.label}>
+                      <span className="font-medium text-yellow-100">{g.label}</span>: {g.display}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        }
+      />
+      <input
+        type="range"
+        min={bounds.min}
+        max={bounds.max}
+        value={level}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-32"
+      />
+      <span className="w-8 text-gray-400">{level}</span>
+    </div>
+  );
+}
+
+// Passives have no level to invest in -- just an icon with a hover tooltip
+// (description, plus its stat bonus if it has one; most don't, see
+// TalentStatBonus's schema comment).
+function PassiveTalentIcon({ talent }: { talent: CharacterProgressionData["talents"][number] }) {
+  return (
+    <TooltipIcon
+      iconUrl={talent.iconUrl}
+      alt={talent.name}
+      content={
+        <>
+          <p className="text-base font-semibold text-yellow-100">{talent.name}</p>
+          <p className="mt-1.5 whitespace-pre-line text-gray-300">
+            <HighlightedText text={talent.description} />
+          </p>
+          <StatBonusList statBonuses={talent.statBonuses} />
+        </>
+      }
+    />
+  );
+}
+
+// Talent icons/sliders + passive icons, split into its own component so it
+// only ever renders once `data` (fetched lazily by the parent) is loaded --
+// keeps the parent from juggling null checks on every field it reads off it.
+function TalentsSection({
+  data,
+  constellation,
+  normalAttackLevel,
+  skillLevel,
+  burstLevel,
+  onChangeNormalAttackLevel,
+  onChangeSkillLevel,
+  onChangeBurstLevel,
+}: {
+  data: CharacterProgressionData;
+  constellation: number;
+  normalAttackLevel: number;
+  skillLevel: number;
+  burstLevel: number;
+  onChangeNormalAttackLevel: (level: number) => void;
+  onChangeSkillLevel: (level: number) => void;
+  onChangeBurstLevel: (level: number) => void;
+}) {
+  const bounds = computeTalentLevelBounds(constellation, data.constellations);
+  const talentBySlot = new Map(data.talents.map((t) => [t.slot, t]));
+  const passives = data.talents.filter((t) => !COMBAT_TALENT_SLOTS.has(t.slot));
+
+  return (
+    <div className="space-y-2">
+      {talentBySlot.get(TalentSlot.NormalAttack) && (
+        <CombatTalentRow
+          talent={talentBySlot.get(TalentSlot.NormalAttack)!}
+          level={normalAttackLevel}
+          bounds={bounds.normalAttackLevel}
+          onChange={onChangeNormalAttackLevel}
+        />
+      )}
+      {talentBySlot.get(TalentSlot.Skill) && (
+        <CombatTalentRow
+          talent={talentBySlot.get(TalentSlot.Skill)!}
+          level={skillLevel}
+          bounds={bounds.skillLevel}
+          onChange={onChangeSkillLevel}
+        />
+      )}
+      {talentBySlot.get(TalentSlot.Burst) && (
+        <CombatTalentRow
+          talent={talentBySlot.get(TalentSlot.Burst)!}
+          level={burstLevel}
+          bounds={bounds.burstLevel}
+          onChange={onChangeBurstLevel}
+        />
+      )}
+      {passives.length > 0 && (
+        <div className="flex items-center gap-2.5 pt-1">
+          {passives.map((t) => (
+            <PassiveTalentIcon key={t.id} talent={t} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BaseStatsSection({ data, level, ascensionPhase }: { data: CharacterProgressionData; level: number; ascensionPhase: number }) {
+  const stat = data.levelStats.find((s) => s.level === level && s.ascensionPhase === ascensionPhase);
+  if (!stat) return null;
+
+  return (
+    <div className="space-y-1 rounded border p-2 text-sm">
+      <p className="font-medium">Stats</p>
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-500 dark:text-gray-300">
+        <li>Base HP: {Math.round(stat.hp)}</li>
+        <li>Base ATK: {Math.round(stat.attack)}</li>
+        <li>Base DEF: {Math.round(stat.defense)}</li>
+        {data.ascensionStatName && (
+          <li>
+            {data.ascensionStatName}: {formatStatValue(data.ascensionStatName, stat.ascensionStatValue)}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+// Modal body for editing level/ascension/constellation/talent levels, plus
+// (once data loads) hover detail on every constellation/talent and the
+// character's base stats at the currently-selected level+ascension.
 // Ascension is constrained by level (see WeaponProgressionEditor's
-// counterpart in weapons/owned-weapon-manager.tsx for the same pattern).
-// Talent level bounds additionally depend on which constellations are
-// unlocked, fetched lazily here rather than bundled into the main roster
-// query -- only the character currently being edited needs this.
+// counterpart in weapons/owned-weapon-manager.tsx for the same pattern) --
+// but here that relationship runs both ways, since clicking an ascension
+// diamond also has to pull the level into that phase's valid range (see
+// handleAscensionPhaseChange). Fetched lazily here rather than bundled into
+// the main roster query -- only the character currently being edited needs
+// this, and it's a much heavier query than the roster's per-card summary.
 function CharacterProgressionEditor({
   character,
   onSave,
@@ -61,21 +334,19 @@ function CharacterProgressionEditor({
   const [normalAttackLevel, setNormalAttackLevel] = useState(character.normalAttackLevel);
   const [skillLevel, setSkillLevel] = useState(character.skillLevel);
   const [burstLevel, setBurstLevel] = useState(character.burstLevel);
-  const [constellations, setConstellations] = useState<CharacterConstellationBoost[] | null>(null);
+  const [data, setData] = useState<CharacterProgressionData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getCharacterConstellationBoosts(character.id).then((result) => {
-      if (!cancelled) setConstellations(result);
+    getCharacterProgressionData(character.id).then((result) => {
+      if (!cancelled) setData(result);
     });
     return () => {
       cancelled = true;
     };
   }, [character.id]);
 
-  const validPhases = validAscensionPhasesForLevel(level);
-  const maxValidPhase = Math.max(...validPhases);
-  const talentLevelBounds = constellations ? computeTalentLevelBounds(constellation, constellations) : null;
+  const talentLevelBounds = data ? computeTalentLevelBounds(constellation, data.constellations) : null;
 
   function handleLevelChange(newLevel: number) {
     setLevel(newLevel);
@@ -85,16 +356,28 @@ function CharacterProgressionEditor({
     }
   }
 
+  // The inverse of handleLevelChange: clicking a diamond sets the phase
+  // directly, then pulls the level into whatever range is actually possible
+  // at that phase (e.g. level 1 -> 20 when phase 1 is clicked; level 41 ->
+  // 40 if phase 1, capped at 40, is clicked) rather than leaving a now-
+  // invalid level/phase pair on screen.
+  function handleAscensionPhaseChange(newPhase: number) {
+    setAscensionPhase(newPhase);
+    const min = minLevelForAscensionPhase(newPhase);
+    const max = maxLevelForAscensionPhase(newPhase);
+    setLevel((prev) => Math.min(max, Math.max(min, prev)));
+  }
+
   function handleConstellationChange(newConstellation: number) {
-    if (!constellations) {
+    if (!data) {
       // Bounds aren't known yet -- shouldn't be reachable since the
-      // constellation control is disabled until they load, but keep this
+      // constellation icons only render once data has loaded, but keep this
       // safe rather than silently dropping the new value.
       setConstellation(newConstellation);
       return;
     }
-    const oldBounds = computeTalentLevelBounds(constellation, constellations);
-    const newBounds = computeTalentLevelBounds(newConstellation, constellations);
+    const oldBounds = computeTalentLevelBounds(constellation, data.constellations);
+    const newBounds = computeTalentLevelBounds(newConstellation, data.constellations);
     setConstellation(newConstellation);
     setNormalAttackLevel((v) => adjustTalentLevel(v, oldBounds.normalAttackLevel, newBounds.normalAttackLevel));
     setSkillLevel((v) => adjustTalentLevel(v, oldBounds.skillLevel, newBounds.skillLevel));
@@ -113,6 +396,22 @@ function CharacterProgressionEditor({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-lg font-medium">{character.name}</p>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Image
+              src={ELEMENT_ICON_URL[character.element]}
+              alt={character.element}
+              title={character.element}
+              width={20}
+              height={20}
+            />
+            <Image
+              src={WEAPON_TYPE_ICON_URL[character.weaponType]}
+              alt={character.weaponType}
+              title={character.weaponType}
+              width={20}
+              height={20}
+            />
+          </div>
         </div>
       </div>
 
@@ -126,91 +425,49 @@ function CharacterProgressionEditor({
           onChange={(event) => handleLevelChange(Number(event.target.value))}
           className="-mt-1 w-32"
         />
-        <span className="w-8 text-gray-400">{level}</span>
-      </label>
-
-      {validPhases.length > 1 ? (
-        <label className="flex items-center gap-2 text-sm">
-          Ascension:
-          <select
-            value={ascensionPhase}
-            onChange={(event) => setAscensionPhase(Number(event.target.value))}
-            className="h-8 rounded border bg-white px-2 text-sm text-black"
-          >
-            {validPhases.map((phase) => (
-              <option key={phase} value={phase}>
-                Phase {phase} {phase === maxValidPhase ? "(ascended)" : "(pre-ascension)"}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <p className="text-sm text-gray-500">Ascension: Phase {ascensionPhase}</p>
-      )}
-
-      <label className="flex items-center gap-2 text-sm">
-        Constellation:
-        <select
-          value={constellation}
-          onChange={(event) => handleConstellationChange(Number(event.target.value))}
-          disabled={!constellations}
-          className="h-8 rounded border bg-white px-2 text-sm text-black disabled:bg-gray-100 disabled:text-gray-500"
-        >
-          {Array.from({ length: MAX_CONSTELLATION - MIN_CONSTELLATION + 1 }, (_, i) => MIN_CONSTELLATION + i).map(
-            (n) => (
-              <option key={n} value={n}>
-                C{n}
-              </option>
-            )
-          )}
-        </select>
+        <span className="w-14 text-gray-400">
+          {level}/{maxLevelForAscensionPhase(ascensionPhase)}
+        </span>
       </label>
 
       <div className="space-y-1">
-        <p className="text-sm font-medium">Talent levels</p>
-        {!talentLevelBounds ? (
+        <p className="text-sm">Ascension</p>
+        <AscensionDiamonds ascensionPhase={ascensionPhase} onChange={handleAscensionPhaseChange} />
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-sm">Constellation</p>
+        {!data ? (
           <p className="text-sm text-gray-500">Loading...</p>
         ) : (
-          <>
-            <label className="flex items-center gap-2 text-sm">
-              <span className="w-28 shrink-0">Normal Attack</span>
-              <input
-                type="range"
-                min={talentLevelBounds.normalAttackLevel.min}
-                max={talentLevelBounds.normalAttackLevel.max}
-                value={normalAttackLevel}
-                onChange={(event) => setNormalAttackLevel(Number(event.target.value))}
-                className="w-32"
-              />
-              <span className="w-8 text-gray-400">{normalAttackLevel}</span>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <span className="w-28 shrink-0">Skill</span>
-              <input
-                type="range"
-                min={talentLevelBounds.skillLevel.min}
-                max={talentLevelBounds.skillLevel.max}
-                value={skillLevel}
-                onChange={(event) => setSkillLevel(Number(event.target.value))}
-                className="w-32"
-              />
-              <span className="w-8 text-gray-400">{skillLevel}</span>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <span className="w-28 shrink-0">Burst</span>
-              <input
-                type="range"
-                min={talentLevelBounds.burstLevel.min}
-                max={talentLevelBounds.burstLevel.max}
-                value={burstLevel}
-                onChange={(event) => setBurstLevel(Number(event.target.value))}
-                className="w-32"
-              />
-              <span className="w-8 text-gray-400">{burstLevel}</span>
-            </label>
-          </>
+          <ConstellationIcons
+            element={character.element}
+            constellations={data.constellations}
+            constellation={constellation}
+            onChange={handleConstellationChange}
+          />
         )}
       </div>
+
+      <div className="space-y-1">
+        <p className="text-sm font-medium">Talents</p>
+        {!data ? (
+          <p className="text-sm text-gray-500">Loading...</p>
+        ) : (
+          <TalentsSection
+            data={data}
+            constellation={constellation}
+            normalAttackLevel={normalAttackLevel}
+            skillLevel={skillLevel}
+            burstLevel={burstLevel}
+            onChangeNormalAttackLevel={setNormalAttackLevel}
+            onChangeSkillLevel={setSkillLevel}
+            onChangeBurstLevel={setBurstLevel}
+          />
+        )}
+      </div>
+
+      {data && <BaseStatsSection data={data} level={level} ascensionPhase={ascensionPhase} />}
 
       <div className="flex justify-end border-t pt-3">
         <button
@@ -361,7 +618,7 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
         {filtered.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
       </ul>
 
-      <Modal open={editingCharacter !== null} onClose={() => setEditingId(null)}>
+      <Modal open={editingCharacter !== null} onClose={() => setEditingId(null)} maxWidthClassName="max-w-xl">
         {editingCharacter && (
           <CharacterProgressionEditor
             key={editingCharacter.id}

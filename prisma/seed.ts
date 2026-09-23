@@ -60,6 +60,24 @@ const FIGHT_PROP_TO_STAT_TYPE: Record<string, StatTypeName> = {
   FIGHT_PROP_WIND_ADD_HURT: "Anemo DMG Bonus%",
 };
 
+// genshin-db's character stats() function returns each character's
+// ascension-stat as a TOTAL, not just the bonus from ascending -- for these
+// 3 stat types, every character already has a fixed baseline regardless of
+// ascension (5% Crit Rate, 50% Crit DMG, 100% Energy Recharge), and that
+// baseline is folded into `specialized`. Verified directly: a level-1,
+// unascended character (no ascension bonus unlocked yet) still reports
+// specialized: 0.05/0.5/1 for these three. Every other ascension-stat type
+// (Elemental Mastery, HP%/ATK%/DEF%, elemental DMG Bonus%, Healing Bonus%)
+// has no such innate baseline, so `specialized` is already just the bonus
+// for those. Subtracted in seedCharacterLevelStats so
+// CharacterLevelStat.ascensionStatValue always stores the bonus alone,
+// matching what the game itself shows on the character's stat screen.
+const ASCENSION_STAT_BASELINE: Partial<Record<StatTypeName, number>> = {
+  "Crit Rate%": 0.05,
+  "Crit DMG%": 0.5,
+  "Energy Recharge%": 1,
+};
+
 const ELEMENT_TYPE_MAP: Record<string, Element> = {
   ELEMENT_PYRO: Element.Pyro,
   ELEMENT_HYDRO: Element.Hydro,
@@ -148,12 +166,28 @@ async function seedStatTypes() {
 // Genshin's growth-curve formulas ourselves -- see CLAUDE.md's Key
 // decisions for why. Always trusts the function's own returned `ascension`
 // field for the phase number, never our own guess.
-async function seedCharacterLevelStats(characterId: number, statFn: genshindb.StatFunction) {
+async function seedCharacterLevelStats(
+  characterId: number,
+  statFn: genshindb.StatFunction,
+  ascensionStatName: StatTypeName | undefined
+) {
+  const baseline = ascensionStatName ? (ASCENSION_STAT_BASELINE[ascensionStatName] ?? 0) : 0;
+  // genshin-db's `specialized` is a raw fraction (0.384 for 38.4%) for every
+  // percent-type stat -- but every other stat-bonus value in this schema
+  // (TalentStatBonus/ConstellationStatBonus/WeaponStatBonus, all prose-
+  // parsed from literal percentages like "Gain 12% ATK") is already stored
+  // percent-scaled (12, not 0.12), same convention the artifact substat
+  // roll tables use. Rescaled here so ascensionStatValue matches that
+  // existing convention instead of being the one column in a different
+  // unit. Elemental Mastery is the only non-percent ascension stat and
+  // genshin-db already reports it as a flat number, so it's left alone.
+  const isPercentStat = ascensionStatName?.endsWith("%") ?? false;
   const rows = [];
   for (let level = 1; level <= 90; level++) {
     const flags: ("-" | "+")[] = ASCENSION_BREAKPOINTS.includes(level) ? ["-", "+"] : ["-"];
     for (const flag of flags) {
       const result = statFn(level, flag);
+      const specialized = (result.specialized ?? 0) - baseline;
       rows.push({
         characterId,
         level: result.level,
@@ -161,7 +195,7 @@ async function seedCharacterLevelStats(characterId: number, statFn: genshindb.St
         hp: result.hp ?? 0,
         attack: result.attack ?? 0,
         defense: result.defense ?? 0,
-        ascensionStatValue: result.specialized ?? 0,
+        ascensionStatValue: isPercentStat ? specialized * 100 : specialized,
       });
     }
   }
@@ -339,7 +373,8 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
     }
 
     const iconUrl = enkaIconUrl(character.images.filename_icon);
-    const ascensionStatId = statTypeIds.get(FIGHT_PROP_TO_STAT_TYPE[character.substatType]) ?? null;
+    const ascensionStatName = FIGHT_PROP_TO_STAT_TYPE[character.substatType];
+    const ascensionStatId = statTypeIds.get(ascensionStatName) ?? null;
 
     const dbCharacter = await prisma.character.upsert({
       where: { name: character.name },
@@ -354,7 +389,7 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
       },
       update: { element, weaponType, rarity: character.rarity, ascensionStatId, iconUrl },
     });
-    await seedCharacterLevelStats(dbCharacter.id, character.stats);
+    await seedCharacterLevelStats(dbCharacter.id, character.stats, ascensionStatName);
     await seedTalents(dbCharacter.id, character.name);
     await seedConstellations(dbCharacter.id, character.name, statTypeIds);
     count++;
@@ -368,7 +403,8 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
   // stats function is reused for every vision row.
   const lumine = genshindb.characters("Lumine", { verboseCategories: true })!;
   const travelerIconUrl = enkaIconUrl(lumine.images.filename_icon);
-  const travelerAscensionStatId = statTypeIds.get(FIGHT_PROP_TO_STAT_TYPE[lumine.substatType]) ?? null;
+  const travelerAscensionStatName = FIGHT_PROP_TO_STAT_TYPE[lumine.substatType];
+  const travelerAscensionStatId = statTypeIds.get(travelerAscensionStatName) ?? null;
 
   for (const element of TRAVELER_VISIONS) {
     const name = `Traveler (${element})`;
@@ -392,7 +428,7 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
         iconUrl: travelerIconUrl,
       },
     });
-    await seedCharacterLevelStats(dbCharacter.id, lumine.stats);
+    await seedCharacterLevelStats(dbCharacter.id, lumine.stats, travelerAscensionStatName);
     // Unlike base stats, genshin-db DOES have per-vision talent/
     // constellation data, queryable under this same "Traveler (Element)"
     // name -- each vision's kit genuinely differs, unlike its stat growth.

@@ -20,3 +20,30 @@ export function formatTalentValue(value: number, formatCode: string): string {
 
   return formatCode.includes("P") ? `${text}%` : text;
 }
+
+// A genshin-db label combining multiple params (e.g. "Low/High Plunge
+// DMG|{param10:P}/{param11:P}") gets split at seed time into multiple
+// TalentAttribute rows -- "Low/High Plunge DMG (1)", "Low/High Plunge DMG
+// (2)" -- since the schema stores one number series per row (see
+// prisma/seed.ts's parseAttributeLabel). Regrouped back here into one
+// display row per base label ("Low/High Plunge DMG: 113.6%/141.9%") rather
+// than showing "(1)"/"(2)" as if they were two unrelated attributes.
+export function groupTalentAttributes(
+  attributes: { label: string; formatCode: string; values: number[] }[],
+  level: number
+): { label: string; display: string }[] {
+  const groups: { label: string; values: string[] }[] = [];
+  for (const attribute of attributes) {
+    const label = attribute.label.replace(/ \(\d+\)$/, "");
+    const value = attribute.values[Math.min(level, attribute.values.length) - 1];
+    const formatted = formatTalentValue(value, attribute.formatCode);
+
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup.label === label) {
+      lastGroup.values.push(formatted);
+    } else {
+      groups.push({ label, values: [formatted] });
+    }
+  }
+  return groups.map((g) => ({ label: g.label, display: g.values.join("/") }));
+}

@@ -388,6 +388,29 @@ user-editable.
   requires (talent multiplier tables classified by scaling stat/hit type,
   enemy stats/RES, the elemental reaction system). The aggregate stat totals
   from build order step 8 are a prerequisite for this, not this itself.
+- Unlockable "bonus" passives some characters get outside the normal kit
+  (e.g. Nicole's Hexerei-only "Witch's Eve Rite: Light in the Darkness",
+  unlocked via a quest, active only with 2+ Hexerei party members; Diona
+  and Fischl are reported to have their own equivalents). Investigated and
+  shelved: genshin-db (this project's only data source) has zero coverage
+  of these anywhere in its dataset -- confirmed by grepping its entire raw
+  JSON for the passive's name and for "faction passive", no matches. A
+  community API (gi.yatta.moe/Project Amber) does expose at least Nicole's
+  under an extra numbered `talent` key beyond the normal 3 passives, but
+  that was only confirmed for one character via one ad hoc query -- not
+  enough to build a real seed pipeline on (unknown whether the key is
+  consistent across characters, no bulk listing endpoint found, other
+  candidate sites like lunaris.moe are client-rendered SPAs with no
+  fetchable static/API content found). Not worth wiring in a second live
+  data source for a handful of characters. When this gets picked up again:
+  a manual entry path (paste the character's wiki text, parse/store the
+  bonus passive from it) is the intended approach, not automated seeding --
+  and explicitly do NOT conflate this with flavor-only constellation text
+  that reads like a buff but does nothing mechanically (called out
+  specifically for Traveler; not actually observed as an issue in the
+  currently-installed genshin-db version, but worth independently
+  verifying whatever's pasted in actually corresponds to a real effect
+  before it's treated as one).
 
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over

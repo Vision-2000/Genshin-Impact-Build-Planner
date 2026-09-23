@@ -41,3 +41,11 @@ export function isValidLevelAscension(level: number, ascensionPhase: number): bo
 export function maxLevelForAscensionPhase(ascensionPhase: number): number {
   return PHASE_MAX_LEVEL[ascensionPhase];
 }
+
+// The lowest level a given ascension phase can be at, e.g. phase 2 starts at
+// 40 (you ascend right at the previous phase's cap). Paired with
+// maxLevelForAscensionPhase to clamp the level slider when the ascension
+// diamonds are clicked directly (see CharacterProgressionEditor).
+export function minLevelForAscensionPhase(ascensionPhase: number): number {
+  return ascensionPhase === 0 ? MIN_LEVEL : PHASE_MAX_LEVEL[ascensionPhase - 1];
+}

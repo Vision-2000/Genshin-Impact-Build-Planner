@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { validAscensionPhasesForLevel, isValidLevelAscension, maxLevelForAscensionPhase } from "./ascension";
+import {
+  validAscensionPhasesForLevel,
+  isValidLevelAscension,
+  maxLevelForAscensionPhase,
+  minLevelForAscensionPhase,
+} from "./ascension";
 
 describe("validAscensionPhasesForLevel", () => {
   it("returns a single phase for a non-breakpoint level", () => {
@@ -43,5 +48,17 @@ describe("maxLevelForAscensionPhase", () => {
 
   it("returns the level cap for the final phase", () => {
     expect(maxLevelForAscensionPhase(6)).toBe(90);
+  });
+});
+
+describe("minLevelForAscensionPhase", () => {
+  it("returns MIN_LEVEL for phase 0", () => {
+    expect(minLevelForAscensionPhase(0)).toBe(1);
+  });
+
+  it("returns the previous phase's breakpoint for phases 1-6", () => {
+    expect(minLevelForAscensionPhase(1)).toBe(20);
+    expect(minLevelForAscensionPhase(2)).toBe(40);
+    expect(minLevelForAscensionPhase(6)).toBe(80);
   });
 });
