@@ -61,21 +61,30 @@ const FIGHT_PROP_TO_STAT_TYPE: Record<string, StatTypeName> = {
 };
 
 // genshin-db's character stats() function returns each character's
-// ascension-stat as a TOTAL, not just the bonus from ascending -- for these
-// 3 stat types, every character already has a fixed baseline regardless of
-// ascension (5% Crit Rate, 50% Crit DMG, 100% Energy Recharge), and that
-// baseline is folded into `specialized`. Verified directly: a level-1,
-// unascended character (no ascension bonus unlocked yet) still reports
-// specialized: 0.05/0.5/1 for these three. Every other ascension-stat type
-// (Elemental Mastery, HP%/ATK%/DEF%, elemental DMG Bonus%, Healing Bonus%)
-// has no such innate baseline, so `specialized` is already just the bonus
-// for those. Subtracted in seedCharacterLevelStats so
-// CharacterLevelStat.ascensionStatValue always stores the bonus alone,
-// matching what the game itself shows on the character's stat screen.
+// ascension-stat as a TOTAL, not just the bonus from ascending -- but only
+// for Crit Rate and Crit DMG, where every character already has a fixed
+// baseline regardless of ascension (5% Crit Rate, 50% Crit DMG) folded
+// into `specialized`. Verified directly: a level-1, unascended character
+// (no ascension bonus unlocked yet) still reports specialized: 0.05/0.5
+// for these two, sampled across 5 characters each.
+//
+// Energy Recharge does NOT work this way, despite every character also
+// having a 100% ER baseline in-game -- genshin-db's `specialized` for it
+// is already bonus-only. Verified across all 7 ER-ascension characters
+// (Bennett, Kaeya, Mona, Raiden Shogun, Alyosha, ...): every one reports 0
+// at level 1/unascended, not 1. Treating it like the other two subtracted
+// a phantom 100% baseline from an already-bonus-only value, producing
+// negative results once a character actually ascended (e.g. Bennett
+// showing -73.3% ER at level 81 before this was caught). Every other
+// ascension-stat type (Elemental Mastery, HP%/ATK%/DEF%, elemental DMG
+// Bonus%, Healing Bonus%) has no baseline either, same as ER.
+//
+// Subtracted in seedCharacterLevelStats so CharacterLevelStat.
+// ascensionStatValue always stores the bonus alone, matching what the game
+// itself shows on the character's stat screen.
 const ASCENSION_STAT_BASELINE: Partial<Record<StatTypeName, number>> = {
   "Crit Rate%": 0.05,
   "Crit DMG%": 0.5,
-  "Energy Recharge%": 1,
 };
 
 const ELEMENT_TYPE_MAP: Record<string, Element> = {

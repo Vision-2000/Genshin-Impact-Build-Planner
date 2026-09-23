@@ -411,6 +411,18 @@ user-editable.
   currently-installed genshin-db version, but worth independently
   verifying whatever's pasted in actually corresponds to a real effect
   before it's treated as one).
+- A small number of characters have a constant, always-on "innate" stat
+  outside the normal ascension system entirely -- e.g. Nefer has a flat
+  100 Elemental Mastery at every level/ascension, confirmed on the wiki as
+  a separate "Base EM" column alongside her actual ascension-scaling stat
+  (Crit DMG, which genshin-db does track correctly). Investigated and
+  shelved for the same reason as the bonus-passive item above: dumped
+  genshin-db's entire raw character object and full stats() output for
+  Nefer, no field for this anywhere. Structurally this needs something new
+  (today's schema has no "constant non-scaling stat" concept, only the
+  per-level ascensionStatValue table) -- when this gets picked up again,
+  treat it as the same manual-entry problem as the bonus-passive item
+  rather than inventing a separate mechanism for it.
 
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over
