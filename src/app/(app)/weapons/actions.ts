@@ -3,10 +3,12 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import type { OwnedWeaponItem } from "./filter-sort";
-import { UpdateWeaponProgressionInputSchema, type UpdateWeaponProgressionErrors } from "./schemas";
-
-const MIN_REFINEMENT = 1;
-const MAX_REFINEMENT = 5;
+import {
+  UpdateWeaponProgressionInputSchema,
+  MIN_REFINEMENT,
+  MAX_REFINEMENT,
+  type UpdateWeaponProgressionErrors,
+} from "./schemas";
 
 function clampRefinement(refinement: number) {
   return Math.min(MAX_REFINEMENT, Math.max(MIN_REFINEMENT, Math.trunc(refinement)));
@@ -34,20 +36,50 @@ export async function addWeapon(weaponId: number, refinement: number): Promise<O
   };
 }
 
-export async function updateWeaponRefinement(ownedWeaponId: number, refinement: number) {
-  const profile = await requireActiveProfile();
+export type WeaponProgressionData = {
+  passiveName: string | null;
+  levelStats: { level: number; ascensionPhase: number; attack: number; secondaryStatValue: number }[];
+  refinementEffects: { refinement: number; description: string }[];
+  statBonusesByRefinement: { refinement: number; statTypeName: string; value: number }[];
+};
 
-  await prisma.ownedWeapon.updateMany({
-    where: { id: ownedWeaponId, gameProfileId: profile.id },
-    data: { refinement: clampRefinement(refinement) },
+// Everything the progression editor needs beyond the OwnedWeaponItem it
+// already has (name/rarity/secondaryStatName/etc, from the main owned-list
+// query) -- base stat lookup table and per-refinement passive text/stat
+// bonus. Fetched lazily when the editor opens, same reasoning as
+// getCharacterProgressionData.
+export async function getWeaponProgressionData(weaponId: number): Promise<WeaponProgressionData> {
+  const weapon = await prisma.weapon.findUniqueOrThrow({
+    where: { id: weaponId },
+    include: {
+      levelStats: true,
+      refinementEffects: { orderBy: { refinement: "asc" } },
+      statBonuses: { include: { statType: true }, orderBy: { refinement: "asc" } },
+    },
   });
+
+  return {
+    passiveName: weapon.passiveName,
+    levelStats: weapon.levelStats.map((s) => ({
+      level: s.level,
+      ascensionPhase: s.ascensionPhase,
+      attack: s.attack,
+      secondaryStatValue: s.secondaryStatValue,
+    })),
+    refinementEffects: weapon.refinementEffects.map((r) => ({ refinement: r.refinement, description: r.description })),
+    statBonusesByRefinement: weapon.statBonuses.map((b) => ({
+      refinement: b.refinement,
+      statTypeName: b.statType.name,
+      value: b.value,
+    })),
+  };
 }
 
 export type UpdateWeaponProgressionResult = { ok: true } | { errors: UpdateWeaponProgressionErrors };
 
 export async function updateWeaponProgression(
   ownedWeaponId: number,
-  input: { level: number; ascensionPhase: number }
+  input: { level: number; ascensionPhase: number; refinement: number }
 ): Promise<UpdateWeaponProgressionResult> {
   const profile = await requireActiveProfile();
 
@@ -58,7 +90,7 @@ export async function updateWeaponProgression(
 
   await prisma.ownedWeapon.updateMany({
     where: { id: ownedWeaponId, gameProfileId: profile.id },
-    data: { level: validated.data.level, ascensionPhase: validated.data.ascensionPhase },
+    data: validated.data,
   });
   return { ok: true };
 }

@@ -588,19 +588,28 @@ async function seedArtifactSets(statTypeIds: Map<StatTypeName, number>) {
 }
 
 // Same idea and sourcing as seedCharacterLevelStats -- weapons have no
-// hp/defense, just attack and their secondary stat's value.
-async function seedWeaponLevelStats(weaponId: number, statFn: genshindb.StatFunction) {
+// hp/defense, just attack and their secondary stat's value. Unlike
+// characters' ascensionStatValue, there's no universal per-weapon baseline
+// to subtract (verified directly against genshin-db: a level-1 weapon's
+// `specialized` starts at its own real low value, e.g. ~13% for a Crit
+// Rate weapon, not offset by some fixed 5%/50%/100% the way Crit Rate/Crit
+// DMG/Energy Recharge are for characters) -- but it's still a raw fraction
+// needing the same percent rescale as everything else in this schema (see
+// ASCENSION_STAT_BASELINE's comment for the general convention).
+async function seedWeaponLevelStats(weaponId: number, statFn: genshindb.StatFunction, secondaryStatName: StatTypeName | undefined) {
+  const isPercentStat = secondaryStatName?.endsWith("%") ?? false;
   const rows = [];
   for (let level = 1; level <= 90; level++) {
     const flags: ("-" | "+")[] = ASCENSION_BREAKPOINTS.includes(level) ? ["-", "+"] : ["-"];
     for (const flag of flags) {
       const result = statFn(level, flag);
+      const specialized = result.specialized ?? 0;
       rows.push({
         weaponId,
         level: result.level,
         ascensionPhase: result.ascension,
         attack: result.attack ?? 0,
-        secondaryStatValue: result.specialized ?? 0,
+        secondaryStatValue: isPercentStat ? specialized * 100 : specialized,
       });
     }
   }
@@ -797,9 +806,8 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
       continue;
     }
 
-    const secondaryStatId = weapon.mainStatType
-      ? statTypeIds.get(FIGHT_PROP_TO_STAT_TYPE[weapon.mainStatType]) ?? null
-      : null;
+    const secondaryStatName = weapon.mainStatType ? FIGHT_PROP_TO_STAT_TYPE[weapon.mainStatType] : undefined;
+    const secondaryStatId = secondaryStatName ? statTypeIds.get(secondaryStatName) ?? null : null;
 
     // Low-rarity weapons have no passive at all. Per-refinement passive
     // text is seeded separately into WeaponRefinementEffect -- see
@@ -812,7 +820,7 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
       create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
       update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
     });
-    await seedWeaponLevelStats(dbWeapon.id, weapon.stats);
+    await seedWeaponLevelStats(dbWeapon.id, weapon.stats, secondaryStatName);
     await seedWeaponRefinementEffects(dbWeapon.id, weapon);
     await seedWeaponStatBonuses(dbWeapon.id, weapon.name, weapon, statTypeIds);
     count++;

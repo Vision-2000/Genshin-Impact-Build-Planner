@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { WeaponType } from "@/generated/prisma/enums";
 import { useDialogs } from "@/components/dialog-provider";
@@ -8,12 +8,24 @@ import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { Modal } from "@/components/modal";
+import { DiamondSelector } from "@/components/diamond-selector";
+import { StatBonusList } from "@/components/stat-bonus-list";
+import { HighlightedText } from "@/components/highlighted-text";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
-import { MIN_LEVEL, MAX_LEVEL, validAscensionPhasesForLevel } from "@/lib/ascension";
+import {
+  MIN_LEVEL,
+  MAX_LEVEL,
+  MAX_ASCENSION_PHASE,
+  validAscensionPhasesForLevel,
+  maxLevelForAscensionPhase,
+  minLevelForAscensionPhase,
+} from "@/lib/ascension";
+import { formatStatValue } from "@/lib/stat-format";
 import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import { WeaponCard } from "./weapon-card";
-import { removeWeapon, updateWeaponRefinement, updateWeaponProgression } from "./actions";
+import { removeWeapon, updateWeaponProgression, getWeaponProgressionData, type WeaponProgressionData } from "./actions";
+import { MIN_REFINEMENT, MAX_REFINEMENT, type UpdateWeaponProgressionInput } from "./schemas";
 import { filterAndSortOwnedWeapons, type OwnedWeaponItem, type OwnedSortKey } from "./filter-sort";
 
 // Weapons are seeded from 3-5 star (see prisma/seed.ts).
@@ -26,23 +38,87 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   return next;
 }
 
-// Modal body for editing level/ascension. A dropdown alone can't handle
-// refinement (see WeaponCard's inline <select>), but level+ascension need
-// even more room than that -- ascension is constrained by level (only one
-// or two valid phases, see src/lib/ascension.ts), so changing the level
-// slider snaps ascension to the closest still-valid phase, same idea as the
-// artifact editor snapping substat values when level changes.
+function BaseStatsSection({
+  data,
+  level,
+  ascensionPhase,
+  secondaryStatName,
+}: {
+  data: WeaponProgressionData;
+  level: number;
+  ascensionPhase: number;
+  secondaryStatName: string | null;
+}) {
+  const stat = data.levelStats.find((s) => s.level === level && s.ascensionPhase === ascensionPhase);
+  if (!stat) return null;
+
+  return (
+    <div className="space-y-1 rounded border p-2 text-sm">
+      <p className="font-medium">Stats</p>
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-500 dark:text-gray-300">
+        <li>Base ATK: {Math.round(stat.attack)}</li>
+        {secondaryStatName && (
+          <li>
+            {secondaryStatName}: {formatStatValue(secondaryStatName, stat.secondaryStatValue)}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+// The weapon's passive (if it has one -- low-rarity weapons don't), shown
+// with the current refinement's own pre-rendered text and stat bonus
+// (genshin-db already provides a fully-rendered description per refinement
+// level, see WeaponRefinementEffect's schema comment -- no separate
+// multiplier list to merge in the way talents need, the numbers are
+// already inline in the text).
+function PassiveSection({ data, refinement }: { data: WeaponProgressionData; refinement: number }) {
+  if (!data.passiveName) return null;
+  const effect = data.refinementEffects.find((e) => e.refinement === refinement);
+  if (!effect) return null;
+  const statBonuses = data.statBonusesByRefinement.filter((b) => b.refinement === refinement);
+
+  return (
+    <div className="space-y-1 rounded border p-2 text-sm">
+      <p className="font-medium text-yellow-100">{data.passiveName}</p>
+      <p className="whitespace-pre-line text-gray-500 dark:text-gray-300">
+        <HighlightedText text={effect.description} />
+      </p>
+      <StatBonusList statBonuses={statBonuses} />
+    </div>
+  );
+}
+
+// Modal body for editing level/ascension/refinement, plus (once data loads)
+// the weapon's base ATK/secondary stat at the current level+ascension and
+// its passive text/stat bonus at the current refinement. Ascension is
+// constrained by level in both directions, same as Characters: the level
+// slider snaps ascension to the closest still-valid phase, and clicking an
+// ascension diamond pulls the level into whatever's valid at that phase.
+// Fetched lazily here rather than bundled into the main owned-weapons
+// query -- only the weapon currently being edited needs this.
 function WeaponProgressionEditor({
   weapon,
   onSave,
 }: {
   weapon: OwnedWeaponItem;
-  onSave: (level: number, ascensionPhase: number) => void;
+  onSave: (input: UpdateWeaponProgressionInput) => void;
 }) {
   const [level, setLevel] = useState(weapon.level);
   const [ascensionPhase, setAscensionPhase] = useState(weapon.ascensionPhase);
-  const validPhases = validAscensionPhasesForLevel(level);
-  const maxValidPhase = Math.max(...validPhases);
+  const [refinement, setRefinement] = useState(weapon.refinement);
+  const [data, setData] = useState<WeaponProgressionData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getWeaponProgressionData(weapon.weaponId).then((result) => {
+      if (!cancelled) setData(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [weapon.weaponId]);
 
   function handleLevelChange(newLevel: number) {
     setLevel(newLevel);
@@ -50,6 +126,13 @@ function WeaponProgressionEditor({
     if (!phases.includes(ascensionPhase)) {
       setAscensionPhase(phases[phases.length - 1]);
     }
+  }
+
+  function handleAscensionPhaseChange(newPhase: number) {
+    setAscensionPhase(newPhase);
+    const min = minLevelForAscensionPhase(newPhase);
+    const max = maxLevelForAscensionPhase(newPhase);
+    setLevel((prev) => Math.min(max, Math.max(min, prev)));
   }
 
   return (
@@ -75,32 +158,48 @@ function WeaponProgressionEditor({
           onChange={(event) => handleLevelChange(Number(event.target.value))}
           className="-mt-1 w-32"
         />
-        <span className="w-8 text-gray-400">{level}</span>
+        <span className="w-14 text-gray-400">
+          {level}/{maxLevelForAscensionPhase(ascensionPhase)}
+        </span>
       </label>
 
-      {validPhases.length > 1 ? (
-        <label className="flex items-center gap-2 text-sm">
-          Ascension:
-          <select
-            value={ascensionPhase}
-            onChange={(event) => setAscensionPhase(Number(event.target.value))}
-            className="h-8 rounded border bg-white px-2 text-sm text-black"
-          >
-            {validPhases.map((phase) => (
-              <option key={phase} value={phase}>
-                Phase {phase} {phase === maxValidPhase ? "(ascended)" : "(pre-ascension)"}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="space-y-1">
+        <p className="text-sm">Ascension</p>
+        <DiamondSelector
+          count={MAX_ASCENSION_PHASE}
+          value={ascensionPhase}
+          onChange={handleAscensionPhaseChange}
+          litClassName="border-amber-400 bg-amber-400"
+          ariaLabel={(phase) => `Ascension phase ${phase}`}
+        />
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        Refinement
+        <input
+          type="range"
+          min={MIN_REFINEMENT}
+          max={MAX_REFINEMENT}
+          value={refinement}
+          onChange={(event) => setRefinement(Number(event.target.value))}
+          className="w-32"
+        />
+        <span className="w-8 text-gray-400">R{refinement}</span>
+      </label>
+
+      {!data ? (
+        <p className="text-sm text-gray-500">Loading...</p>
       ) : (
-        <p className="text-sm text-gray-500">Ascension: Phase {ascensionPhase}</p>
+        <>
+          <BaseStatsSection data={data} level={level} ascensionPhase={ascensionPhase} secondaryStatName={weapon.secondaryStatName} />
+          <PassiveSection data={data} refinement={refinement} />
+        </>
       )}
 
       <div className="flex justify-end border-t pt-3">
         <button
           type="button"
-          onClick={() => onSave(level, ascensionPhase)}
+          onClick={() => onSave({ level, ascensionPhase, refinement })}
           className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
         >
           Save
@@ -145,26 +244,13 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   });
   const editingWeapon = editingId === null ? null : (owned.find((w) => w.id === editingId) ?? null);
 
-  function handleUpdateRefinement(ownedWeaponId: number, refinement: number) {
+  function handleUpdateProgression(ownedWeaponId: number, input: UpdateWeaponProgressionInput) {
     const previous = owned;
-    setOwned((prev) => prev.map((weapon) => (weapon.id === ownedWeaponId ? { ...weapon, refinement } : weapon)));
-
-    startTransition(() => {
-      updateWeaponRefinement(ownedWeaponId, refinement).catch(() => setOwned(previous));
-    });
-  }
-
-  function handleUpdateProgression(ownedWeaponId: number, level: number, ascensionPhase: number) {
-    const previous = owned;
-    setOwned((prev) =>
-      prev.map((weapon) => (weapon.id === ownedWeaponId ? { ...weapon, level, ascensionPhase } : weapon))
-    );
+    setOwned((prev) => prev.map((weapon) => (weapon.id === ownedWeaponId ? { ...weapon, ...input } : weapon)));
     setEditingId(null);
 
     startTransition(async () => {
-      const result = await updateWeaponProgression(ownedWeaponId, { level, ascensionPhase }).catch(
-        () => ({ errors: {} }) as const
-      );
+      const result = await updateWeaponProgression(ownedWeaponId, input).catch(() => ({ errors: {} }) as const);
       if ("errors" in result) setOwned(previous);
     });
   }
@@ -229,7 +315,6 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
             secondaryStatName={weapon.secondaryStatName}
             iconUrl={weapon.iconUrl}
             refinement={weapon.refinement}
-            onRefinementChange={(refinement) => handleUpdateRefinement(weapon.id, refinement)}
             actionLabel="Remove"
             onAction={() => handleRemove(weapon.id)}
             danger
@@ -241,12 +326,12 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
       </ul>
 
-      <Modal open={editingWeapon !== null} onClose={() => setEditingId(null)}>
+      <Modal open={editingWeapon !== null} onClose={() => setEditingId(null)} maxWidthClassName="max-w-xl">
         {editingWeapon && (
           <WeaponProgressionEditor
             key={editingWeapon.id}
             weapon={editingWeapon}
-            onSave={(level, ascensionPhase) => handleUpdateProgression(editingWeapon.id, level, ascensionPhase)}
+            onSave={(input) => handleUpdateProgression(editingWeapon.id, input)}
           />
         )}
       </Modal>

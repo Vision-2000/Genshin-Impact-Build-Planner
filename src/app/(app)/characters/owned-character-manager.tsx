@@ -9,6 +9,8 @@ import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { Modal } from "@/components/modal";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { HighlightedText } from "@/components/highlighted-text";
+import { DiamondSelector } from "@/components/diamond-selector";
+import { StatBonusList } from "@/components/stat-bonus-list";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import {
   MIN_LEVEL,
@@ -48,19 +50,6 @@ function adjustTalentLevel(value: number, oldBounds: TalentLevelBounds, newBound
   return Math.min(newBounds.max, Math.max(newBounds.min, shifted));
 }
 
-function StatBonusList({ statBonuses }: { statBonuses: { statTypeName: string; value: number }[] }) {
-  if (statBonuses.length === 0) return null;
-  return (
-    <ul className="mt-2 space-y-1 text-gray-300">
-      {statBonuses.map((b) => (
-        <li key={b.statTypeName}>
-          +{formatStatValue(b.statTypeName, b.value)} {b.statTypeName}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function TooltipIcon({ iconUrl, alt, content }: { iconUrl: string | null; alt: string; content: ReactNode }) {
   return (
     <MouseFollowTooltip content={content}>
@@ -71,36 +60,11 @@ function TooltipIcon({ iconUrl, alt, content }: { iconUrl: string | null; alt: s
   );
 }
 
-// 6 diamonds, one per ascension phase (phase 0 is "none lit" and isn't
-// clickable directly -- reached by clicking phase 1 again to toggle it off).
-// Clicking an already-lit diamond that's the current phase steps back down
-// one phase rather than doing nothing, so phase 0 stays reachable by mouse.
-function AscensionDiamonds({ ascensionPhase, onChange }: { ascensionPhase: number; onChange: (phase: number) => void }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      {Array.from({ length: MAX_ASCENSION_PHASE }, (_, i) => i + 1).map((phase) => {
-        const lit = phase <= ascensionPhase;
-        return (
-          <button
-            key={phase}
-            type="button"
-            aria-label={`Ascension phase ${phase}`}
-            aria-pressed={lit}
-            onClick={() => onChange(phase === ascensionPhase ? phase - 1 : phase)}
-            className={`h-4 w-4 rotate-45 border-2 transition-colors ${
-              lit ? "border-amber-400 bg-amber-400" : "border-gray-500 bg-transparent hover:border-gray-400"
-            }`}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-// Same toggle-to-step-down-by-one behavior as AscensionDiamonds, applied to
-// the 6 constellation icons instead of plain diamonds -- lit icons use the
-// character's own constellation art (from Constellation.iconUrl), unlit
-// ones are grayscaled rather than swapped for a placeholder.
+// Same toggle-to-step-down-by-one behavior as the shared ascension
+// DiamondSelector, applied to the 6 constellation icons instead of plain
+// diamonds -- lit icons use the character's own constellation art (from
+// Constellation.iconUrl), unlit ones are grayscaled rather than swapped for
+// a placeholder.
 function ConstellationIcons({
   element,
   constellations,
@@ -432,7 +396,13 @@ function CharacterProgressionEditor({
 
       <div className="space-y-1">
         <p className="text-sm">Ascension</p>
-        <AscensionDiamonds ascensionPhase={ascensionPhase} onChange={handleAscensionPhaseChange} />
+        <DiamondSelector
+          count={MAX_ASCENSION_PHASE}
+          value={ascensionPhase}
+          onChange={handleAscensionPhaseChange}
+          litClassName="border-amber-400 bg-amber-400"
+          ariaLabel={(phase) => `Ascension phase ${phase}`}
+        />
       </div>
 
       <div className="space-y-1">
