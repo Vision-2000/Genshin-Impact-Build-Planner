@@ -102,7 +102,7 @@ export const WEAPON_ASCENSION_VALUE_BY_RARITY: Record<number, number[]> = {
 // not interpolated: levels 1-4 use level 1's value, 5-9 use level 5's, etc.
 // Verified empirically against all 242 seeded weapons (23,136 rows, zero
 // mismatches) before trusting this for the compact schema.
-export const WEAPON_SECONDARY_MULTIPLIER_CONTROL_POINTS: [number, number][] = [[1,1],[5,1.162],[10,1.363],[15,1.565],[20,1.767],[25,1.969],[30,2.171],[35,2.373],[40,2.575],[45,2.777],[50,2.979],[55,3.181],[60,3.383],[65,3.585],[70,3.786],[75,3.988],[80,4.19],[85,4.392],[90,4.594]];
+const WEAPON_SECONDARY_MULTIPLIER_CONTROL_POINTS: [number, number][] = [[1,1],[5,1.162],[10,1.363],[15,1.565],[20,1.767],[25,1.969],[30,2.171],[35,2.373],[40,2.575],[45,2.777],[50,2.979],[55,3.181],[60,3.383],[65,3.585],[70,3.786],[75,3.988],[80,4.19],[85,4.392],[90,4.594]];
 
 export function weaponAttackLevelMultiplier(rarity: number, tier: number, level: number): number {
   return WEAPON_ATTACK_LEVEL_MULTIPLIER[rarity][tier - 1][level - 1];

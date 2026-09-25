@@ -98,7 +98,7 @@ export const CHARACTER_BONUS_STAT_BASE_VALUE: Record<string, { fourStar: number 
 // Levels 95/100 only -- see the report's own caveat that the closed-form
 // formula below doesn't hold there. Not reachable today (MAX_LEVEL is 90
 // in src/lib/ascension.ts), kept for correctness if that cap is ever raised.
-export const LEVEL_95_100_MULTIPLIER: Record<number, { fourStarHpDef: number; fourStarAtk: number; fiveStarHpDef: number; fiveStarAtk: number }> =
+const LEVEL_95_100_MULTIPLIER: Record<number, { fourStarHpDef: number; fourStarAtk: number; fiveStarHpDef: number; fiveStarAtk: number }> =
   {
   "95": {
     "fourStarHpDef": 8.761,
