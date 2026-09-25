@@ -8,8 +8,10 @@
 import "dotenv/config";
 import * as genshindb from "genshin-db";
 import { prisma } from "../src/lib/prisma";
-import { ASCENSION_BREAKPOINTS } from "../src/lib/ascension";
-import { Element, WeaponType, TalentSlot, ArtifactSetPiece } from "../src/generated/prisma/enums";
+import { Element, WeaponType, TalentSlot, ArtifactSetPiece, TalentCurveType } from "../src/generated/prisma/enums";
+import { characterLevelMultiplier } from "../src/lib/character-scaling";
+import { WEAPON_ATTACK_TIER_BASE } from "../src/lib/weapon-scaling";
+import { classifyTalentAttributeCurve } from "../src/lib/talent-scaling";
 
 // ---------------------------------------------------------------------------
 // StatType: fixed canonical vocabulary, not sourced from genshin-db.
@@ -58,33 +60,6 @@ const FIGHT_PROP_TO_STAT_TYPE: Record<string, StatTypeName> = {
   FIGHT_PROP_ROCK_ADD_HURT: "Geo DMG Bonus%",
   FIGHT_PROP_WATER_ADD_HURT: "Hydro DMG Bonus%",
   FIGHT_PROP_WIND_ADD_HURT: "Anemo DMG Bonus%",
-};
-
-// genshin-db's character stats() function returns each character's
-// ascension-stat as a TOTAL, not just the bonus from ascending -- but only
-// for Crit Rate and Crit DMG, where every character already has a fixed
-// baseline regardless of ascension (5% Crit Rate, 50% Crit DMG) folded
-// into `specialized`. Verified directly: a level-1, unascended character
-// (no ascension bonus unlocked yet) still reports specialized: 0.05/0.5
-// for these two, sampled across 5 characters each.
-//
-// Energy Recharge does NOT work this way, despite every character also
-// having a 100% ER baseline in-game -- genshin-db's `specialized` for it
-// is already bonus-only. Verified across all 7 ER-ascension characters
-// (Bennett, Kaeya, Mona, Raiden Shogun, Alyosha, ...): every one reports 0
-// at level 1/unascended, not 1. Treating it like the other two subtracted
-// a phantom 100% baseline from an already-bonus-only value, producing
-// negative results once a character actually ascended (e.g. Bennett
-// showing -73.3% ER at level 81 before this was caught). Every other
-// ascension-stat type (Elemental Mastery, HP%/ATK%/DEF%, elemental DMG
-// Bonus%, Healing Bonus%) has no baseline either, same as ER.
-//
-// Subtracted in seedCharacterLevelStats so CharacterLevelStat.
-// ascensionStatValue always stores the bonus alone, matching what the game
-// itself shows on the character's stat screen.
-const ASCENSION_STAT_BASELINE: Partial<Record<StatTypeName, number>> = {
-  "Crit Rate%": 0.05,
-  "Crit DMG%": 0.5,
 };
 
 const ELEMENT_TYPE_MAP: Record<string, Element> = {
@@ -162,58 +137,33 @@ async function seedStatTypes() {
   return statTypeIds;
 }
 
-// ASCENSION_BREAKPOINTS is shared with src/lib/ascension.ts (used by the
-// owned-character/weapon level-editing UI) so seeding and validation can't
-// drift apart. genshin-db's stats() infers the correct phase regardless of
-// which ascension flag is passed at a non-breakpoint level (verified
-// directly: passing '-' or '+' there returns the same, correct result) --
-// only the 6 breakpoint levels are actually ambiguous (pre- vs.
-// post-ascension, same level, different stats).
+// Replaces the old per-(level, ascension phase) sampling loop: base values
+// come straight from genshin-db's own level-1 sample, and each stat's max
+// ascension bonus is back-solved from the level-90/phase-6 sample (where
+// the ascension multiplier is exactly 1.0, see src/lib/character-scaling.ts)
+// rather than storing all 96 sampled points. scalingRarity is the rarity to
+// use for the level-multiplier curve specifically -- always the same as the
+// character's own stored rarity, except Traveler (see its call site).
+async function seedCharacterBaseStats(characterId: number, statFn: genshindb.StatFunction, scalingRarity: number) {
+  const level1 = statFn(1, "-");
+  const level90 = statFn(90, "+");
+  const mult90 = characterLevelMultiplier(scalingRarity, 90);
 
-// Samples genshin-db's own stats(level, ascension) at every (level, phase)
-// pair a character/weapon can actually be at, rather than reimplementing
-// Genshin's growth-curve formulas ourselves -- see CLAUDE.md's Key
-// decisions for why. Always trusts the function's own returned `ascension`
-// field for the phase number, never our own guess.
-async function seedCharacterLevelStats(
-  characterId: number,
-  statFn: genshindb.StatFunction,
-  ascensionStatName: StatTypeName | undefined
-) {
-  const baseline = ascensionStatName ? (ASCENSION_STAT_BASELINE[ascensionStatName] ?? 0) : 0;
-  // genshin-db's `specialized` is a raw fraction (0.384 for 38.4%) for every
-  // percent-type stat -- but every other stat-bonus value in this schema
-  // (TalentStatBonus/ConstellationStatBonus/WeaponStatBonus, all prose-
-  // parsed from literal percentages like "Gain 12% ATK") is already stored
-  // percent-scaled (12, not 0.12), same convention the artifact substat
-  // roll tables use. Rescaled here so ascensionStatValue matches that
-  // existing convention instead of being the one column in a different
-  // unit. Elemental Mastery is the only non-percent ascension stat and
-  // genshin-db already reports it as a flat number, so it's left alone.
-  const isPercentStat = ascensionStatName?.endsWith("%") ?? false;
-  const rows = [];
-  for (let level = 1; level <= 90; level++) {
-    const flags: ("-" | "+")[] = ASCENSION_BREAKPOINTS.includes(level) ? ["-", "+"] : ["-"];
-    for (const flag of flags) {
-      const result = statFn(level, flag);
-      const specialized = (result.specialized ?? 0) - baseline;
-      rows.push({
-        characterId,
-        level: result.level,
-        ascensionPhase: result.ascension,
-        hp: result.hp ?? 0,
-        attack: result.attack ?? 0,
-        defense: result.defense ?? 0,
-        ascensionStatValue: isPercentStat ? specialized * 100 : specialized,
-      });
-    }
-  }
+  const baseHp = level1.hp ?? 0;
+  const baseAttack = level1.attack ?? 0;
+  const baseDefense = level1.defense ?? 0;
 
-  // Delete-and-recreate rather than 96 individual upserts -- this data is
-  // wholly owned by the seed (never user-edited), so there's nothing to
-  // preserve across a re-run.
-  await prisma.characterLevelStat.deleteMany({ where: { characterId } });
-  await prisma.characterLevelStat.createMany({ data: rows });
+  await prisma.character.update({
+    where: { id: characterId },
+    data: {
+      baseHp,
+      baseAttack,
+      baseDefense,
+      maxAscensionHp: (level90.hp ?? 0) - baseHp * mult90,
+      maxAscensionAttack: (level90.attack ?? 0) - baseAttack * mult90,
+      maxAscensionDefense: (level90.defense ?? 0) - baseDefense * mult90,
+    },
+  });
 }
 
 // Matches every {paramN:formatCode} placeholder in one of genshin-db's
@@ -235,18 +185,43 @@ function parseAttributeLabel(rawLabel: string): { name: string; paramKey: string
 }
 
 async function seedTalentAttributes(talentId: number, attributes: genshindb.CombatTalentDetail["attributes"]) {
-  const rows: { talentId: number; label: string; formatCode: string; values: number[]; order: number }[] = [];
+  const rows: {
+    talentId: number;
+    label: string;
+    formatCode: string;
+    curveType: TalentCurveType;
+    baseValue: number;
+    linearSlope: number | null;
+    capLevel: number | null;
+    customValues: number[];
+    order: number;
+  }[] = [];
   let order = 0;
   for (const rawLabel of attributes.labels) {
     for (const { name, paramKey, formatCode } of parseAttributeLabel(rawLabel)) {
       const values = attributes.parameters[paramKey];
       if (!values) continue;
-      rows.push({ talentId, label: name, formatCode, values, order: order++ });
+      // Classifies genshin-db's own 15 raw per-level values into the
+      // compact curve representation -- see src/lib/talent-scaling.ts.
+      // Verified as an exact round-trip (0 mismatches across all 43,200
+      // values in all 2880 previously-seeded attributes) before this
+      // replaced storing the raw array directly.
+      const curve = classifyTalentAttributeCurve(values);
+      rows.push({
+        talentId,
+        label: name,
+        formatCode,
+        curveType: curve.curveType as TalentCurveType,
+        baseValue: curve.baseValue,
+        linearSlope: curve.linearSlope,
+        capLevel: curve.capLevel,
+        customValues: curve.customValues ?? [],
+        order: order++,
+      });
     }
   }
 
-  // Delete-and-recreate, same reasoning as CharacterLevelStat: wholly
-  // seed-owned data, never user-edited.
+  // Delete-and-recreate: wholly seed-owned data, never user-edited.
   await prisma.talentAttribute.deleteMany({ where: { talentId } });
   if (rows.length > 0) await prisma.talentAttribute.createMany({ data: rows });
 }
@@ -398,7 +373,7 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
       },
       update: { element, weaponType, rarity: character.rarity, ascensionStatId, iconUrl },
     });
-    await seedCharacterLevelStats(dbCharacter.id, character.stats, ascensionStatName);
+    await seedCharacterBaseStats(dbCharacter.id, character.stats, character.rarity);
     await seedTalents(dbCharacter.id, character.name);
     await seedConstellations(dbCharacter.id, character.name, statTypeIds);
     count++;
@@ -437,7 +412,11 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
         iconUrl: travelerIconUrl,
       },
     });
-    await seedCharacterLevelStats(dbCharacter.id, lumine.stats, travelerAscensionStatName);
+    // Traveler is a documented exception: stored as rarity 5 (correct for
+    // banner/catalog purposes), but its actual stat GROWTH follows the
+    // 4-star curve entirely, since it's a free character -- verified
+    // directly, see character-scaling.ts's own comment.
+    await seedCharacterBaseStats(dbCharacter.id, lumine.stats, 4);
     // Unlike base stats, genshin-db DOES have per-vision talent/
     // constellation data, queryable under this same "Traveler (Element)"
     // name -- each vision's kit genuinely differs, unlike its stat growth.
@@ -605,26 +584,64 @@ async function seedArtifactSets(statTypeIds: Map<StatTypeName, number>) {
 // DMG/Energy Recharge are for characters) -- but it's still a raw fraction
 // needing the same percent rescale as everything else in this schema (see
 // ASCENSION_STAT_BASELINE's comment for the general convention).
-async function seedWeaponLevelStats(weaponId: number, statFn: genshindb.StatFunction, secondaryStatName: StatTypeName | undefined) {
-  const isPercentStat = secondaryStatName?.endsWith("%") ?? false;
-  const rows = [];
-  for (let level = 1; level <= 90; level++) {
-    const flags: ("-" | "+")[] = ASCENSION_BREAKPOINTS.includes(level) ? ["-", "+"] : ["-"];
-    for (const flag of flags) {
-      const result = statFn(level, flag);
-      const specialized = result.specialized ?? 0;
-      rows.push({
-        weaponId,
-        level: result.level,
-        ascensionPhase: result.ascension,
-        attack: result.attack ?? 0,
-        secondaryStatValue: isPercentStat ? specialized * 100 : specialized,
-      });
+// Replaces the old per-(level, ascension phase) sampling loop. Base ATK
+// comes from genshin-db's own level-1 sample; which shared tier it uses is
+// resolved by matching that base value against WEAPON_ATTACK_TIER_BASE --
+// tried within the weapon's own rarity first (true for all but one weapon),
+// falling back to searching every rarity for Sword of Descension's own
+// documented exception (a real, player-obtainable PS-exclusive weapon
+// whose base ATK/level curve is drawn from the 3-star tier 2 table despite
+// being flagged 4-star everywhere else -- see attackCurveRarity's own
+// schema comment). Secondary stat has no ascension component, so its base
+// is just the level-1 sample, percent-rescaled the same way as everywhere
+// else stat-bonus values are stored in this schema.
+async function seedWeaponBaseStats(
+  weaponId: number,
+  weaponName: string,
+  statFn: genshindb.StatFunction,
+  rarity: number,
+  secondaryStatName: StatTypeName | undefined
+) {
+  const level1 = statFn(1, "-");
+  const baseAttack = level1.attack ?? 0;
+
+  function findTier(searchRarity: number): number | null {
+    const tiers = WEAPON_ATTACK_TIER_BASE[searchRarity];
+    if (!tiers) return null;
+    for (const [tier, base] of Object.entries(tiers)) {
+      if (Math.abs(base - baseAttack) < 0.01) return Number(tier);
     }
+    return null;
   }
 
-  await prisma.weaponLevelStat.deleteMany({ where: { weaponId } });
-  await prisma.weaponLevelStat.createMany({ data: rows });
+  let attackTier = findTier(rarity);
+  let attackCurveRarity: number | null = null;
+  if (attackTier === null) {
+    for (let searchRarity = 1; searchRarity <= 5; searchRarity++) {
+      if (searchRarity === rarity) continue;
+      const tier = findTier(searchRarity);
+      if (tier !== null) {
+        attackTier = tier;
+        attackCurveRarity = searchRarity;
+        console.warn(
+          `"${weaponName}": base ATK ${baseAttack} doesn't match any ${rarity}-star tier -- using ${searchRarity}-star tier ${tier}'s curve instead (attackCurveRarity override)`
+        );
+        break;
+      }
+    }
+  }
+  if (attackTier === null) {
+    console.warn(`"${weaponName}": base ATK ${baseAttack} doesn't match any known tier at any rarity -- attackTier left null`);
+  }
+
+  const isPercentStat = secondaryStatName?.endsWith("%") ?? false;
+  const rawSecondary = level1.specialized ?? 0;
+  const baseSecondaryStatValue = secondaryStatName ? (isPercentStat ? rawSecondary * 100 : rawSecondary) : null;
+
+  await prisma.weapon.update({
+    where: { id: weaponId },
+    data: { baseAttack, attackTier, attackCurveRarity, baseSecondaryStatValue },
+  });
 }
 
 // One-off, hand-verified data quirks in genshin-db's raw text -- e.g.
@@ -829,7 +846,7 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
       create: { name: weapon.name, weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
       update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
     });
-    await seedWeaponLevelStats(dbWeapon.id, weapon.stats, secondaryStatName);
+    await seedWeaponBaseStats(dbWeapon.id, weapon.name, weapon.stats, weapon.rarity, secondaryStatName);
     await seedWeaponRefinementEffects(dbWeapon.id, weapon);
     await seedWeaponStatBonuses(dbWeapon.id, weapon.name, weapon, statTypeIds);
     count++;

@@ -61,6 +61,31 @@ enum ArtifactSetPiece {
   Four
 }
 
+// Which level-scaling curve family a TalentAttribute's value follows -- see
+// src/lib/talent-curves.ts (the 9 named curves, sourced from
+// Talent_Scaling_report.txt) and src/lib/talent-scaling.ts (this enum's
+// compute/classify logic). Physical1/Physical1Alternative/Physical2/
+// Elemental1/Elemental1Alternative/Elemental2/EffectFlat are the report's
+// own named curves; BeidouDmgReduction/ZhongliBurst are its two remaining
+// named one-off exceptions. Linear and Constant are real patterns the
+// report doesn't name but the seeded data clearly follows. Custom is the
+// escape hatch for the small residual (<1% of all attributes) that fits
+// none of the above.
+enum TalentCurveType {
+  Physical1
+  Physical1Alternative
+  Physical2
+  Elemental1
+  Elemental1Alternative
+  Elemental2
+  EffectFlat
+  BeidouDmgReduction
+  ZhongliBurst
+  Linear
+  Constant
+  Custom
+}
+
 // ---------------------------------------------------------------------------
 // Accounts
 // ---------------------------------------------------------------------------
@@ -137,42 +162,38 @@ model Character {
   exclusivityGroup String?    @map("exclusivity_group")
   // The fixed special stat this character's ascension phases unlock (e.g.
   // Bennett's is Energy Recharge%) -- always the same stat for a given
-  // character, only the VALUE scales by phase (see CharacterLevelStat).
+  // character, only the VALUE scales by phase (computed, see below).
   ascensionStatId  Int?       @map("ascension_stat_id")
   iconUrl          String?    @map("icon_url")
+  // Base HP/ATK/DEF (level 1, ascension phase 0) and each stat's own max
+  // ascension bonus (added in full at phase 6, scaled down at earlier
+  // phases per a shared ratio table). Stat at any (level, phase) is
+  // `base * levelMultiplier(rarity, level) + maxAscension *
+  // ascensionMultiplier(phase)` -- both multiplier tables are shared
+  // across every character (not duplicated per row) and live in
+  // src/lib/character-scaling.ts, along with the bonus/ascension stat's
+  // own formula, which needs no stored value here at all (it's fully
+  // determined by rarity + ascensionStatId + phase).
+  //
+  // Replaces what used to be a ~90-row-per-character CharacterLevelStat
+  // table. Verified to 100% agreement (12,000 rows, 125 characters, plus
+  // every ascension-stat phase) against an independently wiki-sourced
+  // formula before this replaced the old per-level snapshot -- see
+  // data-export/verify-character-stats.mts.
+  baseHp              Float? @map("base_hp")
+  baseAttack          Float? @map("base_attack")
+  baseDefense         Float? @map("base_defense")
+  maxAscensionHp      Float? @map("max_ascension_hp")
+  maxAscensionAttack  Float? @map("max_ascension_attack")
+  maxAscensionDefense Float? @map("max_ascension_defense")
 
-  ascensionStat   StatType?            @relation("CharacterAscensionStat", fields: [ascensionStatId], references: [id])
+  ascensionStat   StatType?        @relation("CharacterAscensionStat", fields: [ascensionStatId], references: [id])
   gameProfiles    GameProfile[]
   ownedCharacters OwnedCharacter[]
-  levelStats      CharacterLevelStat[]
   talents         Talent[]
   constellations  Constellation[]
 
   @@map("characters")
-}
-
-// One row per character per (level, ascension phase) it can actually be at.
-// The 6 ascension-breakpoint levels (20/40/50/60/70/80) get two rows each
-// (pre- and post-ascension); every other level gets one. Sourced by sampling
-// genshin-db's own character.stats(level, ascension) at seed time -- see
-// CLAUDE.md's Key decisions for why this is a snapshot of genshin-db's
-// output rather than our own reimplementation of Genshin's growth curves.
-model CharacterLevelStat {
-  id                 Int   @id @default(autoincrement())
-  characterId        Int   @map("character_id")
-  level              Int
-  ascensionPhase     Int   @map("ascension_phase")
-  hp                 Float
-  attack             Float
-  defense            Float
-  // The ascensionStat's value at this phase -- 0 before that phase unlocks
-  // it. Meaningless (always 0) if the character has no ascensionStatId.
-  ascensionStatValue Float @map("ascension_stat_value")
-
-  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-
-  @@unique([characterId, level, ascensionPhase])
-  @@map("character_level_stats")
 }
 
 // One row per character per talent slot (Normal Attack, Skill, Burst, each
@@ -197,21 +218,34 @@ model Talent {
 }
 
 // Combat-talent-only child rows: one per labeled stat genshin-db reports
-// (e.g. "1-Hit DMG", "Charged Attack Stamina Cost"), holding every talent
-// level's value for that label together (index 0 = talent level 1) rather
-// than one row per level -- these are always read as a single ordered list,
-// never queried by individual level. formatCode says how to render a value
-// (e.g. "F1P" = one decimal, shown as a percentage) -- see
-// src/lib/talent-format.ts once written. Purely for display: these numbers
-// are never used in any stat or damage calculation.
+// (e.g. "1-Hit DMG", "Charged Attack Stamina Cost"). formatCode says how to
+// render a value (e.g. "F1P" = one decimal, shown as a percentage) -- see
+// src/lib/talent-format.ts. Purely for display: these numbers are never
+// used in any stat or damage calculation.
+//
+// The per-level value used to be stored as a raw 15-entry Float[] (index 0
+// = talent level 1). Replaced with (curveType, baseValue, linearSlope,
+// capLevel, customValues) instead: genshin-db's own level-scaling is drawn
+// from a small set of shared curves (see TalentCurveType), so storing which
+// curve + a base value reconstructs the same 15 numbers without keeping
+// them raw. See src/lib/talent-scaling.ts for both directions
+// (classifyTalentAttributeCurve at seed time, computeTalentAttributeValue
+// at read time) -- verified as an exact round-trip (0 mismatches) against
+// every value in every previously-seeded attribute before replacing the
+// raw array. Only Custom populates customValues (<1% of all attributes);
+// only Linear populates linearSlope/capLevel.
 model TalentAttribute {
-  id         Int     @id @default(autoincrement())
-  talentId   Int     @map("talent_id")
-  label      String
-  formatCode String  @map("format_code")
-  values     Float[]
+  id           Int             @id @default(autoincrement())
+  talentId     Int             @map("talent_id")
+  label        String
+  formatCode   String          @map("format_code")
+  curveType    TalentCurveType @map("curve_type")
+  baseValue    Float           @map("base_value")
+  linearSlope  Float?          @map("linear_slope")
+  capLevel     Int?            @map("cap_level")
+  customValues Float[]         @map("custom_values")
   // Preserves genshin-db's own label ordering for display.
-  order      Int
+  order        Int
 
   talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
 
@@ -289,32 +323,41 @@ model Weapon {
   // WeaponRefinementEffect. Null for low-rarity weapons with no passive.
   passiveName     String?    @map("passive_name")
   iconUrl         String?    @map("icon_url")
+  // ATK's base value (level 1) and which of the small shared set of
+  // rarity-scoped "tiers" it uses -- base ATK turns out to be shared by
+  // (rarity, tier), not unique per weapon (verified: multiple weapons
+  // share byte-identical base values), so tier is really just "which
+  // shared level-multiplier curve applies," resolved once at seed time
+  // from the weapon's own base ATK (see src/lib/weapon-scaling.ts,
+  // WEAPON_ATTACK_TIER_BASE) rather than a real in-game concept exposed
+  // anywhere. ATK's ascension bonus needs no stored value at all -- it's
+  // fixed per rarity, also in weapon-scaling.ts. Secondary stat has no
+  // ascension component, just its own base * a universal level curve.
+  //
+  // Replaces what used to be a ~90-row-per-weapon WeaponLevelStat table.
+  // Verified to 100% agreement (23,136 rows, 242 weapons) against an
+  // independently wiki-sourced formula -- see
+  // data-export/verify-weapon-stats.mts.
+  baseAttack             Float? @map("base_attack")
+  attackTier             Int?   @map("attack_tier")
+  baseSecondaryStatValue Float? @map("base_secondary_stat_value")
+  // Null for every weapon except the rare one whose base ATK/level curve is
+  // drawn from a DIFFERENT rarity's tier table than its own -- e.g. Sword
+  // of Descension (a real, player-obtainable PS-exclusive weapon) is
+  // flagged 4-star and uses the 4-star ascension value (still keyed off
+  // `rarity` above), but its base ATK/level curve comes from the 3-star
+  // tier 2 table instead, per the wiki's own explicit callout. When set,
+  // overrides which rarity's WEAPON_ATTACK_LEVEL_MULTIPLIER table `rarity`
+  // + `attackTier` above index into -- see computeWeaponAttack in
+  // src/lib/weapon-scaling.ts.
+  attackCurveRarity Int? @map("attack_curve_rarity")
 
   secondaryStat     StatType?                @relation(fields: [secondaryStatId], references: [id])
   ownedWeapons      OwnedWeapon[]
-  levelStats        WeaponLevelStat[]
   refinementEffects WeaponRefinementEffect[]
   statBonuses       WeaponStatBonus[]
 
   @@map("weapons")
-}
-
-// One row per weapon per (level, ascension phase) it can actually be at --
-// same shape/sourcing as CharacterLevelStat (sampling genshin-db's own
-// weapon.stats(level, ascension) at seed time). secondaryStatValue is the
-// weapon's secondaryStat at that point.
-model WeaponLevelStat {
-  id                 Int   @id @default(autoincrement())
-  weaponId           Int   @map("weapon_id")
-  level              Int
-  ascensionPhase     Int   @map("ascension_phase")
-  attack             Float
-  secondaryStatValue Float @map("secondary_stat_value")
-
-  weapon Weapon @relation(fields: [weaponId], references: [id], onDelete: Cascade)
-
-  @@unique([weaponId, level, ascensionPhase])
-  @@map("weapon_level_stats")
 }
 
 // genshin-db's own pre-rendered passive description per refinement level

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import type { TalentSlot } from "@/generated/prisma/enums";
+import { characterScalingRarity } from "@/lib/character-scaling";
 import {
   createUpdateCharacterProgressionSchema,
   computeTalentLevelBounds,
@@ -33,16 +34,36 @@ export async function getCharacterConstellationBoosts(characterId: number): Prom
   });
 }
 
+export type TalentAttributeCurveData = {
+  label: string;
+  formatCode: string;
+  curveType: string;
+  baseValue: number;
+  linearSlope: number | null;
+  capLevel: number | null;
+  customValues: number[];
+};
+
 export type CharacterProgressionData = {
   ascensionStatName: string | null;
-  levelStats: { level: number; ascensionPhase: number; hp: number; attack: number; defense: number; ascensionStatValue: number }[];
+  // The rarity to use for stat-scaling formulas specifically -- always the
+  // character's own stored rarity, except Traveler (stored as 5 for
+  // banner/catalog purposes, but actually scales as 4-star). See
+  // characterScalingRarity in @/lib/character-scaling.
+  scalingRarity: number;
+  baseHp: number;
+  baseAttack: number;
+  baseDefense: number;
+  maxAscensionHp: number;
+  maxAscensionAttack: number;
+  maxAscensionDefense: number;
   talents: {
     id: number;
     slot: TalentSlot;
     name: string;
     description: string;
     iconUrl: string | null;
-    attributes: { label: string; formatCode: string; values: number[] }[];
+    attributes: TalentAttributeCurveData[];
     statBonuses: { statTypeName: string; value: number }[];
   }[];
   constellations: {
@@ -56,16 +77,19 @@ export type CharacterProgressionData = {
 };
 
 // Everything the detailed progression editor needs beyond the constellation
-// boosts already fetched by getCharacterConstellationBoosts -- base stat
-// lookup table, full talent data (all slots, including non-leveled
-// passives), and constellation name/description/icon/stat-bonus. Fetched
-// lazily when the editor opens, same reasoning as getCharacterConstellationBoosts.
+// boosts already fetched by getCharacterConstellationBoosts -- base/max-
+// ascension stat values (the actual number at any level/phase is computed
+// client-side via @/lib/character-scaling, not looked up), full talent data
+// (all slots, including non-leveled passives, each attribute's compact
+// curve representation instead of 15 raw values -- see
+// @/lib/talent-scaling), and constellation name/description/icon/stat-
+// bonus. Fetched lazily when the editor opens, same reasoning as
+// getCharacterConstellationBoosts.
 export async function getCharacterProgressionData(characterId: number): Promise<CharacterProgressionData> {
   const character = await prisma.character.findUniqueOrThrow({
     where: { id: characterId },
     include: {
       ascensionStat: true,
-      levelStats: true,
       // Postgres native enums (what Prisma maps TalentSlot to) sort by
       // declaration order, not alphabetically -- so this naturally comes
       // back NormalAttack, Skill, Burst, Passive1..4, matching schema.prisma.
@@ -85,21 +109,28 @@ export async function getCharacterProgressionData(characterId: number): Promise<
 
   return {
     ascensionStatName: character.ascensionStat?.name ?? null,
-    levelStats: character.levelStats.map((s) => ({
-      level: s.level,
-      ascensionPhase: s.ascensionPhase,
-      hp: s.hp,
-      attack: s.attack,
-      defense: s.defense,
-      ascensionStatValue: s.ascensionStatValue,
-    })),
+    scalingRarity: characterScalingRarity(character.name, character.rarity),
+    baseHp: character.baseHp ?? 0,
+    baseAttack: character.baseAttack ?? 0,
+    baseDefense: character.baseDefense ?? 0,
+    maxAscensionHp: character.maxAscensionHp ?? 0,
+    maxAscensionAttack: character.maxAscensionAttack ?? 0,
+    maxAscensionDefense: character.maxAscensionDefense ?? 0,
     talents: character.talents.map((t) => ({
       id: t.id,
       slot: t.slot,
       name: t.name,
       description: t.description,
       iconUrl: t.iconUrl,
-      attributes: t.attributes.map((a) => ({ label: a.label, formatCode: a.formatCode, values: a.values })),
+      attributes: t.attributes.map((a) => ({
+        label: a.label,
+        formatCode: a.formatCode,
+        curveType: a.curveType,
+        baseValue: a.baseValue,
+        linearSlope: a.linearSlope,
+        capLevel: a.capLevel,
+        customValues: a.customValues,
+      })),
       statBonuses: t.statBonuses.map((b) => ({ statTypeName: b.statType.name, value: b.value })),
     })),
     constellations: character.constellations.map((c) => ({

@@ -21,11 +21,20 @@ describe("formatTalentValue", () => {
   });
 });
 
+// Fixtures use curveType "Constant" throughout -- computeTalentAttributeValue
+// returns baseValue unchanged for it regardless of level, which is all
+// groupTalentAttributes needs to exercise here (it's tested against real
+// curve-fitting/round-trip behavior separately in
+// data-export/verify-talent-scaling-roundtrip.mts).
+function constantAttribute(label: string, formatCode: string, value: number) {
+  return { label, formatCode, curveType: "Constant", baseValue: value, linearSlope: null, capLevel: null, customValues: [] };
+}
+
 describe("groupTalentAttributes", () => {
   it("merges a (1)/(2)-suffixed pair into one row with slash-joined values", () => {
     const attributes = [
-      { label: "Low/High Plunge DMG (1)", formatCode: "F1P", values: [1.136] },
-      { label: "Low/High Plunge DMG (2)", formatCode: "F1P", values: [1.419] },
+      constantAttribute("Low/High Plunge DMG (1)", "F1P", 1.136),
+      constantAttribute("Low/High Plunge DMG (2)", "F1P", 1.419),
     ];
     expect(groupTalentAttributes(attributes, 1)).toEqual([
       { label: "Low/High Plunge DMG", display: "113.6%/141.9%" },
@@ -33,16 +42,16 @@ describe("groupTalentAttributes", () => {
   });
 
   it("leaves an unsuffixed single-param label alone", () => {
-    const attributes = [{ label: "1-Hit DMG", formatCode: "F1P", values: [0.44548] }];
+    const attributes = [constantAttribute("1-Hit DMG", "F1P", 0.44548)];
     expect(groupTalentAttributes(attributes, 1)).toEqual([{ label: "1-Hit DMG", display: "44.5%" }]);
   });
 
   it("doesn't merge two different labels that both happen to be suffixed", () => {
     const attributes = [
-      { label: "Low/High Plunge DMG (1)", formatCode: "F1P", values: [1.136] },
-      { label: "Low/High Plunge DMG (2)", formatCode: "F1P", values: [1.419] },
-      { label: "Plunge DMG (1)", formatCode: "F1P", values: [2.0] },
-      { label: "Plunge DMG (2)", formatCode: "F1P", values: [2.5] },
+      constantAttribute("Low/High Plunge DMG (1)", "F1P", 1.136),
+      constantAttribute("Low/High Plunge DMG (2)", "F1P", 1.419),
+      constantAttribute("Plunge DMG (1)", "F1P", 2.0),
+      constantAttribute("Plunge DMG (2)", "F1P", 2.5),
     ];
     expect(groupTalentAttributes(attributes, 1)).toEqual([
       { label: "Low/High Plunge DMG", display: "113.6%/141.9%" },

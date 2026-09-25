@@ -21,6 +21,7 @@ import {
   minLevelForAscensionPhase,
 } from "@/lib/ascension";
 import { formatStatValue } from "@/lib/stat-format";
+import { computeCharacterMainStat, computeCharacterBonusStat } from "@/lib/character-scaling";
 import { elementGlowClasses } from "@/lib/element-colors";
 import { groupTalentAttributes } from "@/lib/talent-format";
 import { updateCharacterProgression, getCharacterProgressionData, type CharacterProgressionData } from "./actions";
@@ -267,19 +268,23 @@ function TalentsSection({
 }
 
 function BaseStatsSection({ data, level, ascensionPhase }: { data: CharacterProgressionData; level: number; ascensionPhase: number }) {
-  const stat = data.levelStats.find((s) => s.level === level && s.ascensionPhase === ascensionPhase);
-  if (!stat) return null;
+  const hp = computeCharacterMainStat(data.baseHp, data.maxAscensionHp, data.scalingRarity, level, ascensionPhase, "hp");
+  const attack = computeCharacterMainStat(data.baseAttack, data.maxAscensionAttack, data.scalingRarity, level, ascensionPhase, "attack");
+  const defense = computeCharacterMainStat(data.baseDefense, data.maxAscensionDefense, data.scalingRarity, level, ascensionPhase, "defense");
+  const bonusStat = data.ascensionStatName
+    ? computeCharacterBonusStat(data.ascensionStatName, data.scalingRarity, ascensionPhase)
+    : null;
 
   return (
     <div className="space-y-1 rounded border p-2 text-sm">
       <p className="font-medium">Stats</p>
       <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-500 dark:text-gray-300">
-        <li>Base HP: {Math.round(stat.hp)}</li>
-        <li>Base ATK: {Math.round(stat.attack)}</li>
-        <li>Base DEF: {Math.round(stat.defense)}</li>
-        {data.ascensionStatName && (
+        <li>Base HP: {Math.round(hp)}</li>
+        <li>Base ATK: {Math.round(attack)}</li>
+        <li>Base DEF: {Math.round(defense)}</li>
+        {data.ascensionStatName && bonusStat !== null && (
           <li>
-            {data.ascensionStatName}: {formatStatValue(data.ascensionStatName, stat.ascensionStatValue)}
+            {data.ascensionStatName}: {formatStatValue(data.ascensionStatName, bonusStat)}
           </li>
         )}
       </ul>
