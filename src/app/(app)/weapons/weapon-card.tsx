@@ -38,6 +38,7 @@ export function WeaponCard({
   iconUrl,
   refinement,
   onRefinementChange,
+  maxRefinement = 5,
   actionLabel,
   onAction,
   danger = false,
@@ -55,6 +56,10 @@ export function WeaponCard({
   iconUrl: string | null;
   refinement?: number;
   onRefinementChange?: (refinement: number) => void;
+  // A documented few weapons cap below 5 (see Weapon.maxRefinement) --
+  // only meaningful alongside onRefinementChange (the read-only display
+  // just shows whatever refinement it's given regardless).
+  maxRefinement?: number;
   actionLabel?: string;
   onAction?: () => void;
   danger?: boolean;
@@ -147,7 +152,7 @@ export function WeaponCard({
                     onChange={(event) => onRefinementChange(Number(event.target.value))}
                     className="h-6 rounded border bg-white px-1.5 text-xs text-black"
                   >
-                    {REFINEMENTS.map((r) => (
+                    {REFINEMENTS.filter((r) => r <= maxRefinement).map((r) => (
                       <option key={r} value={r}>
                         R{r}
                       </option>

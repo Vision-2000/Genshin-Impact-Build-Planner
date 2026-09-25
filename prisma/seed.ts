@@ -8,10 +8,18 @@
 import "dotenv/config";
 import * as genshindb from "genshin-db";
 import { prisma } from "../src/lib/prisma";
-import { Element, WeaponType, TalentSlot, ArtifactSetPiece, TalentCurveType } from "../src/generated/prisma/enums";
+import {
+  Element,
+  WeaponType,
+  TalentSlot,
+  ArtifactSetPiece,
+  TalentCurveType,
+  WeaponRefinementCurveType,
+} from "../src/generated/prisma/enums";
 import { characterLevelMultiplier } from "../src/lib/character-scaling";
 import { WEAPON_ATTACK_TIER_BASE } from "../src/lib/weapon-scaling";
 import { classifyTalentAttributeCurve } from "../src/lib/talent-scaling";
+import { buildWeaponPassiveTemplate } from "../src/lib/weapon-refinement-scaling";
 
 // ---------------------------------------------------------------------------
 // StatType: fixed canonical vocabulary, not sourced from genshin-db.
@@ -728,20 +736,71 @@ function getRefinementDescription(weapon: genshindb.Weapon, refinement: 1 | 2 | 
   return fix ? fix(description) : description;
 }
 
-// genshin-db's own pre-rendered passive description per refinement -- no
-// templating needed on our side. Some weapons (typically very low rarity,
-// already excluded by MIN_WEAPON_RARITY) have no refinements at all.
-async function seedWeaponRefinementEffects(weaponId: number, weapon: genshindb.Weapon) {
-  const refinements = [1, 2, 3, 4, 5] as const;
-  const rows: { weaponId: number; refinement: number; description: string }[] = [];
-  for (const refinement of refinements) {
-    const description = getRefinementDescription(weapon, refinement);
-    if (!description) continue;
-    rows.push({ weaponId, refinement, description });
+// How many refinement levels genshin-db actually has text for -- 5 for
+// every weapon except a documented few (Kagotsurube Isshin, Predator,
+// Sword of Descension) whose source data stops at R1. This is purely a
+// data-availability gap, not a real in-game restriction (all 3 are
+// normally refinable 1-5 like any other weapon) -- see
+// Weapon.maxRefinement's own comment for why capping the app at what we
+// actually have text for is still the right call.
+function maxKnownRefinement(weapon: genshindb.Weapon): number {
+  let highest = 0;
+  for (let r = 1; r <= 5; r++) {
+    if (getRefinementDescription(weapon, r as 1 | 2 | 3 | 4 | 5)) highest = r;
+  }
+  return highest > 0 ? highest : 5; // no passive text at all -- refinement is still a real 1-5 axis regardless
+}
+
+// Builds the compact template + WeaponRefinementValue rows for a weapon's
+// passive (see src/lib/weapon-refinement-scaling.ts), falling back to the
+// original per-refinement WeaponRefinementEffect rows for the one weapon
+// whose text doesn't reduce to a template at all (a genuine structural
+// difference between refinements, not just reworded numbers).
+async function seedWeaponPassive(weaponId: number, weapon: genshindb.Weapon) {
+  await prisma.weaponRefinementValue.deleteMany({ where: { weaponId } });
+  await prisma.weaponRefinementEffect.deleteMany({ where: { weaponId } });
+
+  const maxRefinement = maxKnownRefinement(weapon);
+  const descriptions: string[] = [];
+  for (let r = 1; r <= maxRefinement; r++) {
+    const description = getRefinementDescription(weapon, r as 1 | 2 | 3 | 4 | 5);
+    if (description) descriptions.push(description);
   }
 
-  await prisma.weaponRefinementEffect.deleteMany({ where: { weaponId } });
-  if (rows.length > 0) await prisma.weaponRefinementEffect.createMany({ data: rows });
+  if (descriptions.length === 0) {
+    await prisma.weapon.update({ where: { id: weaponId }, data: { maxRefinement, passiveDescriptionTemplate: null } });
+    return;
+  }
+
+  const built = buildWeaponPassiveTemplate(descriptions);
+  await prisma.weapon.update({
+    where: { id: weaponId },
+    data: { maxRefinement, passiveDescriptionTemplate: built?.template ?? null },
+  });
+
+  if (built) {
+    if (built.slots.length > 0) {
+      await prisma.weaponRefinementValue.createMany({
+        data: built.slots.map((slot) => ({
+          weaponId,
+          slotIndex: slot.slotIndex,
+          curveType: slot.curveType === "Linear" ? WeaponRefinementCurveType.Linear : WeaponRefinementCurveType.Custom,
+          baseValue: slot.baseValue,
+          slope: slot.slope,
+          customValues: slot.customValues ?? [],
+        })),
+      });
+    }
+  } else {
+    // Numeric token count differs between refinements -- a genuine
+    // structural exception (currently only Exaiphanes Blade, which gains
+    // an entire extra clause starting at R2 that R1 simply doesn't have).
+    // Can't template; keep the original per-refinement text instead.
+    console.warn(`"${weapon.name}": refinement text isn't templatable (differing numeric token counts) -- keeping raw per-refinement rows`);
+    await prisma.weaponRefinementEffect.createMany({
+      data: descriptions.map((description, i) => ({ weaponId, refinement: i + 1, description })),
+    });
+  }
 }
 
 // Same problem as ArtifactSetStatBonus -- genshin-db gives weapon passive
@@ -899,9 +958,9 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
     const secondaryStatName = weapon.mainStatType ? FIGHT_PROP_TO_STAT_TYPE[weapon.mainStatType] : undefined;
     const secondaryStatId = secondaryStatName ? statTypeIds.get(secondaryStatName) ?? null : null;
 
-    // Low-rarity weapons have no passive at all. Per-refinement passive
-    // text is seeded separately into WeaponRefinementEffect -- see
-    // seedWeaponRefinementEffects.
+    // Low-rarity weapons have no passive at all. Passive text is seeded
+    // separately into passiveDescriptionTemplate/WeaponRefinementValue --
+    // see seedWeaponPassive.
     const passiveName = weapon.effectName ?? null;
     const iconUrl = enkaIconUrl(weapon.images.filename_icon);
 
@@ -911,7 +970,7 @@ async function seedWeapons(statTypeIds: Map<StatTypeName, number>) {
       update: { weaponType, rarity: weapon.rarity, secondaryStatId, passiveName, iconUrl },
     });
     await seedWeaponBaseStats(dbWeapon.id, weapon.name, weapon.stats, weapon.rarity, secondaryStatName);
-    await seedWeaponRefinementEffects(dbWeapon.id, weapon);
+    await seedWeaponPassive(dbWeapon.id, weapon);
     await seedWeaponStatBonuses(dbWeapon.id, weapon.name, weapon, statTypeIds);
     count++;
   }

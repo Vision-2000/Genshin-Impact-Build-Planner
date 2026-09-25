@@ -15,6 +15,7 @@ function catalogItem(overrides: Partial<WeaponCatalogItem>): WeaponCatalogItem {
     rarity: 4,
     secondaryStatName: null,
     iconUrl: null,
+    maxRefinement: 5,
     ...overrides,
   };
 }

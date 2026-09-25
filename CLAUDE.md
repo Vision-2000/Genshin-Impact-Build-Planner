@@ -87,15 +87,26 @@ user-editable.
   weapon's own `rarity`), `attackCurveRarity` (nullable override for the
   one documented exception, Sword of Descension — see Key decisions), and
   `baseSecondaryStatValue`; the value at any (level, phase) is computed via
-  `src/lib/weapon-scaling.ts`, not stored per level. Seed excludes 1★/2★
-  weapons (no meaningful build relevance) and the Prized Isshin Blade
-  (story-quest-only, never obtainable as a real player weapon). No
-  `passiveText` column — genshin-db already provides a fully-rendered
-  description per refinement rather than one template we'd need to fill in
-  ourselves, so that text lives entirely in WeaponRefinementEffect instead.
-- WeaponRefinementEffect — child rows (weaponId, refinement 1-5,
-  description) holding genshin-db's own pre-rendered passive text for each
-  refinement level — no templating needed on our side at all.
+  `src/lib/weapon-scaling.ts`, not stored per level. `maxRefinement`
+  (default 5) and `passiveDescriptionTemplate` handle the passive text
+  itself — see Key decisions and WeaponRefinementEffect/
+  WeaponRefinementValue below. Seed excludes 1★/2★ weapons (no meaningful
+  build relevance) and the Prized Isshin Blade (story-quest-only, never
+  obtainable as a real player weapon).
+- WeaponRefinementEffect — child rows (weaponId, refinement, description)
+  holding genshin-db's own raw passive text for one refinement level.
+  Barely used now: almost every weapon's passive is instead represented by
+  `Weapon.passiveDescriptionTemplate` + WeaponRefinementValue (see Key
+  decisions), and this table only holds rows for the rare weapon whose
+  refinement text can't be templated at all (currently just Exaiphanes
+  Blade, whose passive gains an entire extra clause starting at R2 that R1
+  doesn't have — a genuine structural difference, not a reworded number).
+- WeaponRefinementValue — one row per `{n}` placeholder in a weapon's
+  `passiveDescriptionTemplate`: `curveType` (Linear or Custom, see Key
+  decisions), `baseValue`, `slope` (Linear only, added per refinement
+  step), `customValues` (Custom only, the raw known values). A number that
+  never changes across refinements gets no row at all — it's baked into
+  the template as plain text.
 - WeaponStatBonus — same idea as TalentStatBonus, for the subset of weapon
   passives that grant an unconditional stat-screen bonus, plus a
   `refinement` column since that bonus (when one exists) almost always
@@ -384,21 +395,48 @@ user-editable.
   Descension (a real, player-obtainable PS4/5-exclusive weapon, not
   story-exclusive) draws its ATK curve from a different rarity tier than
   its own stored rarity, via `Weapon.attackCurveRarity`.
-- Weapon refinement text needs no templating on our side: genshin-db
-  already provides a fully-rendered description per refinement level
-  (`r1..r5`), so WeaponRefinementEffect stores those 5 strings directly.
-  Combat talent numbers work differently and do need our own display
-  logic: genshin-db exposes them as a list of labeled attributes (e.g.
-  "1-Hit DMG"), each with its own per-level value array — classified at
-  seed time into one of a small set of named level-scaling curves (the
-  same kind of curve-based compaction as the stat values above) and stored
-  as `curveType` + `baseValue` (plus `linearSlope`/`capLevel` for the
-  Linear family, or `customValues` as a raw fallback for the handful of
-  genuine one-off curves, e.g. Beidou/Zhongli/Yoimiya) rather than all 15
-  raw per-level values — reconstructed via `src/lib/talent-scaling.ts` at
-  display time, alongside `formatCode` saying how to render it (e.g. one
-  decimal, as a percentage). Neither of these numbers is ever used in a
-  stat or damage total, only rendered as text.
+- Combat talent numbers need our own display logic: genshin-db exposes
+  them as a list of labeled attributes (e.g. "1-Hit DMG"), each with its
+  own per-level value array — classified at seed time into one of a small
+  set of named level-scaling curves (the same kind of curve-based
+  compaction as the stat values above) and stored as `curveType` +
+  `baseValue` (plus `linearSlope`/`capLevel` for the Linear family, or
+  `customValues` as a raw fallback for the handful of genuine one-off
+  curves, e.g. Beidou/Zhongli/Yoimiya) rather than all 15 raw per-level
+  values — reconstructed via `src/lib/talent-scaling.ts` at display time,
+  alongside `formatCode` saying how to render it (e.g. one decimal, as a
+  percentage). Neither of these numbers is ever used in a stat or damage
+  total, only rendered as text.
+- Weapon passive text originally stored genshin-db's own fully-rendered
+  description per refinement level directly (`r1..r5`, one
+  WeaponRefinementEffect row each) on the theory that no templating was
+  needed since genshin-db already did the rendering. Wiki/anecdotal
+  research suggested otherwise: the numbers that change between
+  refinements usually do so in simple, evenly-spaced steps, meaning most
+  of that text is actually a single shared template repeated 5 times with
+  only a few numbers swapped. Verified directly against all 242 seeded
+  weapons' real refinement text before switching: of 974 numeric tokens
+  across weapons with consistent wording, 525 never change at all (no row
+  needed, just baked into the template as plain text), 444 scale perfectly
+  linearly, and only 5 are genuine irregular exceptions (kept via a
+  `Custom` raw-value fallback, same treatment as TalentAttribute's own
+  `Custom`) — see data-export/verify-weapon-refinement-scaling.mts. A
+  further 13 weapons have pure copy-editing inconsistencies between
+  refinement tiers that don't affect any number (e.g. "an opponent" vs
+  "an enemy", a missing "the") — the template's wording is always taken
+  from the LAST known refinement rather than the first, which loses
+  nothing since the drift is never a meaning change (verified per-weapon,
+  see data-export/diagnose-weapon-refinement-mismatches.mts). Only 1
+  weapon (Exaiphanes Blade) is a genuine structural exception — an entire
+  clause exists starting at R2 that R1 doesn't have at all — and keeps the
+  original per-refinement WeaponRefinementEffect rows instead of a
+  template. Separately, 3 weapons (Kagotsurube Isshin, Predator, Sword of
+  Descension) turned out to only have R1 text in genshin-db's data at all
+  (not an in-game restriction — a genshin-db gap); rather than silently
+  showing no passive text past R1 (the previous, undetected behavior),
+  `Weapon.maxRefinement` caps what the app lets a player set/see for these
+  3 specifically. Render logic lives in
+  `src/lib/weapon-refinement-scaling.ts`.
 - Hover-card detail popovers (see build order) are sequenced after master
   data completeness, not before — the point of building them is to absorb
   the stats/talents/effects data landing on top of the current cards, so

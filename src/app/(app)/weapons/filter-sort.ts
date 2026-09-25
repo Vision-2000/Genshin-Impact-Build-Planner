@@ -12,6 +12,9 @@ export type WeaponCatalogItem = {
   rarity: number;
   secondaryStatName: string | null;
   iconUrl: string | null;
+  // A documented few weapons cap below 5 (see Weapon.maxRefinement) --
+  // caps the refinement picker on this weapon's add-catalog card.
+  maxRefinement: number;
 };
 
 export type OwnedWeaponItem = {

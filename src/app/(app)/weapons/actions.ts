@@ -6,19 +6,24 @@ import type { OwnedWeaponItem } from "./filter-sort";
 import {
   UpdateWeaponProgressionInputSchema,
   MIN_REFINEMENT,
-  MAX_REFINEMENT,
   type UpdateWeaponProgressionErrors,
 } from "./schemas";
 
-function clampRefinement(refinement: number) {
-  return Math.min(MAX_REFINEMENT, Math.max(MIN_REFINEMENT, Math.trunc(refinement)));
+// maxRefinement is per-weapon (see Weapon.maxRefinement) -- 5 for almost
+// every weapon, but a documented few (see prisma/seed.ts's
+// maxKnownRefinement) cap lower, so the ceiling can't be the flat
+// MAX_REFINEMENT constant alone.
+function clampRefinement(refinement: number, maxRefinement: number) {
+  return Math.min(maxRefinement, Math.max(MIN_REFINEMENT, Math.trunc(refinement)));
 }
 
 export async function addWeapon(weaponId: number, refinement: number): Promise<OwnedWeaponItem> {
   const profile = await requireActiveProfile();
 
+  const weapon = await prisma.weapon.findUniqueOrThrow({ where: { id: weaponId }, select: { maxRefinement: true } });
+
   const created = await prisma.ownedWeapon.create({
-    data: { gameProfileId: profile.id, weaponId, refinement: clampRefinement(refinement) },
+    data: { gameProfileId: profile.id, weaponId, refinement: clampRefinement(refinement, weapon.maxRefinement) },
     include: { weapon: { include: { secondaryStat: true } } },
   });
 
@@ -36,6 +41,14 @@ export async function addWeapon(weaponId: number, refinement: number): Promise<O
   };
 }
 
+export type WeaponRefinementValueData = {
+  slotIndex: number;
+  curveType: string;
+  baseValue: number;
+  slope: number | null;
+  customValues: number[];
+};
+
 export type WeaponProgressionData = {
   passiveName: string | null;
   rarity: number;
@@ -43,6 +56,18 @@ export type WeaponProgressionData = {
   attackTier: number | null;
   attackCurveRarity: number | null;
   baseSecondaryStatValue: number | null;
+  // How many refinement levels this weapon actually has passive data for --
+  // 5 for almost every weapon, less for a documented few (see
+  // Weapon.maxRefinement's schema comment). Caps the progression editor's
+  // refinement control.
+  maxRefinement: number;
+  // The common case: a shared template + the numbers that scale by
+  // refinement, rendered via @/lib/weapon-refinement-scaling. Null for
+  // weapons with no passive at all, or the one weapon whose text is
+  // structurally different between tiers (falls back to
+  // refinementEffects below instead).
+  passiveDescriptionTemplate: string | null;
+  refinementValues: WeaponRefinementValueData[];
   refinementEffects: { refinement: number; description: string }[];
   statBonusesByRefinement: { refinement: number; statTypeName: string; value: number }[];
 };
@@ -58,6 +83,7 @@ export async function getWeaponProgressionData(weaponId: number): Promise<Weapon
     where: { id: weaponId },
     include: {
       refinementEffects: { orderBy: { refinement: "asc" } },
+      refinementValues: { orderBy: { slotIndex: "asc" } },
       statBonuses: { include: { statType: true }, orderBy: { refinement: "asc" } },
     },
   });
@@ -69,6 +95,15 @@ export async function getWeaponProgressionData(weaponId: number): Promise<Weapon
     attackTier: weapon.attackTier,
     attackCurveRarity: weapon.attackCurveRarity,
     baseSecondaryStatValue: weapon.baseSecondaryStatValue,
+    maxRefinement: weapon.maxRefinement,
+    passiveDescriptionTemplate: weapon.passiveDescriptionTemplate,
+    refinementValues: weapon.refinementValues.map((v) => ({
+      slotIndex: v.slotIndex,
+      curveType: v.curveType,
+      baseValue: v.baseValue,
+      slope: v.slope,
+      customValues: v.customValues,
+    })),
     refinementEffects: weapon.refinementEffects.map((r) => ({ refinement: r.refinement, description: r.description })),
     statBonusesByRefinement: weapon.statBonuses.map((b) => ({
       refinement: b.refinement,
@@ -89,6 +124,20 @@ export async function updateWeaponProgression(
   const validated = UpdateWeaponProgressionInputSchema.safeParse(input);
   if (!validated.success) {
     return { errors: validated.error.flatten().fieldErrors };
+  }
+
+  // MAX_REFINEMENT above is only the universal ceiling -- some weapons cap
+  // lower (see Weapon.maxRefinement), so that needs its own check here
+  // rather than folding into the static Zod schema, which has no way to
+  // know which weapon it's validating for.
+  const ownedWeapon = await prisma.ownedWeapon.findFirst({
+    where: { id: ownedWeaponId, gameProfileId: profile.id },
+    select: { weapon: { select: { maxRefinement: true } } },
+  });
+  if (ownedWeapon && validated.data.refinement > ownedWeapon.weapon.maxRefinement) {
+    return {
+      errors: { refinement: [`This weapon can only be refined up to R${ownedWeapon.weapon.maxRefinement}.`] },
+    };
   }
 
   await prisma.ownedWeapon.updateMany({

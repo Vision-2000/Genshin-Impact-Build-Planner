@@ -22,6 +22,7 @@ import {
 } from "@/lib/ascension";
 import { formatStatValue } from "@/lib/stat-format";
 import { computeWeaponAttack, computeWeaponSecondaryStat } from "@/lib/weapon-scaling";
+import { renderWeaponPassiveDescription, type WeaponRefinementCurveType } from "@/lib/weapon-refinement-scaling";
 import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import { WeaponCard } from "./weapon-card";
@@ -81,22 +82,29 @@ function BaseStatsSection({
 }
 
 // The weapon's passive (if it has one -- low-rarity weapons don't), shown
-// with the current refinement's own pre-rendered text and stat bonus
-// (genshin-db already provides a fully-rendered description per refinement
-// level, see WeaponRefinementEffect's schema comment -- no separate
-// multiplier list to merge in the way talents need, the numbers are
-// already inline in the text).
+// with the current refinement's text and stat bonus. The common case
+// renders passiveDescriptionTemplate's {0}/{1}/... placeholders via
+// @/lib/weapon-refinement-scaling; the one weapon whose refinement text is
+// structurally different between tiers (not just reworded numbers) has no
+// template at all and falls back to its raw per-refinement row instead --
+// see WeaponProgressionData's own comment.
 function PassiveSection({ data, refinement }: { data: WeaponProgressionData; refinement: number }) {
   if (!data.passiveName) return null;
-  const effect = data.refinementEffects.find((e) => e.refinement === refinement);
-  if (!effect) return null;
+  const description = data.passiveDescriptionTemplate
+    ? renderWeaponPassiveDescription(
+        data.passiveDescriptionTemplate,
+        data.refinementValues.map((v) => ({ ...v, curveType: v.curveType as WeaponRefinementCurveType })),
+        refinement
+      )
+    : data.refinementEffects.find((e) => e.refinement === refinement)?.description;
+  if (!description) return null;
   const statBonuses = data.statBonusesByRefinement.filter((b) => b.refinement === refinement);
 
   return (
     <div className="space-y-1 rounded border p-2 text-sm">
       <p className="font-medium text-yellow-100">{data.passiveName}</p>
       <p className="whitespace-pre-line text-gray-500 dark:text-gray-300">
-        <HighlightedText text={effect.description} talentNames={[data.passiveName]} />
+        <HighlightedText text={description} talentNames={[data.passiveName]} />
       </p>
       <StatBonusList statBonuses={statBonuses} />
     </div>
@@ -126,7 +134,12 @@ function WeaponProgressionEditor({
   useEffect(() => {
     let cancelled = false;
     getWeaponProgressionData(weapon.weaponId).then((result) => {
-      if (!cancelled) setData(result);
+      if (cancelled) return;
+      setData(result);
+      // A documented few weapons cap below the universal MAX_REFINEMENT
+      // (see Weapon.maxRefinement) -- pull an already-set refinement down
+      // to whatever this specific weapon actually supports.
+      setRefinement((prev) => Math.min(prev, result.maxRefinement));
     });
     return () => {
       cancelled = true;
@@ -192,7 +205,7 @@ function WeaponProgressionEditor({
         <input
           type="range"
           min={MIN_REFINEMENT}
-          max={MAX_REFINEMENT}
+          max={data?.maxRefinement ?? MAX_REFINEMENT}
           value={refinement}
           onChange={(event) => setRefinement(Number(event.target.value))}
           className="w-32"

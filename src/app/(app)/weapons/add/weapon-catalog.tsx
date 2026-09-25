@@ -114,6 +114,7 @@ export function WeaponCatalog({
             secondaryStatName={weapon.secondaryStatName}
             iconUrl={weapon.iconUrl}
             refinement={refinements[weapon.id] ?? 1}
+            maxRefinement={weapon.maxRefinement}
             onRefinementChange={(refinement) =>
               setRefinements((prev) => ({ ...prev, [weapon.id]: refinement }))
             }

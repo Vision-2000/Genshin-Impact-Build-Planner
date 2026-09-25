@@ -35,6 +35,7 @@ export default async function AddWeaponPage({
     rarity: weapon.rarity,
     secondaryStatName: weapon.secondaryStat?.name ?? null,
     iconUrl: weapon.iconUrl,
+    maxRefinement: weapon.maxRefinement,
   }));
 
   return (

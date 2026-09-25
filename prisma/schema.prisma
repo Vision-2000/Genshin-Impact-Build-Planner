@@ -328,10 +328,7 @@ model Weapon {
   rarity          Int
   secondaryStatId Int?       @map("secondary_stat_id")
   // The passive's fixed name (e.g. Prototype Rancour's is "Smith's
-  // Certification"). No passiveText column here -- genshin-db already
-  // provides a fully-rendered description per refinement rather than one
-  // template we'd fill in ourselves, so that text lives entirely in
-  // WeaponRefinementEffect. Null for low-rarity weapons with no passive.
+  // Certification"). Null for low-rarity weapons with no passive.
   passiveName     String?    @map("passive_name")
   iconUrl         String?    @map("icon_url")
   // ATK's base value (level 1) and which of the small shared set of
@@ -363,16 +360,41 @@ model Weapon {
   // src/lib/weapon-scaling.ts.
   attackCurveRarity Int? @map("attack_curve_rarity")
 
+  // How many refinement levels this weapon actually has known passive text
+  // for -- 5 for almost every weapon (refinement itself is always a 1-5
+  // upgrade axis in-game, independent of whether we have passive text for
+  // every level of it), except 3 documented weapons (Kagotsurube Isshin,
+  // Predator, Sword of Descension) whose source data (genshin-db) simply
+  // never provides R2-R5 text at all -- not an in-game restriction, just a
+  // data gap, so this caps what the app will let a player set/see rather
+  // than silently showing nothing past R1 (the previous behavior).
+  maxRefinement Int @default(5) @map("max_refinement")
+  // A single passive description shared across every known refinement
+  // level, with {0}/{1}/... placeholders for whichever numbers actually
+  // change -- replaces what used to be up to 5 full pre-rendered
+  // descriptions per weapon. Null for weapons with no passive at all
+  // (passiveName also null) AND for the one weapon whose refinement text
+  // is structurally different between tiers, not just reworded (see
+  // WeaponRefinementEffect below). See src/lib/weapon-refinement-scaling.ts
+  // for the full verification writeup and how this is built/read.
+  passiveDescriptionTemplate String? @map("passive_description_template")
+
   secondaryStat     StatType?                @relation(fields: [secondaryStatId], references: [id])
   ownedWeapons      OwnedWeapon[]
   refinementEffects WeaponRefinementEffect[]
+  refinementValues  WeaponRefinementValue[]
   statBonuses       WeaponStatBonus[]
 
   @@map("weapons")
 }
 
-// genshin-db's own pre-rendered passive description per refinement level
-// (1-5) -- no templating needed on our side at all.
+// Fallback for the one weapon whose refinement text doesn't reduce to a
+// template at all (Exaiphanes Blade -- an entire clause exists starting at
+// R2 that R1 simply doesn't have, not just a reworded number), kept exactly
+// as genshin-db provides it, no templating attempted. Every other weapon
+// uses Weapon.passiveDescriptionTemplate + WeaponRefinementValue instead;
+// this model stays around for whichever future weapon turns out to need
+// the same real-exception treatment.
 model WeaponRefinementEffect {
   id          Int    @id @default(autoincrement())
   weaponId    Int    @map("weapon_id")
@@ -383,6 +405,35 @@ model WeaponRefinementEffect {
 
   @@unique([weaponId, refinement])
   @@map("weapon_refinement_effects")
+}
+
+enum WeaponRefinementCurveType {
+  Linear
+  Custom
+}
+
+// One row per {n} placeholder in Weapon.passiveDescriptionTemplate -- a
+// number that changes between refinements. A number that DOESN'T change
+// never gets a row at all; it's baked into the template as plain text (see
+// src/lib/weapon-refinement-scaling.ts's buildWeaponPassiveTemplate).
+model WeaponRefinementValue {
+  id           Int                       @id @default(autoincrement())
+  weaponId     Int                       @map("weapon_id")
+  // Which {n} placeholder this row fills in.
+  slotIndex    Int                       @map("slot_index")
+  curveType    WeaponRefinementCurveType @map("curve_type")
+  // Value at refinement 1 (for Custom, the same as customValues[0]).
+  baseValue    Float                     @map("base_value")
+  // Linear only -- the flat amount added per refinement step, i.e. the
+  // value at refinement n is baseValue + slope * (n - 1).
+  slope        Float?
+  // Custom only -- the raw known values, index 0 = refinement 1, unchanged.
+  customValues Float[]                   @map("custom_values")
+
+  weapon Weapon @relation(fields: [weaponId], references: [id], onDelete: Cascade)
+
+  @@unique([weaponId, slotIndex])
+  @@map("weapon_refinement_values")
 }
 
 // Same idea as TalentStatBonus, for the subset of weapon passives that
