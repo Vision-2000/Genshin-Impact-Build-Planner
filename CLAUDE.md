@@ -38,29 +38,34 @@ user-editable.
 - Character — all playable characters (name, element, weapon type, rarity,
   `iconUrl`, `exclusivityGroup`, and `ascensionStatId` — a nullable FK to
   StatType for the fixed special stat this character's ascension unlocks,
-  e.g. Bennett's is Energy Recharge%; the value at each phase lives on
-  CharacterLevelStat, not here). Seed excludes Manekin/Manekina
-  (non-buildable, no real loadout). `exclusivityGroup` is nullable and null
-  for nearly every character — see Traveler handling below for the one
-  exception.
-- CharacterLevelStat — one row per character per (level, ascension phase)
-  it can actually be at: hp, attack, defense, and the ascension-stat value
-  (0 before that phase is reached). The 6 ascension-breakpoint levels
-  (20/40/50/60/70/80) get two rows each (pre- and post-ascension), every
-  other level gets one — sourced by sampling genshin-db's own
-  `character.stats(level, ascension)` at seed time (see Key decisions on
-  why this is a snapshot of genshin-db's output, not our own curve math).
+  e.g. Bennett's is Energy Recharge%). Base HP/ATK/DEF (level 1, ascension
+  phase 0) and each stat's own max-ascension bonus are stored directly on
+  this row (`baseHp`/`baseAttack`/`baseDefense`/`maxAscensionHp`/
+  `maxAscensionAttack`/`maxAscensionDefense`) rather than a separate
+  per-level table — the value at any (level, phase) is computed from these
+  via a small set of shared level/ascension multiplier tables in
+  `src/lib/character-scaling.ts` (see Key decisions on why this replaced
+  the original per-level snapshot design). `baseElementalMastery` is a
+  flat EM floor outside the ascension system entirely, 0 for nearly every
+  character except a couple of wiki-documented exceptions (see Key
+  decisions). Seed excludes Manekin/Manekina (non-buildable, no real
+  loadout). `exclusivityGroup` is nullable and null for nearly every
+  character — see Traveler handling below for the one exception.
 - Talent — one row per character per talent slot: Normal Attack, Skill,
   Burst (normalized to these three regardless of genshin-db's per-character
   naming quirks like `combatsp`/`combatju`), and each Passive. Just name,
   icon, and the level-independent flavor `description` — the level-scaling
   numbers live in TalentAttribute, not here.
-- TalentAttribute — child rows (talentId, label, formatCode,
-  `values: Float[]`) for combat talents only (Normal Attack/Skill/Burst
-  have levels; Passives don't). One row per labeled stat genshin-db
-  reports (e.g. "1-Hit DMG", "Charged Attack Stamina Cost"), each holding
-  all of that label's per-level values together (index 0 = talent level 1)
-  — display-only string formatting (`formatCode` says how, e.g. `F1P` = one
+- TalentAttribute — child rows (talentId, label, formatCode) for combat
+  talents only (Normal Attack/Skill/Burst have levels; Passives don't).
+  One row per labeled stat genshin-db reports (e.g. "1-Hit DMG", "Charged
+  Attack Stamina Cost"). Rather than storing all 15 per-level values, each
+  row is classified at seed time into one of a small set of named
+  level-scaling curves and stored as `curveType` + `baseValue` (plus
+  `linearSlope`/`capLevel` for the Linear family, or `customValues` as a
+  raw fallback for genuine one-offs) — the value at any talent level is
+  computed via `src/lib/talent-scaling.ts` (see Key decisions) —
+  display-only string formatting (`formatCode` says how, e.g. `F1P` = one
   decimal, shown as a percentage), never fed into any damage formula (see
   Key decisions on calculation scope).
 - TalentStatBonus — optional child rows (talentId, statTypeId, value) for
@@ -76,19 +81,21 @@ user-editable.
   for the subset of constellations (a bit more common than passives, e.g.
   "increases Elemental Mastery by X") that are unconditional stat bonuses.
 - Weapon — all weapons (name, type, rarity, secondary stat, `passiveName`,
-  `iconUrl`). Seed excludes 1★/2★ weapons (no meaningful build relevance)
-  and the Prized Isshin Blade (story-quest-only, never obtainable as a real
-  player weapon). No `passiveText` column — genshin-db already provides a
-  fully-rendered description per refinement rather than one template we'd
-  need to fill in ourselves, so that text lives entirely in
-  WeaponRefinementEffect instead.
+  `iconUrl`). Same kind of compact scaling fields as Character: `baseAttack`
+  (level 1, ascension phase 0), `attackTier` (which rarity-tier ATK curve
+  to use — inferred at seed time by matching level-1 ATK, almost always the
+  weapon's own `rarity`), `attackCurveRarity` (nullable override for the
+  one documented exception, Sword of Descension — see Key decisions), and
+  `baseSecondaryStatValue`; the value at any (level, phase) is computed via
+  `src/lib/weapon-scaling.ts`, not stored per level. Seed excludes 1★/2★
+  weapons (no meaningful build relevance) and the Prized Isshin Blade
+  (story-quest-only, never obtainable as a real player weapon). No
+  `passiveText` column — genshin-db already provides a fully-rendered
+  description per refinement rather than one template we'd need to fill in
+  ourselves, so that text lives entirely in WeaponRefinementEffect instead.
 - WeaponRefinementEffect — child rows (weaponId, refinement 1-5,
   description) holding genshin-db's own pre-rendered passive text for each
   refinement level — no templating needed on our side at all.
-- WeaponLevelStat — same idea as CharacterLevelStat but for weapons: one
-  row per (weaponId, level, ascension phase) with attack and the secondary
-  stat's value at that point, sourced the same way (sampling
-  `weapon.stats(level, ascension)` at seed time).
 - WeaponStatBonus — same idea as TalentStatBonus, for the subset of weapon
   passives that grant an unconditional stat-screen bonus, plus a
   `refinement` column since that bonus (when one exists) almost always
@@ -112,8 +119,13 @@ user-editable.
   text-only, excluded from any computed total — same reasoning as
   TalentStatBonus/WeaponStatBonus/ConstellationStatBonus, applied to
   artifacts.
-- StatType — shared pool of stat types (Crit Rate, Crit DMG, ATK%, EM, elemental
-  DMG bonus, etc.) — used by both weapon secondary stats and artifact main/substats
+- StatType — shared pool of stat types: the full wiki-documented attribute
+  list (Crit Rate%, Crit DMG%, ATK%/HP%/DEF% and flat, EM, Energy Recharge%,
+  Healing Bonus%/Incoming Healing Bonus%, elemental + Physical DMG Bonus%,
+  RES% (all 8), Shield Strength%, Cooldown Reduction%), not just what's
+  currently summed into a computed total — see Key decisions. Used by
+  weapon secondary stats, artifact main/substats, and the various
+  `*StatBonus` child tables above.
 
 **Owned inventory (profile-scoped)**
 - OwnedCharacter — links GameProfile to Character, with an `is_owned`
@@ -320,26 +332,73 @@ user-editable.
   screen get a row here; conditional/proc-based effects (most passives and
   4pc effects) stay descriptive text only and are excluded from any
   computed total.
+- StatType's vocabulary covers the full wiki-documented attribute list
+  (https://genshin-impact.fandom.com/wiki/Attribute), not just the stats
+  currently summed into a computed total — RES% (all 8: Physical + 7
+  elements), Shield Strength%, Cooldown Reduction%, and Incoming Healing
+  Bonus% are real, seeded StatType rows even though nothing sums them into
+  a final-stats total yet (that module doesn't exist yet — see build order
+  step 8). Stamina is the one wiki "Basic Stat" deliberately excluded: it's
+  a global player resource raised only by world exploration, never by any
+  character/weapon/artifact/talent/constellation, so no row here could ever
+  reference it. RES%/Shield Strength% already have real ArtifactSetStatBonus
+  rows from current 2pc effects (Lavawalker/Thundersoother's elemental RES,
+  Retracing Bolide's Shield Strength); Cooldown Reduction%/Incoming Healing
+  Bonus% don't yet — nothing currently seeded happens to grant either.
+- A small number of characters have a constant, always-on Elemental Mastery
+  floor outside the normal ascension system entirely, confirmed on the wiki
+  (Attribute page): "Elemental Mastery starts at 0 for most playable
+  characters, excluding Lauma and Nefer whose Elemental Mastery begin at
+  200 and 100 respectively." Confirmed absent from genshin-db's data (no
+  field anywhere in either character's raw object or `stats()` output), so
+  it's hardcoded from the wiki at seed time (`CHARACTER_BASE_ELEMENTAL_
+  MASTERY` in prisma/seed.ts) rather than sourced — same treatment as the
+  Traveler and Sword of Descension scaling exceptions. Modeled as a single
+  scalar column, `Character.baseElementalMastery` (default 0), not a
+  general "innate constant stat" mechanism — the wiki only documents this
+  exception for Elemental Mastery specifically, so a narrower, single-stat
+  column matches what's actually confirmed rather than speculatively
+  generalizing. Additive with any ascension-stat EM bonus (Lauma's own
+  ascension stat IS Elemental Mastery, so she has both at once).
 - Character/weapon base HP/ATK/DEF and secondary/ascension stat values are
-  stored as a precomputed per-level lookup table (CharacterLevelStat/
-  WeaponLevelStat), sampled once at seed time directly from genshin-db's
-  own `stats(level, ascension)` function, rather than reimplementing
-  Genshin's internal growth-curve formulas ourselves. genshin-db's actual
-  per-curve raw multiplier tables aren't part of its public API surface, so
-  reproducing them would mean depending on undocumented internals for no
-  benefit — the values are just official static reference data (no
-  algorithm of our own to demonstrate here), consistent with how this
-  schema already treats genshin-db as a data source, not something whose
-  internals get reimplemented.
+  computed on demand from a small set of base + max-ascension scalars
+  (`Character.baseHp`/`baseAttack`/`baseDefense`/`maxAscensionHp`/etc.,
+  `Weapon.baseAttack`/`baseSecondaryStatValue`) plus a small set of shared
+  level/ascension multiplier tables (`src/lib/character-scaling.ts`,
+  `src/lib/weapon-scaling.ts`) — not stored as a per-level lookup table.
+  This replaced an earlier design (one row per character/weapon per
+  (level, ascension phase), sampled from genshin-db's own `stats(level,
+  ascension)` at seed time — the original CharacterLevelStat/
+  WeaponLevelStat tables, since dropped) once wiki research showed the
+  game's real internal architecture already works this way: a small number
+  of shared curves keyed by rarity/tier, not unique data per character/
+  weapon. Verified to 100% agreement against an independently wiki-sourced
+  formula (12,192 character rows, 23,232 weapon rows, 0 mismatches) before
+  the per-level tables were dropped; see data-export/ for the wiki source
+  reports and verification scripts kept alongside the master-data JSON
+  exports. Two real, previously-undetected exceptions surfaced by this
+  cross-checking are now explicitly modeled rather than worked around:
+  Traveler's stored rarity (5, for banner/catalog purposes) differs from
+  its actual stat-growth curve (4★, since it's a free character) —
+  `characterScalingRarity()` in character-scaling.ts; and Sword of
+  Descension (a real, player-obtainable PS4/5-exclusive weapon, not
+  story-exclusive) draws its ATK curve from a different rarity tier than
+  its own stored rarity, via `Weapon.attackCurveRarity`.
 - Weapon refinement text needs no templating on our side: genshin-db
   already provides a fully-rendered description per refinement level
   (`r1..r5`), so WeaponRefinementEffect stores those 5 strings directly.
   Combat talent numbers work differently and do need our own display
   logic: genshin-db exposes them as a list of labeled attributes (e.g.
-  "1-Hit DMG"), each with its own per-level value array and a format code
-  saying how to render it (e.g. one decimal, as a percentage) — modeled as
-  TalentAttribute, formatted at display time. Neither of these numbers is
-  ever used in a stat or damage total, only rendered as text.
+  "1-Hit DMG"), each with its own per-level value array — classified at
+  seed time into one of a small set of named level-scaling curves (the
+  same kind of curve-based compaction as the stat values above) and stored
+  as `curveType` + `baseValue` (plus `linearSlope`/`capLevel` for the
+  Linear family, or `customValues` as a raw fallback for the handful of
+  genuine one-off curves, e.g. Beidou/Zhongli/Yoimiya) rather than all 15
+  raw per-level values — reconstructed via `src/lib/talent-scaling.ts` at
+  display time, alongside `formatCode` saying how to render it (e.g. one
+  decimal, as a percentage). Neither of these numbers is ever used in a
+  stat or damage total, only rendered as text.
 - Hover-card detail popovers (see build order) are sequenced after master
   data completeness, not before — the point of building them is to absorb
   the stats/talents/effects data landing on top of the current cards, so
@@ -357,10 +416,11 @@ user-editable.
    artifact add (with substats) — establishes reusable list/filter/sort/search
    patterns for all three pages
 5. Builds — compose owned character + weapon + artifacts
-6. Master data completeness: CharacterLevelStat, WeaponLevelStat, Talent +
-   TalentAttribute, Constellation, WeaponRefinementEffect, and the four
-   `*StatBonus` tables — seeded from genshin-db, master data only, no
-   owned-side fields yet
+6. Master data completeness: per-level character/weapon stats (originally
+   CharacterLevelStat/WeaponLevelStat snapshot tables, later compacted into
+   base+ascension scalars — see Key decisions), Talent + TalentAttribute,
+   Constellation, WeaponRefinementEffect, and the four `*StatBonus` tables —
+   seeded from genshin-db, master data only, no owned-side fields yet
 7. Owned-side leveling: OwnedCharacter/OwnedWeapon gain level, ascension
    phase, talent levels, and constellation, with UI to set them
 8. Final-stats calculation module (pure function: build -> aggregate stat
@@ -411,19 +471,6 @@ user-editable.
   currently-installed genshin-db version, but worth independently
   verifying whatever's pasted in actually corresponds to a real effect
   before it's treated as one).
-- A small number of characters have a constant, always-on "innate" stat
-  outside the normal ascension system entirely -- e.g. Nefer has a flat
-  100 Elemental Mastery at every level/ascension, confirmed on the wiki as
-  a separate "Base EM" column alongside her actual ascension-scaling stat
-  (Crit DMG, which genshin-db does track correctly). Investigated and
-  shelved for the same reason as the bonus-passive item above: dumped
-  genshin-db's entire raw character object and full stats() output for
-  Nefer, no field for this anywhere. Structurally this needs something new
-  (today's schema has no "constant non-scaling stat" concept, only the
-  per-level ascensionStatValue table) -- when this gets picked up again,
-  treat it as the same manual-entry problem as the bonus-passive item
-  rather than inventing a separate mechanism for it.
-
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over
   clever abstractions or black-box magic.

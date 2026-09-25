@@ -57,6 +57,9 @@ export type CharacterProgressionData = {
   maxAscensionHp: number;
   maxAscensionAttack: number;
   maxAscensionDefense: number;
+  // Flat, always-on EM floor outside the ascension system -- 0 for nearly
+  // every character. See Character.baseElementalMastery in schema.prisma.
+  baseElementalMastery: number;
   talents: {
     id: number;
     slot: TalentSlot;
@@ -116,6 +119,7 @@ export async function getCharacterProgressionData(characterId: number): Promise<
     maxAscensionHp: character.maxAscensionHp ?? 0,
     maxAscensionAttack: character.maxAscensionAttack ?? 0,
     maxAscensionDefense: character.maxAscensionDefense ?? 0,
+    baseElementalMastery: character.baseElementalMastery,
     talents: character.talents.map((t) => ({
       id: t.id,
       slot: t.slot,

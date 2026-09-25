@@ -274,6 +274,12 @@ function BaseStatsSection({ data, level, ascensionPhase }: { data: CharacterProg
   const bonusStat = data.ascensionStatName
     ? computeCharacterBonusStat(data.ascensionStatName, data.scalingRarity, ascensionPhase)
     : null;
+  // The ascension-stat bonus and the flat EM floor are two independent
+  // sources -- most characters have one or neither, but a character whose
+  // own ascension stat IS Elemental Mastery (e.g. Lauma) has both, additive.
+  // See Character.baseElementalMastery in schema.prisma.
+  const isAscensionStatElementalMastery = data.ascensionStatName === "Elemental Mastery";
+  const totalElementalMastery = data.baseElementalMastery + (isAscensionStatElementalMastery ? bonusStat ?? 0 : 0);
 
   return (
     <div className="space-y-1 rounded border p-2 text-sm">
@@ -282,10 +288,13 @@ function BaseStatsSection({ data, level, ascensionPhase }: { data: CharacterProg
         <li>Base HP: {Math.round(hp)}</li>
         <li>Base ATK: {Math.round(attack)}</li>
         <li>Base DEF: {Math.round(defense)}</li>
-        {data.ascensionStatName && bonusStat !== null && (
+        {data.ascensionStatName && bonusStat !== null && !isAscensionStatElementalMastery && (
           <li>
             {data.ascensionStatName}: {formatStatValue(data.ascensionStatName, bonusStat)}
           </li>
+        )}
+        {totalElementalMastery > 0 && (
+          <li>Elemental Mastery: {formatStatValue("Elemental Mastery", totalElementalMastery)}</li>
         )}
       </ul>
     </div>

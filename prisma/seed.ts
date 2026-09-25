@@ -29,6 +29,9 @@ const STAT_TYPE_NAMES = [
   "Crit Rate%",
   "Crit DMG%",
   "Healing Bonus%",
+  "Incoming Healing Bonus%",
+  "Cooldown Reduction%",
+  "Shield Strength%",
   "Physical DMG Bonus%",
   "Pyro DMG Bonus%",
   "Hydro DMG Bonus%",
@@ -37,7 +40,31 @@ const STAT_TYPE_NAMES = [
   "Anemo DMG Bonus%",
   "Geo DMG Bonus%",
   "Dendro DMG Bonus%",
+  // RES%: the full wiki-listed vocabulary, kept for master-data completeness
+  // (a character's own detail screen always shows all 8, defaulting to a
+  // flat 10% each with no gear ever raising it -- see genshin-db's own
+  // FIGHT_PROP enums, which never expose RES as a weapon secondary stat, an
+  // artifact main/substat, or a character ascension stat). No StatBonus rows
+  // reference these yet: verified directly against every 2pc effect and
+  // every constellation/refinement exact-match stat phrase already seeded
+  // (see PROSE_STAT_TEXT_TO_STAT_TYPE / TWO_PIECE_STAT_TEXT_TO_STAT_TYPE
+  // below) -- none of them ever grant a RES/Shield Strength/Cooldown
+  // Reduction/Incoming Healing Bonus bonus, so there's nothing to wire up
+  // yet, just the vocabulary for whenever the Final Stats display (build
+  // order step 8) needs to show these baseline categories.
+  "Physical RES%",
+  "Pyro RES%",
+  "Hydro RES%",
+  "Electro RES%",
+  "Cryo RES%",
+  "Anemo RES%",
+  "Geo RES%",
+  "Dendro RES%",
 ] as const;
+// Stamina (the wiki's other "Basic Stat") is deliberately excluded: it's a
+// global player resource raised only by world exploration (Oculi), never by
+// a character/weapon/artifact/talent/constellation, so no owned-inventory
+// row could ever reference it.
 
 type StatTypeName = (typeof STAT_TYPE_NAMES)[number];
 
@@ -120,6 +147,22 @@ const EXCLUDED_WEAPON_NAMES = new Set(["Prized Isshin Blade"]);
 // No meaningful build relevance at these rarities — excluded from seeding.
 const MIN_WEAPON_RARITY = 3;
 const MIN_ARTIFACT_SET_RARITY = 4;
+
+// A handful of characters have a flat, always-on Elemental Mastery floor
+// entirely outside the normal ascension system -- confirmed on the wiki
+// (https://genshin-impact.fandom.com/wiki/Attribute, see
+// data-export/Stat_type_report.txt): "Elemental Mastery starts at 0 for
+// most playable characters, excluding Lauma and Nefer whose Elemental
+// Mastery begin at 200 and 100 respectively." Not present anywhere in
+// genshin-db's data (confirmed directly against both characters' raw
+// object and stats() output), so hardcoded here rather than sourced --
+// same reasoning as the exceptions already handled in character-scaling.ts
+// (Traveler) and weapon-scaling.ts (Sword of Descension). Default is 0 for
+// every character not listed.
+const CHARACTER_BASE_ELEMENTAL_MASTERY: Record<string, number> = {
+  Lauma: 200,
+  Nefer: 100,
+};
 
 // ---------------------------------------------------------------------------
 
@@ -359,6 +402,7 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
     const iconUrl = enkaIconUrl(character.images.filename_icon);
     const ascensionStatName = FIGHT_PROP_TO_STAT_TYPE[character.substatType];
     const ascensionStatId = statTypeIds.get(ascensionStatName) ?? null;
+    const baseElementalMastery = CHARACTER_BASE_ELEMENTAL_MASTERY[character.name] ?? 0;
 
     const dbCharacter = await prisma.character.upsert({
       where: { name: character.name },
@@ -370,8 +414,9 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
         exclusivityGroup: null,
         ascensionStatId,
         iconUrl,
+        baseElementalMastery,
       },
-      update: { element, weaponType, rarity: character.rarity, ascensionStatId, iconUrl },
+      update: { element, weaponType, rarity: character.rarity, ascensionStatId, iconUrl, baseElementalMastery },
     });
     await seedCharacterBaseStats(dbCharacter.id, character.stats, character.rarity);
     await seedTalents(dbCharacter.id, character.name);
@@ -437,9 +482,14 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
 // near-identical phrasings -- so a small pattern-based parser handles the
 // common case, falling back to "no bonus row" (same as any conditional
 // effect) for anything that doesn't match or references a stat category
-// outside this app's tracked final-stats list (e.g. Elemental Skill/Burst
-// DMG Bonus%, RES%, Shield Strength% -- not in scope, see CLAUDE.md's Key
-// decisions on calculation scope).
+// outside this app's tracked final-stats list (e.g. Elemental Skill/Burst/
+// Normal/Charged/Plunging Attack DMG Bonus% -- not in scope, see CLAUDE.md's
+// Key decisions on calculation scope) or names more than one stat at once
+// (e.g. Tiny Miracle's "All Elemental RES", which would need 7 rows, one
+// per element -- this parser only ever produces one). RES%/Shield
+// Strength% themselves ARE tracked StatTypes (Lavawalker/Thundersoother/
+// Retracing Bolide's single-element/single-stat 2pc effects resolve fine),
+// even though nothing sums them into a final-stats total yet.
 
 // English-phrase equivalent of FIGHT_PROP_TO_STAT_TYPE above, since 2pc
 // effect text has no FIGHT_PROP_* keys to key off of at all.
@@ -461,14 +511,25 @@ const TWO_PIECE_STAT_TEXT_TO_STAT_TYPE: Record<string, StatTypeName> = {
   "Anemo DMG Bonus": "Anemo DMG Bonus%",
   "Geo DMG Bonus": "Geo DMG Bonus%",
   "Dendro DMG Bonus": "Dendro DMG Bonus%",
+  "Physical RES": "Physical RES%",
+  "Pyro RES": "Pyro RES%",
+  "Hydro RES": "Hydro RES%",
+  "Electro RES": "Electro RES%",
+  "Cryo RES": "Cryo RES%",
+  "Anemo RES": "Anemo RES%",
+  "Geo RES": "Geo RES%",
+  "Dendro RES": "Dendro RES%",
+  "Shield Strength": "Shield Strength%",
 };
 
-// Tried in order -- matches the 4 phrasings actually seen across all 56
+// Tried in order -- matches the 6 phrasings actually seen across all 56
 // currently-seeded 2pc effects (verified directly, not assumed):
-// "<Stat> +N%.", "Gain a N% <Stat>.", "Increases <Stat> by N.",
+// "<Stat> +N%.", "Gain a N% <Stat>.", "Increases <Stat> by N[%].",
 // "<Stat> is increased by N%." (Pale Flame is the only current set phrased
 // this way -- everything else granting a DMG% bonus uses "<Stat> +N%.",
-// e.g. Bloodstained Chivalry's otherwise-identical Physical DMG bonus).
+// e.g. Bloodstained Chivalry's otherwise-identical Physical DMG bonus), and
+// "<Stat> increased by N%." (Lavawalker/Thundersoother's RES bonuses --
+// same as the "is increased by" phrasing minus the "is").
 function parseTwoPieceEffect(text: string): { statText: string; value: number } | null {
   const suffixMatch = text.match(/^(.+?)\s*\+(\d+(?:\.\d+)?)%\.?$/);
   if (suffixMatch) return { statText: suffixMatch[1].trim(), value: Number(suffixMatch[2]) };
@@ -476,11 +537,14 @@ function parseTwoPieceEffect(text: string): { statText: string; value: number } 
   const gainMatch = text.match(/^Gain a (\d+(?:\.\d+)?)% (.+?)\.?$/);
   if (gainMatch) return { statText: gainMatch[2].trim(), value: Number(gainMatch[1]) };
 
-  const increasesMatch = text.match(/^Increases (.+?) by (\d+(?:\.\d+)?)\.?$/);
+  const increasesMatch = text.match(/^Increases (.+?) by (\d+(?:\.\d+)?)%?\.?$/);
   if (increasesMatch) return { statText: increasesMatch[1].trim(), value: Number(increasesMatch[2]) };
 
   const isIncreasedMatch = text.match(/^(.+?) is increased by (\d+(?:\.\d+)?)%\.?$/);
   if (isIncreasedMatch) return { statText: isIncreasedMatch[1].trim(), value: Number(isIncreasedMatch[2]) };
+
+  const increasedMatch = text.match(/^(.+?) increased by (\d+(?:\.\d+)?)%\.?$/);
+  if (increasedMatch) return { statText: increasedMatch[1].trim(), value: Number(increasedMatch[2]) };
 
   return null;
 }

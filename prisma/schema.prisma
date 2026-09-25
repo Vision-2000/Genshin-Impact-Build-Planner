@@ -186,6 +186,17 @@ model Character {
   maxAscensionHp      Float? @map("max_ascension_hp")
   maxAscensionAttack  Float? @map("max_ascension_attack")
   maxAscensionDefense Float? @map("max_ascension_defense")
+  // A flat, always-on Elemental Mastery floor that exists outside the normal
+  // ascension system entirely and applies from level 1 regardless of
+  // ascensionStatId -- 0 for nearly every character. Confirmed on the wiki
+  // as a real, deliberate exception (e.g. Lauma starts at 200, Nefer at 100)
+  // and confirmed absent from genshin-db's own data (no field anywhere in
+  // the raw character object or stats() output), so it's hardcoded from the
+  // wiki at seed time rather than sourced -- see CHARACTER_BASE_ELEMENTAL_
+  // MASTERY in prisma/seed.ts. Additive with any ascension-stat EM bonus:
+  // Lauma's own ascensionStatId IS Elemental Mastery, so her total EM is
+  // this flat floor plus the normal per-phase ascension bonus on top.
+  baseElementalMastery Float @default(0) @map("base_elemental_mastery")
 
   ascensionStat   StatType?        @relation("CharacterAscensionStat", fields: [ascensionStatId], references: [id])
   gameProfiles    GameProfile[]
