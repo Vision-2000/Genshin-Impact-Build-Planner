@@ -22,7 +22,12 @@ import {
 } from "@/lib/ascension";
 import { formatStatValue } from "@/lib/stat-format";
 import { computeWeaponAttack, computeWeaponSecondaryStat } from "@/lib/weapon-scaling";
-import { renderWeaponPassiveDescription, type WeaponRefinementCurveType } from "@/lib/weapon-refinement-scaling";
+import {
+  renderWeaponPassiveDescription,
+  computeWeaponValueCurve,
+  type WeaponRefinementCurveType,
+  type WeaponValueCurveType,
+} from "@/lib/weapon-refinement-scaling";
 import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import { WeaponCard } from "./weapon-card";
@@ -53,14 +58,7 @@ function BaseStatsSection({
 }) {
   if (data.attackTier === null) return null;
 
-  const attack = computeWeaponAttack(
-    data.baseAttack,
-    data.attackTier,
-    data.rarity,
-    level,
-    ascensionPhase,
-    data.attackCurveRarity ?? undefined
-  );
+  const attack = computeWeaponAttack(data.attackTier, data.rarity, level, ascensionPhase, data.attackCurveRarity ?? undefined);
   const secondaryStatValue =
     secondaryStatName && data.baseSecondaryStatValue !== null
       ? computeWeaponSecondaryStat(data.baseSecondaryStatValue, level)
@@ -98,7 +96,10 @@ function PassiveSection({ data, refinement }: { data: WeaponProgressionData; ref
       )
     : data.refinementEffects.find((e) => e.refinement === refinement)?.description;
   if (!description) return null;
-  const statBonuses = data.statBonusesByRefinement.filter((b) => b.refinement === refinement);
+  const statBonuses = data.statBonuses.map((b) => ({
+    statTypeName: b.statTypeName,
+    value: computeWeaponValueCurve({ ...b, curveType: b.curveType as WeaponValueCurveType }, refinement),
+  }));
 
   return (
     <div className="space-y-1 rounded border p-2 text-sm">

@@ -115,21 +115,24 @@ export function weaponSecondaryStatMultiplier(level: number): number {
 }
 
 // attackCurveRarity overrides which rarity's tier table the level
-// multiplier is drawn from, for the rare weapon whose base ATK/level curve
-// doesn't match its own rarity's tiers -- e.g. Sword of Descension (a real,
-// player-obtainable PS-exclusive weapon, not a story-only item) is flagged
-// 4-star and uses the 4-star ascension value, but its base ATK/level curve
-// is drawn from the 3-star tier 2 table instead, per the wiki's own
-// explicit callout. Defaults to the weapon's own rarity when not given,
-// which is every other weapon.
+// multiplier AND base value are drawn from, for the rare weapon whose base
+// ATK/level curve doesn't match its own rarity's tiers -- e.g. Sword of
+// Descension (a real, player-obtainable PS-exclusive weapon, not a
+// story-only item) is flagged 4-star and uses the 4-star ascension value,
+// but its base ATK/level curve is drawn from the 3-star tier 2 table
+// instead, per the wiki's own explicit callout. Defaults to the weapon's
+// own rarity when not given, which is every other weapon. Base ATK itself
+// needs no stored value at all -- it's exactly
+// WEAPON_ATTACK_TIER_BASE[attackCurveRarity ?? rarity][attackTier],
+// confirmed to hold for every currently-seeded weapon.
 export function computeWeaponAttack(
-  baseAttack: number,
   attackTier: number,
   rarity: number,
   level: number,
   ascensionPhase: number,
   attackCurveRarity: number = rarity
 ): number {
+  const baseAttack = WEAPON_ATTACK_TIER_BASE[attackCurveRarity][attackTier];
   const mult = weaponAttackLevelMultiplier(attackCurveRarity, attackTier, level);
   const ascensionValue = WEAPON_ASCENSION_VALUE_BY_RARITY[rarity][ascensionPhase];
   return baseAttack * mult + ascensionValue;

@@ -49,10 +49,21 @@ export type WeaponRefinementValueData = {
   customValues: number[];
 };
 
+// One row per (weapon, stat) rather than per refinement -- the actual
+// value at a given refinement is computed via
+// @/lib/weapon-refinement-scaling's computeWeaponValueCurve, same as
+// refinementValues above.
+export type WeaponStatBonusData = {
+  statTypeName: string;
+  curveType: string;
+  baseValue: number;
+  slope: number | null;
+  customValues: number[];
+};
+
 export type WeaponProgressionData = {
   passiveName: string | null;
   rarity: number;
-  baseAttack: number;
   attackTier: number | null;
   attackCurveRarity: number | null;
   baseSecondaryStatValue: number | null;
@@ -69,7 +80,7 @@ export type WeaponProgressionData = {
   passiveDescriptionTemplate: string | null;
   refinementValues: WeaponRefinementValueData[];
   refinementEffects: { refinement: number; description: string }[];
-  statBonusesByRefinement: { refinement: number; statTypeName: string; value: number }[];
+  statBonuses: WeaponStatBonusData[];
 };
 
 // Everything the progression editor needs beyond the OwnedWeaponItem it
@@ -84,14 +95,13 @@ export async function getWeaponProgressionData(weaponId: number): Promise<Weapon
     include: {
       refinementEffects: { orderBy: { refinement: "asc" } },
       refinementValues: { orderBy: { slotIndex: "asc" } },
-      statBonuses: { include: { statType: true }, orderBy: { refinement: "asc" } },
+      statBonuses: { include: { statType: true } },
     },
   });
 
   return {
     passiveName: weapon.passiveName,
     rarity: weapon.rarity,
-    baseAttack: weapon.baseAttack ?? 0,
     attackTier: weapon.attackTier,
     attackCurveRarity: weapon.attackCurveRarity,
     baseSecondaryStatValue: weapon.baseSecondaryStatValue,
@@ -105,10 +115,12 @@ export async function getWeaponProgressionData(weaponId: number): Promise<Weapon
       customValues: v.customValues,
     })),
     refinementEffects: weapon.refinementEffects.map((r) => ({ refinement: r.refinement, description: r.description })),
-    statBonusesByRefinement: weapon.statBonuses.map((b) => ({
-      refinement: b.refinement,
+    statBonuses: weapon.statBonuses.map((b) => ({
       statTypeName: b.statType.name,
-      value: b.value,
+      curveType: b.curveType,
+      baseValue: b.baseValue,
+      slope: b.slope,
+      customValues: b.customValues,
     })),
   };
 }

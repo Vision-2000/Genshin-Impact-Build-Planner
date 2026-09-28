@@ -23,7 +23,25 @@
 // absent at R1 -- and keeps the original per-refinement rows. See
 // data-export/verify-weapon-refinement-scaling.mts and
 // data-export/diagnose-weapon-refinement-mismatches.mts.
-export type WeaponRefinementCurveType = "Linear" | "Custom";
+//
+// The same "a number that scales by refinement is base+slope, or a raw
+// fallback" idea is shared with WeaponStatBonus (see
+// classifyWeaponValueCurve/computeWeaponValueCurve below) -- the one
+// difference is that a stat bonus always gets a row even when its value is
+// Constant (a stat bonus is a queryable fact regardless of whether it
+// scales), whereas a constant passive-text number never gets a
+// WeaponRefinementSlot at all (it's already correct as plain template
+// text, so there's nothing to compute).
+export type WeaponValueCurveType = "Constant" | "Linear" | "Custom";
+
+export type WeaponValueCurve = {
+  curveType: WeaponValueCurveType;
+  baseValue: number;
+  slope: number | null;
+  customValues: number[] | null;
+};
+
+export type WeaponRefinementCurveType = Exclude<WeaponValueCurveType, "Constant">;
 
 export type WeaponRefinementSlot = {
   slotIndex: number;
@@ -37,29 +55,32 @@ function closeEnough(a: number, b: number, tolerance = 1e-6): boolean {
   return Math.abs(a - b) <= tolerance;
 }
 
-// Classifies one numeric slot's known refinement values (already confirmed
-// to vary -- a slot whose value never changes never becomes a row at all,
-// see buildWeaponPassiveTemplate) into Linear (evenly spaced) or Custom (a
-// raw fallback for the small residual that isn't, e.g. the Sacrificial
+// Classifies a set of known refinement values (index 0 = refinement 1)
+// into Constant (never changes), Linear (evenly spaced), or Custom (a raw
+// fallback for the small residual that's neither, e.g. the Sacrificial
 // weapons' proc-chance value, which decreases in uneven steps).
-function classifySlotValues(values: number[]): Omit<WeaponRefinementSlot, "slotIndex"> {
+export function classifyWeaponValueCurve(values: number[]): WeaponValueCurve {
+  if (values.every((v) => closeEnough(v, values[0]))) {
+    return { curveType: "Constant", baseValue: values[0], slope: null, customValues: null };
+  }
   const step = values[1] - values[0];
   const isLinear = values.every((v, i) => i === 0 || closeEnough(v, values[0] + step * i));
   if (isLinear) return { curveType: "Linear", baseValue: values[0], slope: step, customValues: null };
   return { curveType: "Custom", baseValue: values[0], slope: null, customValues: values };
 }
 
-// The inverse: given a stored slot + a refinement level, returns the
+// The inverse: given a stored curve + a refinement level, returns the
 // actual value -- used at read time instead of indexing into a stored
-// per-refinement description.
-export function computeWeaponRefinementValue(
-  slot: Pick<WeaponRefinementSlot, "curveType" | "baseValue" | "slope" | "customValues">,
+// per-refinement value.
+export function computeWeaponValueCurve(
+  curve: Pick<WeaponValueCurve, "curveType" | "baseValue" | "slope" | "customValues">,
   refinement: number
 ): number {
-  if (slot.curveType === "Custom") {
-    return slot.customValues![Math.min(refinement - 1, slot.customValues!.length - 1)];
+  if (curve.curveType === "Constant") return curve.baseValue;
+  if (curve.curveType === "Custom") {
+    return curve.customValues![Math.min(refinement - 1, curve.customValues!.length - 1)];
   }
-  return slot.baseValue + slot.slope! * (refinement - 1);
+  return curve.baseValue + curve.slope! * (refinement - 1);
 }
 
 // Numbers in this domain are always short, human-authored decimals (game
@@ -82,7 +103,7 @@ export function renderWeaponPassiveDescription(
   return template.replace(/\{(\d+)\}/g, (match, indexStr) => {
     const slot = bySlot.get(Number(indexStr));
     if (!slot) return match;
-    return formatWeaponRefinementNumber(computeWeaponRefinementValue(slot, refinement));
+    return formatWeaponRefinementNumber(computeWeaponValueCurve(slot, refinement));
   });
 }
 
@@ -92,11 +113,12 @@ export function renderWeaponPassiveDescription(
 // template string with {0}, {1}, ... placeholders plus one
 // WeaponRefinementSlot per number that actually varies across them.
 //
-// A number identical at every known refinement is left as plain text in
-// the template -- no slot needed, since it never needs computing (this is
-// also what correctly handles a weapon with only 1 known description at
-// all: every "slot" is trivially constant with nothing to compare
-// against, so the whole text is baked in as-is with zero placeholders).
+// A number identical at every known refinement (classifyWeaponValueCurve
+// returns "Constant") is left as plain text in the template -- no slot
+// needed, since it never needs computing (this is also what correctly
+// handles a weapon with only 1 known description at all: every number is
+// trivially constant with nothing to compare against, so the whole text
+// is baked in as-is with zero placeholders).
 //
 // The template's literal wording is always taken from the LAST
 // description, not the first -- verified this is safe for the ~13 weapons
@@ -133,13 +155,15 @@ export function buildWeaponPassiveTemplate(
     const values = numberLists.map((n) => n[numberSeen]);
     numberSeen++;
 
-    if (values.every((v) => closeEnough(v, values[0]))) {
+    const classified = classifyWeaponValueCurve(values);
+    if (classified.curveType === "Constant") {
       template += segments[i]; // constant across every known refinement -- keep literal, no slot
       continue;
     }
 
     const slotIndex = slots.length;
-    slots.push({ slotIndex, ...classifySlotValues(values) });
+    // classified.curveType is already confirmed not "Constant" above.
+    slots.push({ slotIndex, ...classified, curveType: classified.curveType as WeaponRefinementCurveType });
     template += `{${slotIndex}}`;
   }
 

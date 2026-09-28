@@ -18,11 +18,11 @@
 // values (and Healing Bonus% 5-star) were corrected during manual audit --
 // the wiki's own summary table only gives 1-2 decimal digits, not enough
 // precision for these three specifically (every other entry below checked
-// out exact). Confirmed by reverse-solving against every known character's
-// exact bonus-stat value at every ascension phase (source: manual audit,
-// not the wiki report above) -- see data-export/master-data-formulas.txt.
-// Main stat (HP/ATK/DEF) above is unaffected: its own 3dp rounding is a
-// documented step of the wiki's real formula, not an approximation.
+// out exact). Corrected to match the wiki directly rather than v1 (v1's
+// own values here are confirmed wrong) -- see
+// data-export/master-data-formulas.txt. Main stat (HP/ATK/DEF) above is
+// unaffected: its own 3dp rounding is a documented step of the wiki's
+// real formula, not an approximation.
 
 export const CHARACTER_ASCENSION_MULTIPLIER = [0, 38 / 182, 65 / 182, 101 / 182, 128 / 182, 155 / 182, 182 / 182];
 export const CHARACTER_BONUS_STAT_ASCENSION_MULTIPLIER = [0, 0, 1, 2, 2, 3, 4];
@@ -46,7 +46,7 @@ export const CHARACTER_BONUS_STAT_BASE_VALUE: Record<string, { fourStar: number 
     "fiveStar": 9
   },
   "Energy Recharge%": {
-    "fourStar": 6.6675,
+    "fourStar": 6.67,
     "fiveStar": 8
   },
   "Elemental Mastery": {
@@ -54,8 +54,8 @@ export const CHARACTER_BONUS_STAT_BASE_VALUE: Record<string, { fourStar: number 
     "fiveStar": 28.8
   },
   "Healing Bonus%": {
-    "fourStar": 4.615,
-    "fiveStar": 5.5375
+    "fourStar": 4.62,
+    "fiveStar": 5.54
   },
   "Crit Rate%": {
     "fourStar": null,

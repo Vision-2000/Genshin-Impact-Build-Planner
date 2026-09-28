@@ -15,11 +15,12 @@ import {
   ArtifactSetPiece,
   TalentCurveType,
   WeaponRefinementCurveType,
+  WeaponStatBonusCurveType,
 } from "../src/generated/prisma/enums";
 import { characterLevelMultiplier } from "../src/lib/character-scaling";
 import { WEAPON_ATTACK_TIER_BASE } from "../src/lib/weapon-scaling";
 import { classifyTalentAttributeCurve } from "../src/lib/talent-scaling";
-import { buildWeaponPassiveTemplate } from "../src/lib/weapon-refinement-scaling";
+import { buildWeaponPassiveTemplate, classifyWeaponValueCurve } from "../src/lib/weapon-refinement-scaling";
 
 // ---------------------------------------------------------------------------
 // StatType: fixed canonical vocabulary, not sourced from genshin-db.
@@ -492,12 +493,13 @@ async function seedCharacters(statTypeIds: Map<StatTypeName, number>) {
 // effect) for anything that doesn't match or references a stat category
 // outside this app's tracked final-stats list (e.g. Elemental Skill/Burst/
 // Normal/Charged/Plunging Attack DMG Bonus% -- not in scope, see CLAUDE.md's
-// Key decisions on calculation scope) or names more than one stat at once
-// (e.g. Tiny Miracle's "All Elemental RES", which would need 7 rows, one
-// per element -- this parser only ever produces one). RES%/Shield
-// Strength% themselves ARE tracked StatTypes (Lavawalker/Thundersoother/
-// Retracing Bolide's single-element/single-stat 2pc effects resolve fine),
-// even though nothing sums them into a final-stats total yet.
+// Key decisions on calculation scope). A phrase naming more than one stat at
+// once (Tiny Miracle's "All Elemental RES") is handled separately via
+// MULTI_STAT_TEXT_TO_STAT_TYPES below, producing one row per named stat.
+// RES%/Shield Strength% themselves ARE tracked StatTypes
+// (Lavawalker/Thundersoother/Retracing Bolide's single-element/single-stat
+// 2pc effects resolve fine), even though nothing sums them into a
+// final-stats total yet.
 
 // English-phrase equivalent of FIGHT_PROP_TO_STAT_TYPE above, since 2pc
 // effect text has no FIGHT_PROP_* keys to key off of at all.
@@ -528,6 +530,23 @@ const TWO_PIECE_STAT_TEXT_TO_STAT_TYPE: Record<string, StatTypeName> = {
   "Geo RES": "Geo RES%",
   "Dendro RES": "Dendro RES%",
   "Shield Strength": "Shield Strength%",
+};
+
+// A handful of phrases name a whole category rather than one stat -- e.g.
+// Tiny Miracle's 2pc "All Elemental RES increased by 20%." grants all 7
+// elemental RES stats at once (never Physical), which needs 7 rows instead
+// of the 1 every other phrase produces. Checked directly: this is the only
+// such phrase across all currently-seeded 2pc effects.
+const MULTI_STAT_TEXT_TO_STAT_TYPES: Record<string, StatTypeName[]> = {
+  "All Elemental RES": [
+    "Pyro RES%",
+    "Hydro RES%",
+    "Electro RES%",
+    "Cryo RES%",
+    "Anemo RES%",
+    "Geo RES%",
+    "Dendro RES%",
+  ],
 };
 
 // Tried in order -- matches the 6 phrasings actually seen across all 56
@@ -568,6 +587,19 @@ async function seedArtifactSetTwoPieceBonus(
   const parsed = parseTwoPieceEffect(twoPieceEffect);
   if (!parsed) {
     console.warn(`"${setName}" 2pc effect didn't match a known pattern, left unbonused: "${twoPieceEffect}"`);
+    return;
+  }
+
+  const multiStatNames = MULTI_STAT_TEXT_TO_STAT_TYPES[parsed.statText];
+  if (multiStatNames) {
+    await prisma.artifactSetStatBonus.createMany({
+      data: multiStatNames.map((name) => ({
+        artifactSetId,
+        piece: ArtifactSetPiece.Two,
+        statTypeId: statTypeIds.get(name)!,
+        value: parsed.value,
+      })),
+    });
     return;
   }
 
@@ -712,7 +744,7 @@ async function seedWeaponBaseStats(
 
   await prisma.weapon.update({
     where: { id: weaponId },
-    data: { baseAttack, attackTier, attackCurveRarity, baseSecondaryStatValue },
+    data: { attackTier, attackCurveRarity, baseSecondaryStatValue },
   });
 }
 
@@ -882,13 +914,20 @@ function splitSentences(text: string): string[] {
     .filter(Boolean);
 }
 
+// One row per (weapon, statType) rather than per refinement -- same
+// base+slope compaction as WeaponRefinementValue (see
+// classifyWeaponValueCurve), except Constant is a real stored curveType
+// here rather than "no row at all": a stat bonus is a queryable fact
+// regardless of whether its value happens to scale.
 async function seedWeaponStatBonuses(weaponId: number, weaponName: string, weapon: genshindb.Weapon, statTypeIds: Map<StatTypeName, number>) {
   await prisma.weaponStatBonus.deleteMany({ where: { weaponId } });
 
-  const refinements = [1, 2, 3, 4, 5] as const;
-  const rows: { weaponId: number; statTypeId: number; refinement: number; value: number }[] = [];
-  for (const refinement of refinements) {
-    const description = getRefinementDescription(weapon, refinement);
+  const maxRefinement = maxKnownRefinement(weapon);
+  const valuesByStatTypeId = new Map<number, number[]>();
+  let refinementsWithAMatch = 0;
+
+  for (let refinement = 1; refinement <= maxRefinement; refinement++) {
+    const description = getRefinementDescription(weapon, refinement as 1 | 2 | 3 | 4 | 5);
     if (!description) continue;
 
     for (const sentence of splitSentences(description)) {
@@ -897,20 +936,35 @@ async function seedWeaponStatBonuses(weaponId: number, weaponName: string, weapo
       const statTypeName = PROSE_STAT_TEXT_TO_STAT_TYPE[parsed.statText];
       const statTypeId = statTypeName ? statTypeIds.get(statTypeName) : undefined;
       if (!statTypeId) continue;
-      rows.push({ weaponId, statTypeId, refinement, value: parsed.value });
+      if (!valuesByStatTypeId.has(statTypeId)) valuesByStatTypeId.set(statTypeId, []);
+      valuesByStatTypeId.get(statTypeId)!.push(parsed.value);
+      refinementsWithAMatch++;
       break; // first qualifying sentence per refinement -- every weapon seen so far has at most one
     }
   }
 
-  if (rows.length === 0) return;
+  if (valuesByStatTypeId.size === 0) return;
   // A weapon matching on only some refinements would mean either a
-  // genshin-db data gap or a bug in this parser -- every refinement of the
-  // same weapon shares the same sentence structure, just different
-  // numbers, so a real match should appear on all 5.
-  if (rows.length !== refinements.length) {
-    console.warn(`"${weaponName}" only matched a stat bonus on ${rows.length}/${refinements.length} refinements -- check manually`);
+  // genshin-db data gap or a bug in this parser -- every known refinement
+  // of the same weapon shares the same sentence structure, just different
+  // numbers, so a real match should appear on every one of them.
+  if (refinementsWithAMatch !== maxRefinement) {
+    console.warn(`"${weaponName}" only matched a stat bonus on ${refinementsWithAMatch}/${maxRefinement} refinements -- check manually`);
   }
-  await prisma.weaponStatBonus.createMany({ data: rows });
+
+  await prisma.weaponStatBonus.createMany({
+    data: [...valuesByStatTypeId.entries()].map(([statTypeId, values]) => {
+      const classified = classifyWeaponValueCurve(values);
+      return {
+        weaponId,
+        statTypeId,
+        curveType: WeaponStatBonusCurveType[classified.curveType],
+        baseValue: classified.baseValue,
+        slope: classified.slope,
+        customValues: classified.customValues ?? [],
+      };
+    }),
+  });
 }
 
 // Same parser as seedWeaponStatBonuses, applied to a constellation's own

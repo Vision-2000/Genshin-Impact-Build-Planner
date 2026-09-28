@@ -331,22 +331,26 @@ model Weapon {
   // Certification"). Null for low-rarity weapons with no passive.
   passiveName     String?    @map("passive_name")
   iconUrl         String?    @map("icon_url")
-  // ATK's base value (level 1) and which of the small shared set of
-  // rarity-scoped "tiers" it uses -- base ATK turns out to be shared by
-  // (rarity, tier), not unique per weapon (verified: multiple weapons
-  // share byte-identical base values), so tier is really just "which
-  // shared level-multiplier curve applies," resolved once at seed time
-  // from the weapon's own base ATK (see src/lib/weapon-scaling.ts,
-  // WEAPON_ATTACK_TIER_BASE) rather than a real in-game concept exposed
-  // anywhere. ATK's ascension bonus needs no stored value at all -- it's
-  // fixed per rarity, also in weapon-scaling.ts. Secondary stat has no
-  // ascension component, just its own base * a universal level curve.
+  // Which of the small shared set of rarity-scoped "tiers" ATK's base
+  // value (level 1) uses -- base ATK turns out to be shared by (rarity,
+  // tier), not unique per weapon (verified: multiple weapons share
+  // byte-identical base values), so this is really just "which shared
+  // level-multiplier curve applies," resolved once at seed time by
+  // matching the weapon's own base ATK against WEAPON_ATTACK_TIER_BASE
+  // (src/lib/weapon-scaling.ts) rather than a real in-game concept exposed
+  // anywhere. The base value itself needs no separate stored column --
+  // it's exactly WEAPON_ATTACK_TIER_BASE[attackCurveRarity ?? rarity]
+  // [attackTier], confirmed to hold for all 242 weapons including the one
+  // attackCurveRarity exception below (storing it too would just be
+  // redundant, possibly-stale data). ATK's ascension bonus needs no stored
+  // value either -- it's fixed per rarity, also in weapon-scaling.ts.
+  // Secondary stat has no ascension component, just its own base * a
+  // universal level curve.
   //
   // Replaces what used to be a ~90-row-per-weapon WeaponLevelStat table.
   // Verified to 100% agreement (23,136 rows, 242 weapons) against an
   // independently wiki-sourced formula -- see
   // data-export/verify-weapon-stats.mts.
-  baseAttack             Float? @map("base_attack")
   attackTier             Int?   @map("attack_tier")
   baseSecondaryStatValue Float? @map("base_secondary_stat_value")
   // Null for every weapon except the rare one whose base ATK/level curve is
@@ -436,21 +440,41 @@ model WeaponRefinementValue {
   @@map("weapon_refinement_values")
 }
 
+enum WeaponStatBonusCurveType {
+  Constant
+  Linear
+  Custom
+}
+
 // Same idea as TalentStatBonus, for the subset of weapon passives that
-// grant an unconditional stat-screen bonus. Has its own refinement column
-// (unlike Talent/ConstellationStatBonus) since that bonus, when one exists,
-// almost always scales by refinement too, same as the passive text does.
+// grant an unconditional stat-screen bonus. One row per (weapon, stat)
+// rather than per refinement -- the same base+slope compaction as
+// WeaponRefinementValue, except "Constant" is a real stored case here
+// rather than "no row at all": a stat bonus is a queryable fact regardless
+// of whether its value happens to scale, unlike passive display text,
+// where a constant number needs no structured row since it's already
+// correct as plain text in the template. Checked directly against all 26
+// currently-seeded (weapon, stat) bonuses before compacting this way: all
+// 26 are Linear, 0 Constant, 0 Custom -- but Constant/Custom are kept as
+// real possibilities here (unlike WeaponRefinementValue) since nothing
+// about a stat bonus's nature rules them out, only what's been seen so far.
 model WeaponStatBonus {
-  id         Int   @id @default(autoincrement())
-  weaponId   Int   @map("weapon_id")
-  statTypeId Int   @map("stat_type_id")
-  refinement Int
-  value      Float
+  id           Int                      @id @default(autoincrement())
+  weaponId     Int                      @map("weapon_id")
+  statTypeId   Int                      @map("stat_type_id")
+  curveType    WeaponStatBonusCurveType @map("curve_type")
+  // Value at refinement 1 (for Custom, the same as customValues[0]).
+  baseValue    Float                    @map("base_value")
+  // Linear only -- the flat amount added per refinement step, i.e. the
+  // value at refinement n is baseValue + slope * (n - 1).
+  slope        Float?
+  // Custom only -- the raw known values, index 0 = refinement 1, unchanged.
+  customValues Float[]                  @map("custom_values")
 
   weapon   Weapon   @relation(fields: [weaponId], references: [id], onDelete: Cascade)
   statType StatType @relation("WeaponStatBonusOn", fields: [statTypeId], references: [id])
 
-  @@unique([weaponId, statTypeId, refinement])
+  @@unique([weaponId, statTypeId])
   @@map("weapon_stat_bonuses")
 }
 
