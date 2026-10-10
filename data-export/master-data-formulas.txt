@@ -1,0 +1,353 @@
+MASTER DATA FORMULAS
+Companion reference for characters-v2.json / weapons-v2.json / artifact-sets-v2.json / stat-types-v2.json.
+Everything here + those 4 files reproduces the full per-level/per-refinement game data (HP/ATK/DEF
+at every level, talent values at every level, passive text at every refinement).
+
+
+===============================================================================
+1. LEVEL & ASCENSION RANGES
+===============================================================================
+
+Levels run 1-90, 95, 100. Ascension phases run 0-6. Every level has exactly one valid phase EXCEPT
+the 6 breakpoint levels themselves -- 20, 40, 50, 60, 70, 80 -- which are valid at two
+phases each: the one just reached and the one before it (same level, different stats).
+
+Phase level cap (highest level reachable at that phase):
+  phase 0: 20
+  phase 1: 40
+  phase 2: 50
+  phase 3: 60
+  phase 4: 70
+  phase 5: 80
+  phase 6: 90
+
+
+===============================================================================
+2. CHARACTER STATS -- HP / ATK / DEF + the ascension-unlocked bonus stat
+===============================================================================
+
+scalingRarity(name, rarity) = name starts with "Traveler" ? 4 : rarity
+  (use scalingRarity everywhere below, never the raw `rarity` field directly; the 14 Traveler rows are
+  named "Traveler (<Female|Male>) (<Element>)", e.g. "Traveler (Male) (Anemo)", so the prefix test
+  still matches them -- see EXCEPTIONS below)
+
+mainStat(base, maxAscension, scalingRarity, level, ascensionPhase, stat) =
+  base * levelMultiplier(scalingRarity, level, stat) + maxAscension * ASCENSION_MULTIPLIER[ascensionPhase]
+
+bonusStat(statName, scalingRarity, ascensionPhase) =
+  bonusBase(statName, scalingRarity) * BONUS_ASCENSION_MULTIPLIER[ascensionPhase]
+  (0 if statName has no entry below, or the entry for this rarity is null)
+
+levelMultiplier(scalingRarity, level, stat):
+  if level == 95 or level == 100:
+    return LEVEL_95_100_MULTIPLIER[level][stat=="attack" ? (scalingRarity>=5?"fiveStarAtk":"fourStarAtk") : (scalingRarity>=5?"fiveStarHpDef":"fourStarHpDef")]
+  base = (100 + 9 * level) / 109
+  if scalingRarity >= 5: return round(base * (1900 + level) / 1901, 3 decimals)
+  else: return round(base, 3 decimals)
+
+ASCENSION_MULTIPLIER = [0, 38/182, 65/182, 101/182, 128/182, 155/182, 182/182]
+  (index = ascensionPhase 0-6)
+
+BONUS_ASCENSION_MULTIPLIER = [0, 0, 1, 2, 2, 3, 4]
+  (index = ascensionPhase 0-6)
+
+BONUS_STAT_BASE_VALUE (statName: fourStar / fiveStar):
+  ATK%:                    6      / 7.2
+  HP%:                     6      / 7.2
+  DEF%:                    7.5    / 9
+  Physical DMG Bonus%:     7.5    / 9
+  Energy Recharge%:        6.67   / 8
+  Elemental Mastery:       24     / 28.8
+  Healing Bonus%:          4.62   / 5.54
+  Crit Rate%:              null   / 4.8
+  Crit DMG%:               null   / 9.6
+  Pyro DMG Bonus%:         6      / 7.2
+  Hydro DMG Bonus%:        6      / 7.2
+  Electro DMG Bonus%:      6      / 7.2
+  Cryo DMG Bonus%:         6      / 7.2
+  Anemo DMG Bonus%:        6      / 7.2
+  Geo DMG Bonus%:          6      / 7.2
+  Dendro DMG Bonus%:       6      / 7.2
+
+LEVEL_95_100_MULTIPLIER:
+  95:  fourStarHpDef=8.761  fourStarAtk=9.87   fiveStarHpDef=9.195001  fiveStarAtk=10.18398
+  100: fourStarHpDef=9.174001  fourStarAtk=11.392 fiveStarHpDef=9.652001  fiveStarAtk=11.629
+
+EXCEPTIONS:
+  - Traveler rows (since 2026-10-07): 14 separate characters named "Traveler (<Female|Male>) (<Element>)",
+    one per protagonist x element (Anemo, Cryo, Dendro, Electro, Geo, Hydro, Pyro); Female = Lumine,
+    Male = Aether. All 14 share the same stats (baseHp/baseAttack/baseDefense, maxAscension*, ascension
+    stat ATK%, rarity, weaponType Sword) and exclusivityGroup "traveler". Per element: element, talents,
+    constellations. A Male row differs from its Female row only in iconUrl (UI_AvatarIcon_PlayerBoy vs
+    UI_AvatarIcon_PlayerGirl) and in the NormalAttack "Charged Attack DMG (Part 2)" baseValue
+    (Male 0.60716, Female 0.7224; both Physical1). Talent levels and constellations are tracked per
+    element in-game, while level, ascension, weapon and artifacts are shared by the protagonist.
+  - Traveler (all 14 rows): stored rarity is 5, but stat GROWTH uses scalingRarity 4.
+  - Traveler permanent story buff (all 14 rows; added 2026-10-07): after a story quest the Traveler
+    permanently gains +50 base HP, +10 base ATK and +15 base Elemental Mastery (flat, NOT on the
+    level curve: never add them to baseHp/baseAttack, which are multiplied by the curve). Handled in
+    the app, NOT stored in characters-v2.json; the official stat tables (Lunaris, HoYoWiki) and the
+    formulas above exclude it. Values as stated by Eugene (not verified against a game source).
+  - Lauma / Nefer: characters-v2.json field `baseElementalMastery` is 200 / 100 (every other
+    character is 0). This is a flat EM floor from level 1, OUTSIDE this formula entirely, and
+    ADDITIVE with bonusStat() above when the character's own ascensionStat IS Elemental Mastery
+    (true for Lauma). Total EM = baseElementalMastery + bonusStat("Elemental Mastery", ...).
+
+
+===============================================================================
+3. WEAPON STATS -- ATK + the secondary stat
+===============================================================================
+
+attack(attackTier, rarity, level, ascensionPhase, attackCurveRarity = rarity) =
+  WEAPON_ATTACK_TIER_BASE[attackCurveRarity][attackTier] * WEAPON_ATTACK_LEVEL_MULTIPLIER[attackCurveRarity][attackTier - 1][level - 1]
+  + WEAPON_ASCENSION_VALUE_BY_RARITY[rarity][ascensionPhase]
+  (baseAttack isn't a stored field -- it's exactly WEAPON_ATTACK_TIER_BASE[attackCurveRarity][attackTier],
+  confirmed to hold for all seeded weapons; storing it too would just be redundant)
+
+secondaryStat(baseSecondaryStatValue, level) =
+  baseSecondaryStatValue * secondaryStatMultiplier(level)
+
+secondaryStatMultiplier(level):
+  bucketStart = level < 5 ? 1 : floor(level / 5) * 5
+  return WEAPON_SECONDARY_MULTIPLIER_CONTROL_POINTS value at that bucketStart
+  (stepped, not interpolated -- levels 1-4 use level 1's value, 5-9 use level 5's, etc.)
+
+EXCEPTION:
+  - Sword of Descension: weapons-v2.json field `attackCurveRarity` is 3 even though `rarity` is 4.
+    ATK/level curve comes from the rarity-3 table; the ASCENSION value still comes from the
+    rarity-4 table (keyed off `rarity`, never `attackCurveRarity`). Every other weapon has
+    attackCurveRarity == null -- just use `rarity` for both.
+  - Exaiphanes Blade (added 2026-10-09): has a special levelling mechanism. These are the only valid states
+    (ATK and CRIT Rate from the formulas above at that level and phase; refinement text from refinementEffects):
+      Statues    Ascension  Level   Base   CRIT   Refinement
+      Unlocked   Phase              ATK    Rate   Rank
+      0          0          1/20    46     7.2%   1
+      1          0          20/20   122    12.7%  1
+      2          1          40/40   235    18.5%  2
+      3          3          60/60   382    24.4%  2
+      4          5          80/80   532    30.2%  3
+      5          6          90/90   608    33.1%  3
+      6          6          90/90   608    33.1%  4
+      7          TBA        TBA     TBA    TBA    TBA
+    Not a stored field: handled in the app by name, like the Traveler story buff. Checked 2026-10-09: every
+    state above equals the formulas and Lunaris; maxRefinement stays 5 (R5 text exists; state 7 is TBA).
+
+WEAPON_ATTACK_TIER_BASE (rarity -> tier -> base ATK at level 1):
+  rarity 3: { tier 1: 37.6075, tier 2: 38.7413, tier 3: 39.8751 }
+  rarity 4: { tier 1: 41.0671, tier 2: 42.401, tier 3: 43.7349, tier 4: 45.0687 }
+  rarity 5: { tier 1: 44.3358, tier 2: 45.9364, tier 3: 47.537, tier 4: 49.1377 }
+  (1-star/2-star weapons are never seeded -- no meaningful build relevance -- so their tiers
+  are omitted here)
+
+WEAPON_ATTACK_LEVEL_MULTIPLIER[rarity][tier][level] (index 0 = level 1, one array per tier):
+
+rarity 3:
+  tier 1: [1,1.071,1.141,1.211,1.28,1.349,1.417,1.486,1.553,1.621,1.688,1.754,1.82,1.886,1.952,2.017,2.082,2.147,2.211,2.275,2.339,2.402,2.466,2.529,2.591,2.654,2.716,2.778,2.84,2.901,2.962,3.023,3.084,3.145,3.205,3.265,3.325,3.385,3.445,3.504,3.564,3.623,3.682,3.741,3.799,3.858,3.916,3.974,4.032,4.09,4.148,4.205,4.263,4.32,4.377,4.434,4.491,4.548,4.605,4.661,4.718,4.774,4.83,4.887,4.943,4.999,5.054,5.11,5.166,5.222,5.277,5.333,5.388,5.443,5.498,5.554,5.609,5.664,5.719,5.774,5.828,5.883,5.938,5.993,6.047,6.102,6.156,6.211,6.265,6.32]
+  tier 2: [1,1.076,1.152,1.228,1.303,1.379,1.454,1.529,1.604,1.679,1.754,1.828,1.903,1.977,2.051,2.125,2.199,2.273,2.347,2.42,2.493,2.567,2.64,2.713,2.786,2.859,2.931,3.004,3.076,3.148,3.221,3.293,3.365,3.437,3.508,3.58,3.652,3.723,3.794,3.866,3.937,4.008,4.079,4.15,4.221,4.291,4.362,4.433,4.503,4.574,4.644,4.714,4.784,4.855,4.925,4.995,5.065,5.134,5.204,5.274,5.344,5.413,5.483,5.552,5.622,5.691,5.761,5.83,5.899,5.968,6.038,6.107,6.176,6.245,6.314,6.383,6.452,6.521,6.59,6.659,6.727,6.796,6.865,6.934,7.003,7.071,7.14,7.209,7.277,7.346]
+  tier 3: [1,1.081,1.162,1.244,1.325,1.407,1.489,1.57,1.652,1.734,1.816,1.898,1.981,2.063,2.145,2.227,2.31,2.392,2.474,2.557,2.639,2.722,2.804,2.887,2.969,3.052,3.134,3.217,3.299,3.382,3.464,3.547,3.629,3.712,3.794,3.877,3.959,4.042,4.124,4.206,4.289,4.371,4.454,4.536,4.618,4.701,4.783,4.865,4.948,5.03,5.112,5.194,5.277,5.359,5.441,5.523,5.605,5.688,5.77,5.852,5.934,6.016,6.098,6.18,6.262,6.344,6.427,6.509,6.591,6.673,6.755,6.837,6.919,7.001,7.083,7.165,7.247,7.329,7.411,7.493,7.575,7.657,7.739,7.821,7.904,7.986,8.068,8.15,8.232,8.314]
+
+rarity 4:
+  tier 1: [1,1.077,1.154,1.23,1.306,1.382,1.457,1.533,1.607,1.682,1.757,1.831,1.905,1.979,2.052,2.126,2.199,2.272,2.345,2.417,2.49,2.562,2.634,2.707,2.778,2.85,2.922,2.993,3.065,3.136,3.207,3.278,3.349,3.42,3.49,3.561,3.632,3.702,3.772,3.842,3.913,3.983,4.053,4.122,4.192,4.262,4.332,4.401,4.471,4.54,4.609,4.679,4.748,4.817,4.886,4.955,5.024,5.093,5.162,5.231,5.3,5.368,5.437,5.506,5.574,5.643,5.711,5.78,5.848,5.916,5.985,6.053,6.121,6.189,6.257,6.326,6.394,6.462,6.53,6.598,6.665,6.733,6.801,6.869,6.937,7.005,7.072,7.14,7.208,7.275]
+  tier 2: [1,1.083,1.165,1.248,1.33,1.413,1.495,1.578,1.661,1.743,1.826,1.908,1.991,2.073,2.156,2.239,2.321,2.404,2.486,2.569,2.651,2.734,2.817,2.899,2.982,3.064,3.147,3.229,3.312,3.394,3.477,3.56,3.642,3.725,3.807,3.89,3.972,4.055,4.138,4.22,4.303,4.385,4.468,4.55,4.633,4.716,4.798,4.881,4.963,5.046,5.128,5.211,5.294,5.376,5.459,5.541,5.624,5.706,5.789,5.872,5.954,6.037,6.119,6.202,6.284,6.367,6.45,6.532,6.615,6.697,6.78,6.862,6.945,7.028,7.11,7.193,7.275,7.358,7.44,7.523,7.606,7.688,7.771,7.853,7.936,8.018,8.101,8.183,8.266,8.349]
+  tier 3: [1,1.088,1.176,1.264,1.353,1.442,1.531,1.621,1.71,1.8,1.891,1.981,2.072,2.162,2.253,2.345,2.436,2.527,2.619,2.711,2.803,2.895,2.987,3.08,3.172,3.265,3.358,3.451,3.544,3.637,3.731,3.824,3.918,4.011,4.105,4.199,4.293,4.387,4.481,4.575,4.669,4.763,4.858,4.952,5.047,5.142,5.236,5.331,5.426,5.521,5.616,5.711,5.806,5.901,5.996,6.092,6.187,6.282,6.378,6.473,6.569,6.664,6.76,6.856,6.951,7.047,7.143,7.239,7.335,7.431,7.527,7.623,7.719,7.815,7.911,8.007,8.103,8.199,8.296,8.392,8.488,8.585,8.681,8.777,8.874,8.97,9.067,9.163,9.26,9.356]
+  tier 4: [1,1.093,1.186,1.28,1.374,1.469,1.565,1.661,1.757,1.854,1.952,2.049,2.147,2.246,2.345,2.444,2.544,2.644,2.744,2.845,2.946,3.047,3.148,3.25,3.352,3.454,3.557,3.66,3.762,3.866,3.969,4.073,4.177,4.281,4.385,4.489,4.594,4.699,4.803,4.909,5.014,5.119,5.225,5.33,5.436,5.542,5.648,5.755,5.861,5.968,6.074,6.181,6.288,6.395,6.502,6.609,6.717,6.824,6.932,7.039,7.147,7.255,7.363,7.471,7.579,7.687,7.795,7.904,8.012,8.12,8.229,8.338,8.446,8.555,8.664,8.773,8.882,8.991,9.1,9.209,9.319,9.428,9.537,9.647,9.756,9.866,9.975,10.085,10.195,10.305]
+
+rarity 5:
+  tier 1: [1,1.079,1.159,1.238,1.317,1.395,1.474,1.552,1.631,1.709,1.787,1.865,1.942,2.02,2.098,2.175,2.253,2.33,2.408,2.485,2.562,2.639,2.717,2.794,2.871,2.948,3.026,3.103,3.18,3.257,3.334,3.412,3.489,3.566,3.644,3.721,3.798,3.876,3.953,4.031,4.109,4.186,4.264,4.342,4.419,4.497,4.575,4.653,4.731,4.81,4.888,4.966,5.044,5.123,5.201,5.28,5.359,5.437,5.516,5.595,5.674,5.753,5.833,5.912,5.991,6.071,6.15,6.23,6.31,6.39,6.47,6.55,6.63,6.71,6.791,6.871,6.952,7.033,7.113,7.194,7.275,7.357,7.438,7.519,7.601,7.682,7.764,7.846,7.928,8.01]
+  tier 2: [1,1.086,1.171,1.257,1.343,1.429,1.516,1.602,1.689,1.775,1.862,1.949,2.036,2.124,2.211,2.299,2.386,2.474,2.562,2.65,2.738,2.827,2.915,3.004,3.093,3.182,3.271,3.36,3.45,3.539,3.629,3.719,3.809,3.899,3.989,4.08,4.17,4.261,4.352,4.443,4.534,4.625,4.717,4.808,4.9,4.992,5.084,5.176,5.268,5.36,5.453,5.546,5.638,5.731,5.825,5.918,6.011,6.105,6.198,6.292,6.386,6.48,6.575,6.669,6.763,6.858,6.953,7.048,7.143,7.238,7.334,7.429,7.525,7.621,7.717,7.813,7.909,8.005,8.102,8.199,8.295,8.392,8.489,8.587,8.684,8.782,8.879,8.977,9.075,9.173]
+  tier 3: [1,1.091,1.183,1.275,1.368,1.461,1.554,1.648,1.743,1.837,1.933,2.028,2.124,2.22,2.317,2.414,2.511,2.608,2.706,2.804,2.903,3.002,3.101,3.2,3.3,3.4,3.5,3.601,3.701,3.803,3.904,4.005,4.107,4.209,4.312,4.414,4.517,4.62,4.723,4.827,4.931,5.035,5.139,5.243,5.348,5.453,5.558,5.663,5.768,5.874,5.98,6.086,6.192,6.299,6.406,6.513,6.62,6.727,6.835,6.942,7.05,7.158,7.267,7.375,7.484,7.592,7.701,7.811,7.92,8.03,8.139,8.249,8.359,8.47,8.58,8.691,8.802,8.913,9.024,9.135,9.247,9.358,9.47,9.582,9.694,9.807,9.919,10.032,10.145,10.258]
+  tier 4: [1,1.097,1.194,1.292,1.391,1.49,1.591,1.692,1.793,1.895,1.998,2.102,2.206,2.31,2.415,2.521,2.627,2.734,2.841,2.949,3.057,3.165,3.274,3.384,3.493,3.604,3.714,3.825,3.937,4.049,4.161,4.273,4.386,4.499,4.613,4.727,4.841,4.956,5.071,5.186,5.301,5.417,5.533,5.65,5.767,5.884,6.001,6.118,6.236,6.354,6.473,6.592,6.71,6.83,6.949,7.069,7.189,7.309,7.429,7.55,7.671,7.792,7.913,8.035,8.157,8.279,8.401,8.524,8.646,8.769,8.893,9.016,9.14,9.263,9.387,9.512,9.636,9.761,9.886,10.011,10.136,10.261,10.387,10.513,10.639,10.765,10.892,11.018,11.145,11.272]
+
+  (Checked 2026-10-09 against the game's own curves (Project Amber GROW_CURVE_ATTACK_1xx/2xx/3xx, tier bases =
+  initValue): all 11 arrays, tier bases, ascension values and secondary control points match exactly. rarity 5
+  tier 4 was corrected at levels 7, 9, 18, 34, 47, 57, 59, 70 (lost last digits, e.g. 1.59 -> 1.591); the only
+  displayed change is Lv70 after ascension, 587 -> 586, on the six 5-star tier-4 weapons.)
+
+WEAPON_ASCENSION_VALUE_BY_RARITY[rarity][ascensionPhase] (index 0 = phase 0, always 0):
+  rarity 3: [0, 19.5, 38.9, 58.4, 77.8, 97.3,  116.7]
+  rarity 4: [0, 25.9, 51.9, 77.8, 103.7,129.7, 155.6]
+  rarity 5: [0, 31.1, 62.2, 93.4, 124.5,155.6, 186.7]
+
+WEAPON_SECONDARY_MULTIPLIER_CONTROL_POINTS [level, multiplier] (stepped, not interpolated):
+  [1,1], [5,1.162], [10,1.363], [15,1.565], [20,1.767], [25,1.969], [30,2.171], [35,2.373],
+  [40,2.575], [45,2.777], [50,2.979], [55,3.181], [60,3.383], [65,3.585], [70,3.786],
+  [75,3.988], [80,4.19], [85,4.392], [90,4.594]
+
+
+===============================================================================
+4. TALENT ATTRIBUTES -- per-level combat talent numbers (levels 1-15)
+===============================================================================
+
+value(curveType, baseValue, linearSlope, capLevel, customValues, level):
+  index = level - 1
+  if curveType == "Constant": return baseValue
+  if curveType == "Custom": return customValues[min(index, len(customValues)-1)]
+  if curveType == "Linear":
+    effectiveIndex = capLevel != null ? min(index, capLevel - 1) : index
+    return baseValue * (1 + linearSlope * effectiveIndex)
+  else (one of the 9 named curves below):
+    ratio = TALENT_CURVES[curveType][min(index, 14)]
+    return round(baseValue * ratio, 6 decimals)
+    (round BEFORE formatting -- the game stores each level's value rounded like this, and
+    values that land exactly on a display boundary, e.g. 0.8085 -> 80.85% -> "80.9%", depend on it)
+
+TALENT_CURVES[curveType][level-1] (index 0 = level 1, always 1.0):
+Exact ratios. Where a curve is written as [..] / N, divide each entry by N (use the fraction, not a
+rounded decimal -- 4-decimal approximations shift some displayed values by 0.1).
+  Physical1:             [86, 93, 100, 110, 117, 125, 136, 147, 158, 170, 182, 194, 206, 218, 230] / 86
+  Physical1Alternative:  levels 1-10 = Physical1 levels 1-10 (same fractions);
+                         levels 11-15 = [2.136628, 2.324651, 2.512674, 2.700698, 2.905814]
+  Physical2:             [88, 94, 100, 108, 114, 121, 130, 139, 148, 157, 166, 175, 184, 193, 202] / 88
+  Elemental1:            [1, 1.075, 1.15, 1.25, 1.325, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.125, 2.25, 2.375]
+  Elemental1Alternative: [1, 1.075, 1.15, 1.25, 1.325, 1.4, 1.5, 1.6, 1.7, 1.8, 1.904, 2.04, 2.176, 2.312, 2.448]
+  Elemental2:            [167, 177, 187, 200, 210, 220, 233, 246, 259, 272, 285, 298, 311, 324, 337] / 167
+  EffectFlat:            [1, 1.100014, 1.208362, 1.325045, 1.450063, 1.583414, 1.725101, 1.875122, 2.033477,
+                          2.200167, 2.375191, 2.55855, 2.750243, 2.950271, 3.158633]
+  BeidouDmgReduction:    [1, 1.05, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.7, 1.75, 1.8, 1.85, 1.9, 1.95]
+  ZhongliBurst:          [74, 82, 90, 100, 109, 118, 130, 142, 154, 166, 178, 190, 200, 210, 220] / 74
+
+EXCEPTIONS:
+  - curveType "Custom" is the raw fallback for genuine one-offs the wiki itself names separately
+    (Beidou/Zhongli/Yoimiya) plus the small residual (<0.5%) that fits no curve at all --
+    customValues holds all 15 known values directly, already the final answer.
+  - The game stores every level's value separately, so a few attributes may deviate from
+    round(baseValue * ratio, 6) at a single level, visible only when the value sits on a display
+    boundary. These are NOT made "Custom": the attribute keeps its curve and the cell is listed in
+    section 9 (decided 2026-10-02; Albedo 5-Hit DMG Lv5 and Itto Low/High Plunge DMG (2) Lv9,
+    previously Custom, were reverted to their curves and moved there).
+    Preferred fix (2026-10-09): adjust baseValue so that every level displays the game's value (checked
+    against the game's stored per-level values); section 9 lists only cells that can't be fixed that way.
+
+FORMAT CODES (TalentAttribute.formatCode -- based on genshin-db's display convention
+(node_modules/genshin-db/src/helper.js's formatTalentLabels), except I, which we round):
+  I    integer -- value rounded half-up to a whole number, no scaling (e.g. 770.3755 -> "770",
+       930.89 -> "931"); values that are already whole numbers (energy costs, counts) are unchanged.
+       Needed for EffectFlat rows, whose stored values have decimals but display as integers.
+       No thousands separator (e.g. "1695", not "1,695").
+  P    percent -- value * 100, "%" suffix, no fixed decimal count (e.g. 0.6 -> "60%")
+  F1   fixed, 1 decimal place, no "%" (e.g. 8.5 -> "8.5")
+  F2   fixed, 2 decimal places, no "%"
+  F1P  value * 100, 1 decimal place, "%" suffix (e.g. 0.904 -> "90.4%")
+  F2P  value * 100, 2 decimal places, "%" suffix (e.g. 0.9047 -> "90.47%")
+
+
+===============================================================================
+5. WEAPON REFINEMENT PASSIVE TEXT
+===============================================================================
+
+slotValue(curveType, baseValue, slope, customValues, refinement):
+  if curveType == "Custom": return customValues[min(refinement - 1, len(customValues) - 1)]
+  else (Linear): return baseValue + slope * (refinement - 1)
+
+format(value) = round to 4 decimal places, then drop trailing zeros (e.g. 24 not 24.0000)
+
+render(template, slots, refinement):
+  replace each "{n}" in template with format(slotValue(slots[n], refinement))
+  (a number that never changes across refinements has NO slot at all -- it's already
+  plain text in the template)
+
+EXCEPTIONS:
+  - Exaiphanes Blade: weapons-v2.json field `passiveDescriptionTemplate` is null -- use
+    `refinementEffects` instead (5 raw rows, already the final text, no rendering needed).
+    Its passive gains an entire extra clause starting at R2 that R1 doesn't have at all.
+  - 14 weapons have small pure copy-editing differences between refinement tiers that don't
+    touch any number (e.g. "an opponent" vs "an enemy", a missing "the"). The template's
+    wording always reflects the LAST known refinement, not the first -- rendering at earlier
+    refinements will legitimately read slightly differently than genshin-db's original
+    per-refinement text did, but every number still matches exactly. Affected weapons:
+    A Thousand Floating Dreams, Ash-Graven Drinking Horn, Blackcliff Slasher, Bloodtainted
+    Greatsword, Dragonspine Spear, Frostbearer, Halberd, Lost Prayer to the Sacred Winds,
+    Mistsplitter Reforged, Nocturne's Curtain Call, Otherworldly Story, Sequence of Solitude,
+    Skyward Blade (R2 only: the game text has a stray comma, "5%, Gains"; R1/R3/R4/R5 read "5%. Gains"),
+    Snow-Tombed Starsilver.
+
+
+===============================================================================
+6. WEAPON STAT BONUSES -- unconditional passive bonuses shown on the stat screen
+===============================================================================
+
+One row per (weapon, statType) in weapons-v2.json's `statBonuses`, using the SAME
+curveType/baseValue/slope/customValues shape as section 5's slots (Constant/Linear/Custom
+instead of just Linear/Custom -- see below for why):
+
+statBonusValue(curveType, baseValue, slope, customValues, refinement):
+  if curveType == "Constant": return baseValue
+  if curveType == "Custom": return customValues[min(refinement - 1, len(customValues) - 1)]
+  else (Linear): return baseValue + slope * (refinement - 1)
+
+Most weapons have zero rows here (most passives are conditional/proc-based, not an
+unconditional stat-screen bonus). Checked all 72 currently-seeded rows (42 weapons, 2026-10-09): all are Linear, 0
+Constant, 0 Custom -- but unlike section 5's slots, "Constant" IS a real stored case here,
+not "no row at all": a stat bonus is a queryable fact regardless of whether it scales, whereas
+a constant passive-TEXT number just becomes literal text with nothing to store. This is also
+why this can't simply reference a section-5 slot instead of duplicating a small amount of data
+-- every currently-seeded stat bonus's value happens to also exist as a slot on the same
+weapon (checked directly), but a future Constant stat bonus would have no slot to reference at
+all, so each row stands on its own instead of pointing at one.
+
+What counts (Eugene 2026-10-09): only a boost that always applies to the wearer's own stats. Conditional
+effects (after/when/while/stacks), boosts to the whole party or tied to a specific character (Traveler, Aloy),
+stat conversions ("ATK increased by X% of Max HP") and attack-specific bonuses (Elemental Skill CRIT Rate, Charged
+Attack DMG, ATK SPD) get no row. An all-element DMG Bonus ("12% All Elemental DMG Bonus") is stored as 7 rows, one
+per element DMG Bonus% (Pyro, Hydro, Electro, Cryo, Anemo, Geo, Dendro), like Tiny Miracle's RES rows.
+
+
+===============================================================================
+7. OTHER FIXED RANGES
+===============================================================================
+
+TALENT_ATTRIBUTE_LEVEL_COUNT = 15
+  (every talent attribute has exactly 15 levels of data, independent of what's normally
+  reachable in gameplay -- 10 base, up to 13 with a +3 constellation boost; 11-15 only
+  matter in boosted trial-mode content)
+
+MIN_REFINEMENT = 1
+MAX_REFINEMENT = per-weapon -- see weapons-v2.json field `maxRefinement`
+  (5 for almost every weapon; 1 for Kagotsurube Isshin, Predator, Sword of Descension)
+
+
+===============================================================================
+8. EXCEPTIONS -- QUICK INDEX
+===============================================================================
+Every exception below is already a plain field on the relevant character/weapon row in the
+v2 JSON -- nothing here needs a separate lookup table.
+
+  Traveler (all 14 rows)         named "Traveler (<Female|Male>) (<Element>)"; Female = Lumine, Male = Aether;
+                                 Male differs only in iconUrl and Charged Attack DMG (Part 2) (section 2)
+  Traveler (all 14 rows)         rarity=5 stored, but use scalingRarity=4 (section 2)
+  Traveler (all 14 rows)         permanent story buff +50 base HP / +10 base ATK / +15 base EM, flat,
+                                 app-side only, not in the JSON (section 2)
+  Lauma                          baseElementalMastery=200, additive with ascension EM bonus (section 2)
+  Nefer                          baseElementalMastery=100, additive with ascension EM bonus (section 2)
+  Sword of Descension            attackCurveRarity=3, rarity=4 (section 3)
+  Kagotsurube Isshin             maxRefinement=1 (section 7)
+  Predator                       maxRefinement=1 (section 7)
+  Sword of Descension            maxRefinement=1 (section 7)
+  Exaiphanes Blade               passiveDescriptionTemplate=null, use refinementEffects (section 5)
+  Exaiphanes Blade               special levelling mechanism: only the 8 listed states are valid; app-side,
+                                 not in the JSON (section 3)
+  TalentAttribute Custom rows    customValues holds the raw 15 values directly (section 4)
+  WeaponRefinementValue Custom   5 rows total (4 Sacrificial weapons + Serpent Spine);
+                                 customValues holds the raw known values directly (section 5)
+  14 weapons, wording drift      template wording = last known refinement, values unaffected (section 5)
+  Display exceptions             none currently (section 9; reviewed against game data 2026-10-09)
+
+
+===============================================================================
+9. KNOWN DISPLAY EXCEPTIONS -- official value differs from ours by 1 in the last digit
+===============================================================================
+These cells are NOT modelled: the data and formulas above stay as they are, and the app shows
+the value they produce ("ours"). The official display (Japanese HoYoWiki) differs by 1 in the last
+digit. Listed for a later decision on whether to investigate; no Custom rows or overrides yet.
+(Base-stat "after" = the after-ascension column at that breakpoint level.)
+Reviewed 2026-10-09 against the game's stored values (Project Amber: per-level talent params, character
+growth curves and ascension bonuses): 103 earlier lines were removed because the game shows OUR value
+(HoYoWiki was wrong: its base stats disagree with the game in 98 cells for those characters, and it
+rounds the same stored .x5 talent value both ways; the game rounds half-up). The lines below are the
+cells where the game's stored value differs from our curve and the game shows HoYoWiki's value.
+The four such cells (Jahoda Robot Healing (Part 2) Lv4, Xilonen Continuous Healing (Part 2) Lv4, Mika
+3-Hit DMG Lv5, Nilou Sword Dance/Whirling Steps 2-Hit DMG (2) Lv11) were fixed the same day by adjusting
+baseValue (500.73764 -> 500.737711, 500.73764 -> 500.737711, 0.545034 -> 0.545033, 0.039605 -> 0.039604):
+every level of those attributes now displays the game's value and matches its stored value at 2 dp.
+
+  (none currently)

@@ -165,6 +165,10 @@ model Character {
   // character, only the VALUE scales by phase (computed, see below).
   ascensionStatId  Int?       @map("ascension_stat_id")
   iconUrl          String?    @map("icon_url")
+  // The character's gacha/profile splash art, distinct from iconUrl (used in
+  // card grids). Added alongside the master-data-as-JSON workflow -- see
+  // CLAUDE.md's Key decisions.
+  splashUrl        String?    @map("splash_url")
   // Base HP/ATK/DEF (level 1, ascension phase 0) and each stat's own max
   // ascension bonus (added in full at phase 6, scaled down at earlier
   // phases per a shared ratio table). Stat at any (level, phase) is
@@ -228,23 +232,21 @@ model Talent {
   @@map("talents")
 }
 
-// Combat-talent-only child rows: one per labeled stat genshin-db reports
-// (e.g. "1-Hit DMG", "Charged Attack Stamina Cost"). formatCode says how to
-// render a value (e.g. "F1P" = one decimal, shown as a percentage) -- see
+// Combat-talent-only child rows: one per labeled stat (e.g. "1-Hit DMG",
+// "Charged Attack Stamina Cost"). formatCode says how to render a value
+// (e.g. "F1P" = one decimal, shown as a percentage) -- see
 // src/lib/talent-format.ts. Purely for display: these numbers are never
 // used in any stat or damage calculation.
 //
-// The per-level value used to be stored as a raw 15-entry Float[] (index 0
-// = talent level 1). Replaced with (curveType, baseValue, linearSlope,
-// capLevel, customValues) instead: genshin-db's own level-scaling is drawn
-// from a small set of shared curves (see TalentCurveType), so storing which
-// curve + a base value reconstructs the same 15 numbers without keeping
-// them raw. See src/lib/talent-scaling.ts for both directions
-// (classifyTalentAttributeCurve at seed time, computeTalentAttributeValue
-// at read time) -- verified as an exact round-trip (0 mismatches) against
-// every value in every previously-seeded attribute before replacing the
-// raw array. Only Custom populates customValues (<1% of all attributes);
-// only Linear populates linearSlope/capLevel.
+// The per-level value is stored as (curveType, baseValue, linearSlope,
+// capLevel, customValues) rather than a raw 15-entry array: level-scaling
+// is drawn from a small set of shared curves (see TalentCurveType), so
+// storing which curve + a base value reconstructs the same 15 numbers
+// without keeping them raw. Classification into a curve happens upstream,
+// in characters-v2.json itself (hand-maintained against Lunaris/Project
+// Amber/HoYoWiki); src/lib/talent-scaling.ts only reconstructs a value from
+// the already-classified curve at read time. Only Custom populates
+// customValues; only Linear populates linearSlope/capLevel.
 model TalentAttribute {
   id           Int             @id @default(autoincrement())
   talentId     Int             @map("talent_id")
@@ -257,6 +259,16 @@ model TalentAttribute {
   customValues Float[]         @map("custom_values")
   // Preserves genshin-db's own label ordering for display.
   order        Int
+  // How many instances of the hit this label's number represents, shown as
+  // "x2"/"x3" etc. next to the value (e.g. Chasca's 3-Hit DMG hits twice per
+  // activation) -- 1 for the overwhelming majority of rows.
+  hitCount     Int             @default(1) @map("hit_count")
+  // Display text immediately before/after the formatted number (e.g. the
+  // stat name a mixed-scaling row is "% of" -- " ATK", " Max HP" -- or a
+  // trailing unit like " each"/"/s"). Null by default; filled in per
+  // attribute as confirmed against the game's own display text.
+  prefix       String?
+  suffix       String?
 
   talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
 
@@ -418,8 +430,10 @@ enum WeaponRefinementCurveType {
 
 // One row per {n} placeholder in Weapon.passiveDescriptionTemplate -- a
 // number that changes between refinements. A number that DOESN'T change
-// never gets a row at all; it's baked into the template as plain text (see
-// src/lib/weapon-refinement-scaling.ts's buildWeaponPassiveTemplate).
+// never gets a row at all; it's baked into the template as plain text.
+// The split between template text and these rows happens upstream, in
+// weapons-v2.json itself; src/lib/weapon-refinement-scaling.ts only
+// reconstructs display text from them at read time.
 model WeaponRefinementValue {
   id           Int                       @id @default(autoincrement())
   weaponId     Int                       @map("weapon_id")

@@ -1,36 +1,23 @@
 // Weapon passive text is stored as a single template (Weapon.
 // passiveDescriptionTemplate) with {0}, {1}, ... placeholders, plus one
 // WeaponRefinementValue row per placeholder describing how that number
-// scales from refinement 1 to Weapon.maxRefinement -- replacing what used
-// to be up to 5 full pre-rendered description strings per weapon
-// (WeaponRefinementEffect, still used but only for the small minority of
-// weapons this can't handle -- see buildWeaponPassiveTemplate below).
+// scales from refinement 1 to Weapon.maxRefinement -- instead of up to 5
+// full pre-rendered description strings per weapon (WeaponRefinementEffect,
+// still used but only for the one weapon this can't handle, Exaiphanes
+// Blade, whose passive gains an entire extra clause at R2+ that R1 doesn't
+// have -- a genuine structural difference, not a reworded number).
 //
-// Verified against every currently-seeded weapon's real refinement text
-// before this replaced the old per-refinement snapshot: of 974 total
-// numeric slots across 225 weapons with uniform wording, 525 never change
-// at all (baked into the template as plain text, no row needed), 444
-// scale perfectly linearly (of which 364 happen to exactly double from R1
-// to max refinement -- consistent with the anecdotal "doubles by R5"
-// observation, though nothing here assumes that), and only 5 are genuine
-// irregular exceptions (kept as a raw per-refinement fallback via
-// "Custom"). A further 13 weapons have pure copy-editing inconsistencies
-// between refinement tiers (e.g. "an opponent" vs "an enemy", a missing
-// "the") that don't affect any number -- the template's wording is always
-// taken from the LAST known refinement, per-weapon decision to prefer the
-// most current phrasing. Only 1 weapon (Exaiphanes Blade) is a genuine
-// structural exception -- an entire clause exists at R2+ that's simply
-// absent at R1 -- and keeps the original per-refinement rows. See
-// data-export/verify-weapon-refinement-scaling.mts and
-// data-export/diagnose-weapon-refinement-mismatches.mts.
+// The classification into template + per-placeholder curve happens
+// upstream, in weapons-v2.json itself (hand-maintained against Lunaris/
+// Project Amber/HoYoWiki) -- this module only reconstructs display text
+// from the already-classified template + curves at read time.
 //
 // The same "a number that scales by refinement is base+slope, or a raw
-// fallback" idea is shared with WeaponStatBonus (see
-// classifyWeaponValueCurve/computeWeaponValueCurve below) -- the one
-// difference is that a stat bonus always gets a row even when its value is
-// Constant (a stat bonus is a queryable fact regardless of whether it
-// scales), whereas a constant passive-text number never gets a
-// WeaponRefinementSlot at all (it's already correct as plain template
+// fallback" idea is shared with WeaponStatBonus (see computeWeaponValueCurve
+// below) -- the one difference is that a stat bonus always gets a row even
+// when its value is Constant (a stat bonus is a queryable fact regardless
+// of whether it scales), whereas a constant passive-text number never gets
+// a WeaponRefinementSlot at all (it's already correct as plain template
 // text, so there's nothing to compute).
 export type WeaponValueCurveType = "Constant" | "Linear" | "Custom";
 
@@ -51,27 +38,8 @@ export type WeaponRefinementSlot = {
   customValues: number[] | null;
 };
 
-function closeEnough(a: number, b: number, tolerance = 1e-6): boolean {
-  return Math.abs(a - b) <= tolerance;
-}
-
-// Classifies a set of known refinement values (index 0 = refinement 1)
-// into Constant (never changes), Linear (evenly spaced), or Custom (a raw
-// fallback for the small residual that's neither, e.g. the Sacrificial
-// weapons' proc-chance value, which decreases in uneven steps).
-export function classifyWeaponValueCurve(values: number[]): WeaponValueCurve {
-  if (values.every((v) => closeEnough(v, values[0]))) {
-    return { curveType: "Constant", baseValue: values[0], slope: null, customValues: null };
-  }
-  const step = values[1] - values[0];
-  const isLinear = values.every((v, i) => i === 0 || closeEnough(v, values[0] + step * i));
-  if (isLinear) return { curveType: "Linear", baseValue: values[0], slope: step, customValues: null };
-  return { curveType: "Custom", baseValue: values[0], slope: null, customValues: values };
-}
-
-// The inverse: given a stored curve + a refinement level, returns the
-// actual value -- used at read time instead of indexing into a stored
-// per-refinement value.
+// Given a stored curve + a refinement level, returns the actual value --
+// used at read time instead of indexing into a stored per-refinement value.
 export function computeWeaponValueCurve(
   curve: Pick<WeaponValueCurve, "curveType" | "baseValue" | "slope" | "customValues">,
   refinement: number
@@ -105,67 +73,4 @@ export function renderWeaponPassiveDescription(
     if (!slot) return match;
     return formatWeaponRefinementNumber(computeWeaponValueCurve(slot, refinement));
   });
-}
-
-// Seed-time only: given a weapon's known refinement descriptions (ordered
-// R1..Rn, one per known refinement level -- most weapons have 5, a few
-// documented ones have fewer, see Weapon.maxRefinement), splits into a
-// template string with {0}, {1}, ... placeholders plus one
-// WeaponRefinementSlot per number that actually varies across them.
-//
-// A number identical at every known refinement (classifyWeaponValueCurve
-// returns "Constant") is left as plain text in the template -- no slot
-// needed, since it never needs computing (this is also what correctly
-// handles a weapon with only 1 known description at all: every number is
-// trivially constant with nothing to compare against, so the whole text
-// is baked in as-is with zero placeholders).
-//
-// The template's literal wording is always taken from the LAST
-// description, not the first -- verified this is safe for the ~13 weapons
-// whose wording drifts slightly between refinement tiers (see the module
-// comment above): the drift is pure copy-editing noise (a swapped
-// synonym, a missing article), never a meaning change, so preferring the
-// most current phrasing loses nothing.
-//
-// Returns null if the descriptions can't be aligned at all -- a different
-// COUNT of numbers between refinements, meaning the effect's actual
-// STRUCTURE differs (a whole clause present at some refinements and not
-// others), not just its wording or values. Callers should keep the
-// original per-refinement text for these instead (see
-// WeaponRefinementEffect) -- currently only Exaiphanes Blade.
-export function buildWeaponPassiveTemplate(
-  descriptions: string[]
-): { template: string; slots: WeaponRefinementSlot[] } | null {
-  const numberLists = descriptions.map((d) => (d.match(/\d+(?:\.\d+)?/g) ?? []).map(Number));
-  const slotCount = numberLists[0].length;
-  if (!numberLists.every((n) => n.length === slotCount)) return null;
-
-  const canonical = descriptions[descriptions.length - 1];
-  const segments = canonical.split(/(\d+(?:\.\d+)?)/);
-
-  const slots: WeaponRefinementSlot[] = [];
-  let template = "";
-  let numberSeen = 0;
-
-  for (let i = 0; i < segments.length; i++) {
-    if (i % 2 === 0) {
-      template += segments[i]; // literal text
-      continue;
-    }
-    const values = numberLists.map((n) => n[numberSeen]);
-    numberSeen++;
-
-    const classified = classifyWeaponValueCurve(values);
-    if (classified.curveType === "Constant") {
-      template += segments[i]; // constant across every known refinement -- keep literal, no slot
-      continue;
-    }
-
-    const slotIndex = slots.length;
-    // classified.curveType is already confirmed not "Constant" above.
-    slots.push({ slotIndex, ...classified, curveType: classified.curveType as WeaponRefinementCurveType });
-    template += `{${slotIndex}}`;
-  }
-
-  return { template, slots };
 }

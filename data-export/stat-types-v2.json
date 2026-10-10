@@ -1,0 +1,122 @@
+[
+  {
+    "id": 2,
+    "name": "ATK"
+  },
+  {
+    "id": 5,
+    "name": "ATK%"
+  },
+  {
+    "id": 17,
+    "name": "Anemo DMG Bonus%"
+  },
+  {
+    "id": 28,
+    "name": "Anemo RES%"
+  },
+  {
+    "id": 21,
+    "name": "Cooldown Reduction%"
+  },
+  {
+    "id": 10,
+    "name": "Crit DMG%"
+  },
+  {
+    "id": 9,
+    "name": "Crit Rate%"
+  },
+  {
+    "id": 16,
+    "name": "Cryo DMG Bonus%"
+  },
+  {
+    "id": 27,
+    "name": "Cryo RES%"
+  },
+  {
+    "id": 3,
+    "name": "DEF"
+  },
+  {
+    "id": 6,
+    "name": "DEF%"
+  },
+  {
+    "id": 19,
+    "name": "Dendro DMG Bonus%"
+  },
+  {
+    "id": 30,
+    "name": "Dendro RES%"
+  },
+  {
+    "id": 15,
+    "name": "Electro DMG Bonus%"
+  },
+  {
+    "id": 26,
+    "name": "Electro RES%"
+  },
+  {
+    "id": 7,
+    "name": "Elemental Mastery"
+  },
+  {
+    "id": 8,
+    "name": "Energy Recharge%"
+  },
+  {
+    "id": 18,
+    "name": "Geo DMG Bonus%"
+  },
+  {
+    "id": 29,
+    "name": "Geo RES%"
+  },
+  {
+    "id": 1,
+    "name": "HP"
+  },
+  {
+    "id": 4,
+    "name": "HP%"
+  },
+  {
+    "id": 11,
+    "name": "Healing Bonus%"
+  },
+  {
+    "id": 14,
+    "name": "Hydro DMG Bonus%"
+  },
+  {
+    "id": 25,
+    "name": "Hydro RES%"
+  },
+  {
+    "id": 20,
+    "name": "Incoming Healing Bonus%"
+  },
+  {
+    "id": 12,
+    "name": "Physical DMG Bonus%"
+  },
+  {
+    "id": 23,
+    "name": "Physical RES%"
+  },
+  {
+    "id": 13,
+    "name": "Pyro DMG Bonus%"
+  },
+  {
+    "id": 24,
+    "name": "Pyro RES%"
+  },
+  {
+    "id": 22,
+    "name": "Shield Strength%"
+  }
+]
