@@ -218,13 +218,14 @@ EXCEPTIONS:
     Preferred fix (2026-10-09): adjust baseValue so that every level displays the game's value (checked
     against the game's stored per-level values); section 9 lists only cells that can't be fixed that way.
 
-FORMAT CODES (TalentAttribute.formatCode -- based on genshin-db's display convention
-(node_modules/genshin-db/src/helper.js's formatTalentLabels), except I, which we round):
+FORMAT CODES (TalentAttribute.formatCode):
   I    integer -- value rounded half-up to a whole number, no scaling (e.g. 770.3755 -> "770",
        930.89 -> "931"); values that are already whole numbers (energy costs, counts) are unchanged.
        Needed for EffectFlat rows, whose stored values have decimals but display as integers.
        No thousands separator (e.g. "1695", not "1,695").
-  P    percent -- value * 100, "%" suffix, no fixed decimal count (e.g. 0.6 -> "60%")
+  P    percent -- value * 100, "%" suffix, rounded half-up to a whole percent, 0 decimals
+       (e.g. 0.818335 -> "82%", not "81.8335%" -- confirmed against Xiao's Plunge DMG Lv1 and
+       his Low/High Plunge DMG, "164%/204%")
   F1   fixed, 1 decimal place, no "%" (e.g. 8.5 -> "8.5")
   F2   fixed, 2 decimal places, no "%"
   F1P  value * 100, 1 decimal place, "%" suffix (e.g. 0.904 -> "90.4%")

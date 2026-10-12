@@ -42,6 +42,10 @@ export type TalentAttributeCurveData = {
   linearSlope: number | null;
   capLevel: number | null;
   customValues: number[];
+  order: number;
+  hitCount: number;
+  prefix: string | null;
+  suffix: string | null;
 };
 
 export type CharacterProgressionData = {
@@ -134,6 +138,10 @@ export async function getCharacterProgressionData(characterId: number): Promise<
         linearSlope: a.linearSlope,
         capLevel: a.capLevel,
         customValues: a.customValues,
+        order: a.order,
+        hitCount: a.hitCount,
+        prefix: a.prefix,
+        suffix: a.suffix,
       })),
       statBonuses: t.statBonuses.map((b) => ({ statTypeName: b.statType.name, value: b.value })),
     })),
