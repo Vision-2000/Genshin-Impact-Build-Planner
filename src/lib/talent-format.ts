@@ -1,19 +1,15 @@
 import { computeTalentAttributeValue, type TalentCurveType } from "./talent-scaling";
 
-// Renders one TalentAttribute value for display, given genshin-db's own
-// format-code convention (e.g. "F1P" = one decimal place, shown as a
-// percentage; "F0" = a whole number; "I" = an integer, used as-is).
-//
-// Mirrors genshin-db's own reference implementation
-// (node_modules/genshin-db/src/helper.js, helper.formatTalentLabels) rather
-// than reinventing the convention -- that function re-parses a whole label
-// string against a live {parameters} object, since it's meant to format an
-// arbitrary talent level on demand from the raw genshin-db data. We instead
-// compute one already-looked-up value per (attribute, level) via
-// computeTalentAttributeValue (see @/lib/talent-scaling), so this only
-// needs to do the value -> string half of that logic.
+// Renders one TalentAttribute value for display, given the format-code
+// convention in data-source/master-data-formulas.txt section 4 (e.g. "F1P"
+// = one decimal place, shown as a percentage; "F0" = a whole number; "I" =
+// an integer, rounded half-up).
 export function formatTalentValue(value: number, formatCode: string): string {
-  if (formatCode === "I") return String(value);
+  // Rounded half-up, not truncated -- needed for EffectFlat rows, whose
+  // stored values have decimals (e.g. 770.3755, 930.89) but display as
+  // plain integers (770, 931). Math.round already rounds half-up for every
+  // value this sees (talent values are never negative).
+  if (formatCode === "I") return String(Math.round(value));
 
   let scaled = value;
   if (formatCode.includes("P")) scaled *= 100;

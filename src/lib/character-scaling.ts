@@ -96,20 +96,20 @@ export const CHARACTER_BONUS_STAT_BASE_VALUE: Record<string, { fourStar: number 
 };
 
 // Levels 95/100 only -- see the report's own caveat that the closed-form
-// formula below doesn't hold there. Not reachable today (MAX_LEVEL is 90
-// in src/lib/ascension.ts), kept for correctness if that cap is ever raised.
+// formula below doesn't hold there. Reachable via CHARACTER_EXTRA_LEVELS in
+// src/lib/ascension.ts (character-only; weapons stop at 90).
 const LEVEL_95_100_MULTIPLIER: Record<number, { fourStarHpDef: number; fourStarAtk: number; fiveStarHpDef: number; fiveStarAtk: number }> =
   {
   "95": {
     "fourStarHpDef": 8.761,
     "fourStarAtk": 9.87,
-    "fiveStarHpDef": 9.195,
-    "fiveStarAtk": 10.184
+    "fiveStarHpDef": 9.195001,
+    "fiveStarAtk": 10.18398
   },
   "100": {
-    "fourStarHpDef": 9.174,
+    "fourStarHpDef": 9.174001,
     "fourStarAtk": 11.392,
-    "fiveStarHpDef": 9.652,
+    "fiveStarHpDef": 9.652001,
     "fiveStarAtk": 11.629
   }
 };
@@ -146,6 +146,24 @@ export function computeCharacterBonusStat(statTypeName: string, scalingRarity: n
 
 // Centralizes the Traveler exception in one place rather than duplicating
 // the name check at every call site (seed.ts, server actions, UI).
+function isTraveler(name: string): boolean {
+  return name.startsWith("Traveler (");
+}
+
 export function characterScalingRarity(name: string, rarity: number): number {
-  return name.startsWith("Traveler (") ? 4 : rarity;
+  return isTraveler(name) ? 4 : rarity;
+}
+
+// After an early story quest, the Traveler permanently gains a flat +50
+// base HP / +10 base ATK / +15 base Elemental Mastery -- NOT part of the
+// level curve (never added to baseHp/baseAttack themselves, which get
+// multiplied by characterLevelMultiplier above). Not stored in
+// characters.json; handled here by name, the same treatment as Exaiphanes
+// Blade's special leveling (see src/lib/weapon-scaling.ts). Values as given
+// by the user, not independently verified against a game source -- see
+// data-source/master-data-formulas.txt section 2.
+const TRAVELER_STORY_BUFF = { hp: 50, attack: 10, elementalMastery: 15 };
+
+export function travelerStoryBuffBonus(name: string, stat: "hp" | "attack" | "elementalMastery"): number {
+  return isTraveler(name) ? TRAVELER_STORY_BUFF[stat] : 0;
 }

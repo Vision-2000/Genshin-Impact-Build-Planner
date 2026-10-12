@@ -21,7 +21,7 @@ import {
   minLevelForAscensionPhase,
 } from "@/lib/ascension";
 import { formatStatValue } from "@/lib/stat-format";
-import { computeWeaponAttack, computeWeaponSecondaryStat } from "@/lib/weapon-scaling";
+import { computeWeaponAttack, computeWeaponSecondaryStat, isExaiphanesBlade, EXAIPHANES_BLADE_STATES } from "@/lib/weapon-scaling";
 import {
   renderWeaponPassiveDescription,
   computeWeaponValueCurve,
@@ -132,6 +132,26 @@ function WeaponProgressionEditor({
   const [refinement, setRefinement] = useState(weapon.refinement);
   const [data, setData] = useState<WeaponProgressionData | null>(null);
 
+  // Exaiphanes Blade: level/ascensionPhase/refinement are driven together
+  // by this one selector instead of independently -- see
+  // EXAIPHANES_BLADE_STATES. Falls back to state 0 if the weapon's current
+  // saved values don't exactly match any state (shouldn't happen in
+  // practice; this is a newly-added weapon with no prior independent data).
+  const [statuesUnlocked, setStatuesUnlocked] = useState(() => {
+    const index = EXAIPHANES_BLADE_STATES.findIndex(
+      (s) => s.level === weapon.level && s.ascensionPhase === weapon.ascensionPhase && s.refinement === weapon.refinement
+    );
+    return index === -1 ? 0 : index;
+  });
+
+  function handleStatuesUnlockedChange(newStatuesUnlocked: number) {
+    setStatuesUnlocked(newStatuesUnlocked);
+    const state = EXAIPHANES_BLADE_STATES[newStatuesUnlocked];
+    setLevel(state.level);
+    setAscensionPhase(state.ascensionPhase);
+    setRefinement(state.refinement);
+  }
+
   useEffect(() => {
     let cancelled = false;
     getWeaponProgressionData(weapon.weaponId).then((result) => {
@@ -175,44 +195,62 @@ function WeaponProgressionEditor({
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        Level
-        <input
-          type="range"
-          min={MIN_LEVEL}
-          max={MAX_LEVEL}
-          value={level}
-          onChange={(event) => handleLevelChange(Number(event.target.value))}
-          className="-mt-1 w-32"
-        />
-        <span className="w-14 text-gray-400">
-          {level}/{maxLevelForAscensionPhase(ascensionPhase)}
-        </span>
-      </label>
+      {isExaiphanesBlade(weapon.name) ? (
+        <div className="space-y-1">
+          <p className="text-sm">Statues Unlocked</p>
+          <DiamondSelector
+            count={EXAIPHANES_BLADE_STATES.length - 1}
+            value={statuesUnlocked}
+            onChange={handleStatuesUnlockedChange}
+            litClassName="border-amber-400 bg-amber-400"
+            ariaLabel={(n) => `${n} statues unlocked`}
+          />
+          <p className="text-xs text-gray-400">
+            Level {level}, Ascension {ascensionPhase}, Refinement R{refinement}
+          </p>
+        </div>
+      ) : (
+        <>
+          <label className="flex items-center gap-2 text-sm">
+            Level
+            <input
+              type="range"
+              min={MIN_LEVEL}
+              max={MAX_LEVEL}
+              value={level}
+              onChange={(event) => handleLevelChange(Number(event.target.value))}
+              className="-mt-1 w-32"
+            />
+            <span className="w-14 text-gray-400">
+              {level}/{maxLevelForAscensionPhase(ascensionPhase)}
+            </span>
+          </label>
 
-      <div className="space-y-1">
-        <p className="text-sm">Ascension</p>
-        <DiamondSelector
-          count={MAX_ASCENSION_PHASE}
-          value={ascensionPhase}
-          onChange={handleAscensionPhaseChange}
-          litClassName="border-amber-400 bg-amber-400"
-          ariaLabel={(phase) => `Ascension phase ${phase}`}
-        />
-      </div>
+          <div className="space-y-1">
+            <p className="text-sm">Ascension</p>
+            <DiamondSelector
+              count={MAX_ASCENSION_PHASE}
+              value={ascensionPhase}
+              onChange={handleAscensionPhaseChange}
+              litClassName="border-amber-400 bg-amber-400"
+              ariaLabel={(phase) => `Ascension phase ${phase}`}
+            />
+          </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        Refinement
-        <input
-          type="range"
-          min={MIN_REFINEMENT}
-          max={data?.maxRefinement ?? MAX_REFINEMENT}
-          value={refinement}
-          onChange={(event) => setRefinement(Number(event.target.value))}
-          className="w-32"
-        />
-        <span className="w-8 text-gray-400">R{refinement}</span>
-      </label>
+          <label className="flex items-center gap-2 text-sm">
+            Refinement
+            <input
+              type="range"
+              min={MIN_REFINEMENT}
+              max={data?.maxRefinement ?? MAX_REFINEMENT}
+              value={refinement}
+              onChange={(event) => setRefinement(Number(event.target.value))}
+              className="w-32"
+            />
+            <span className="w-8 text-gray-400">R{refinement}</span>
+          </label>
+        </>
+      )}
 
       {!data ? (
         <p className="text-sm text-gray-500">Loading...</p>

@@ -482,6 +482,48 @@ the app or the seed script.
   in weapons.json itself (see Key decisions above) — `src/lib/
   weapon-refinement-scaling.ts` only reconstructs display text from the
   already-classified template + curves at read time.
+- Levels 95 and 100 exist for characters (not weapons — `src/lib/
+  weapon-scaling.ts`'s level-multiplier table stops at 90, confirmed
+  character-only), both reachable only at the final ascension phase (there's
+  no phase 7 to require re-ascending past 90); levels 91-94 and 96-99 don't
+  exist at all. Deliberately NOT implemented by changing `src/lib/
+  ascension.ts`'s shared `MAX_LEVEL`/`validAscensionPhasesForLevel`/
+  `maxLevelForAscensionPhase` in place — those are shared with weapons (see
+  `owned-weapon-manager.tsx` and `weapons/schemas.ts`), which must stay
+  capped at exactly 90. Instead, a parallel set of character-only exports
+  (`CHARACTER_MAX_LEVEL`, `isValidCharacterLevel`,
+  `validAscensionPhasesForCharacterLevel`, `isValidCharacterLevelAscension`,
+  `characterMaxLevelForAscensionPhase`) extends only phase 6's ceiling from
+  90 to 100, leaving every weapon-facing export byte-for-byte unchanged. The
+  character level editor's `<input type="range">` can't represent the 90→95
+  gap on its own, so it stays capped at 90 and two separate buttons (shown
+  only at ascension phase 6) jump straight to 95/100.
+- Traveler's permanent story-quest buff (+50 flat base HP / +10 flat base
+  ATK / +15 flat base Elemental Mastery, confirmed real but with values as
+  given by the user rather than independently verified against a game
+  source) is NOT stored in `characters.json` and never added to
+  `baseHp`/`baseAttack` themselves (which get multiplied by the level
+  curve) — it's applied as a flat addition after `computeCharacterMainStat`/
+  `computeCharacterBonusStat`, in `travelerStoryBuffBonus()`
+  (`src/lib/character-scaling.ts`), wired into the one place base stats are
+  currently displayed (`owned-character-manager.tsx`'s `BaseStatsSection`).
+  Applied unconditionally for every Traveler row rather than gated behind a
+  quest-completion flag — this app models no other quest state anywhere,
+  and the quest itself is early and effectively unmissable for any player
+  with a build worth tracking.
+- Exaiphanes Blade has a special leveling mechanic tied to an in-game
+  "statues unlocked" counter — level, ascension phase, and refinement
+  aren't independently settable for this one weapon, only 7 specific
+  combinations are valid (a theoretical state 7 exists but its values are
+  still unknown, so it's deliberately not offered). Not a stored field,
+  same treatment as the Traveler buff: `EXAIPHANES_BLADE_STATES` and
+  `isExaiphanesBlade()` in `src/lib/weapon-scaling.ts`. In
+  `owned-weapon-manager.tsx`'s progression editor, this one weapon swaps
+  its normal independent level slider / ascension diamonds / refinement
+  slider for a single "Statues Unlocked" diamond selector (0-6) that sets
+  all three together — ATK, secondary stat, and passive text still come
+  from the ordinary formulas at whichever state is picked, nothing else
+  about this weapon is special.
 - Hover-card detail popovers (see build order) are sequenced after master
   data completeness, not before — the point of building them is to absorb
   the stats/talents/effects data landing on top of the current cards, so

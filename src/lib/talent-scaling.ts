@@ -52,9 +52,13 @@ export function computeTalentAttributeValue(curve: TalentAttributeCurve, level: 
     }
 
     default: {
+      // Rounded to 6dp, matching how the game itself stores each level's
+      // value -- some attributes land exactly on a display-rounding
+      // boundary (e.g. 0.8085 -> 80.85% -> "80.9%") and depend on this
+      // happening before formatTalentValue's own rounding, not after.
       const ratioCurve = TALENT_CURVES[curve.curveType];
       const ratio = ratioCurve[Math.min(index, ratioCurve.length - 1)];
-      return curve.baseValue * ratio;
+      return Math.round(curve.baseValue * ratio * 1e6) / 1e6;
     }
   }
 }

@@ -4,6 +4,10 @@ import {
   isValidLevelAscension,
   maxLevelForAscensionPhase,
   minLevelForAscensionPhase,
+  isValidCharacterLevel,
+  validAscensionPhasesForCharacterLevel,
+  isValidCharacterLevelAscension,
+  characterMaxLevelForAscensionPhase,
 } from "./ascension";
 
 describe("validAscensionPhasesForLevel", () => {
@@ -60,5 +64,69 @@ describe("minLevelForAscensionPhase", () => {
     expect(minLevelForAscensionPhase(1)).toBe(20);
     expect(minLevelForAscensionPhase(2)).toBe(40);
     expect(minLevelForAscensionPhase(6)).toBe(80);
+  });
+});
+
+describe("isValidCharacterLevel", () => {
+  it("accepts every level in the normal continuous range", () => {
+    expect(isValidCharacterLevel(1)).toBe(true);
+    expect(isValidCharacterLevel(45)).toBe(true);
+    expect(isValidCharacterLevel(90)).toBe(true);
+  });
+
+  it("accepts 95 and 100", () => {
+    expect(isValidCharacterLevel(95)).toBe(true);
+    expect(isValidCharacterLevel(100)).toBe(true);
+  });
+
+  it("rejects the gaps (91-94, 96-99) and anything outside [1,100]", () => {
+    expect(isValidCharacterLevel(91)).toBe(false);
+    expect(isValidCharacterLevel(94)).toBe(false);
+    expect(isValidCharacterLevel(96)).toBe(false);
+    expect(isValidCharacterLevel(99)).toBe(false);
+    expect(isValidCharacterLevel(0)).toBe(false);
+    expect(isValidCharacterLevel(101)).toBe(false);
+  });
+});
+
+describe("validAscensionPhasesForCharacterLevel", () => {
+  it("matches validAscensionPhasesForLevel for the normal range", () => {
+    expect(validAscensionPhasesForCharacterLevel(45)).toEqual([2]);
+    expect(validAscensionPhasesForCharacterLevel(80)).toEqual([5, 6]);
+  });
+
+  it("returns only phase 6 for 95 and 100 (not a breakpoint, not two phases)", () => {
+    expect(validAscensionPhasesForCharacterLevel(95)).toEqual([6]);
+    expect(validAscensionPhasesForCharacterLevel(100)).toEqual([6]);
+  });
+
+  it("returns an empty array for the gap levels", () => {
+    expect(validAscensionPhasesForCharacterLevel(92)).toEqual([]);
+    expect(validAscensionPhasesForCharacterLevel(97)).toEqual([]);
+  });
+});
+
+describe("isValidCharacterLevelAscension", () => {
+  it("accepts 95/100 only at phase 6", () => {
+    expect(isValidCharacterLevelAscension(95, 6)).toBe(true);
+    expect(isValidCharacterLevelAscension(100, 6)).toBe(true);
+    expect(isValidCharacterLevelAscension(95, 5)).toBe(false);
+    expect(isValidCharacterLevelAscension(100, 0)).toBe(false);
+  });
+
+  it("rejects a gap level at any phase", () => {
+    expect(isValidCharacterLevelAscension(93, 6)).toBe(false);
+  });
+});
+
+describe("characterMaxLevelForAscensionPhase", () => {
+  it("returns 100 for phase 6 (vs. 90 for weapons' maxLevelForAscensionPhase)", () => {
+    expect(characterMaxLevelForAscensionPhase(6)).toBe(100);
+    expect(maxLevelForAscensionPhase(6)).toBe(90);
+  });
+
+  it("matches maxLevelForAscensionPhase for phases 0-5", () => {
+    expect(characterMaxLevelForAscensionPhase(0)).toBe(20);
+    expect(characterMaxLevelForAscensionPhase(5)).toBe(80);
   });
 });

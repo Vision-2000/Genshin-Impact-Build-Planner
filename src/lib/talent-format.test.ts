@@ -19,6 +19,11 @@ describe("formatTalentValue", () => {
   it("formats I as a plain integer, unscaled", () => {
     expect(formatTalentValue(5, "I")).toBe("5");
   });
+
+  it("formats I by rounding half-up, not truncating", () => {
+    expect(formatTalentValue(770.3755, "I")).toBe("770");
+    expect(formatTalentValue(930.89, "I")).toBe("931");
+  });
 });
 
 // Fixtures use curveType "Constant" throughout -- computeTalentAttributeValue

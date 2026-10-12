@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TalentSlot } from "@/generated/prisma/enums";
-import { MIN_LEVEL, MAX_LEVEL, MAX_ASCENSION_PHASE, isValidLevelAscension } from "@/lib/ascension";
+import { MIN_LEVEL, CHARACTER_MAX_LEVEL, MAX_ASCENSION_PHASE, isValidCharacterLevelAscension } from "@/lib/ascension";
 
 export const MIN_CONSTELLATION = 0;
 export const MAX_CONSTELLATION = 6;
@@ -60,7 +60,7 @@ export function createUpdateCharacterProgressionSchema(talentLevelBounds: {
 }) {
   return z
     .object({
-      level: z.number().int().min(MIN_LEVEL).max(MAX_LEVEL),
+      level: z.number().int().min(MIN_LEVEL).max(CHARACTER_MAX_LEVEL),
       ascensionPhase: z.number().int().min(0).max(MAX_ASCENSION_PHASE),
       constellation: z.number().int().min(MIN_CONSTELLATION).max(MAX_CONSTELLATION),
       normalAttackLevel: z
@@ -71,7 +71,7 @@ export function createUpdateCharacterProgressionSchema(talentLevelBounds: {
       skillLevel: z.number().int().min(talentLevelBounds.skillLevel.min).max(talentLevelBounds.skillLevel.max),
       burstLevel: z.number().int().min(talentLevelBounds.burstLevel.min).max(talentLevelBounds.burstLevel.max),
     })
-    .refine((data) => isValidLevelAscension(data.level, data.ascensionPhase), {
+    .refine((data) => isValidCharacterLevelAscension(data.level, data.ascensionPhase), {
       message: "This ascension phase isn't valid for this level.",
       path: ["ascensionPhase"],
     });
