@@ -1,6 +1,6 @@
 // Originally generated from Weapon_Stats_Scaling_report.txt (summarized
 // from https://genshin-impact.fandom.com/wiki/Weapon/Level_Scaling, kept in
-// data-export/ as a historical reference only, not regenerated from). Not
+// data-source/ as a historical reference only, not regenerated from). Not
 // touched by the manual precision audit that corrected character-scaling.ts
 // and talent-curves.ts -- these values checked out exact.
 //

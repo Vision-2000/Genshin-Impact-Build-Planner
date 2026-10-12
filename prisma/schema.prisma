@@ -183,7 +183,7 @@ model Character {
   // table. Verified to 100% agreement (12,000 rows, 125 characters, plus
   // every ascension-stat phase) against an independently wiki-sourced
   // formula before this replaced the old per-level snapshot -- see
-  // data-export/verify-character-stats.mts.
+  // data-source/verify-character-stats.mts.
   baseHp              Float? @map("base_hp")
   baseAttack          Float? @map("base_attack")
   baseDefense         Float? @map("base_defense")
@@ -243,7 +243,7 @@ model Talent {
 // is drawn from a small set of shared curves (see TalentCurveType), so
 // storing which curve + a base value reconstructs the same 15 numbers
 // without keeping them raw. Classification into a curve happens upstream,
-// in characters-v2.json itself (hand-maintained against Lunaris/Project
+// in characters.json itself (hand-maintained against Lunaris/Project
 // Amber/HoYoWiki); src/lib/talent-scaling.ts only reconstructs a value from
 // the already-classified curve at read time. Only Custom populates
 // customValues; only Linear populates linearSlope/capLevel.
@@ -362,7 +362,7 @@ model Weapon {
   // Replaces what used to be a ~90-row-per-weapon WeaponLevelStat table.
   // Verified to 100% agreement (23,136 rows, 242 weapons) against an
   // independently wiki-sourced formula -- see
-  // data-export/verify-weapon-stats.mts.
+  // data-source/verify-weapon-stats.mts.
   attackTier             Int?   @map("attack_tier")
   baseSecondaryStatValue Float? @map("base_secondary_stat_value")
   // Null for every weapon except the rare one whose base ATK/level curve is
@@ -432,7 +432,7 @@ enum WeaponRefinementCurveType {
 // number that changes between refinements. A number that DOESN'T change
 // never gets a row at all; it's baked into the template as plain text.
 // The split between template text and these rows happens upstream, in
-// weapons-v2.json itself; src/lib/weapon-refinement-scaling.ts only
+// weapons.json itself; src/lib/weapon-refinement-scaling.ts only
 // reconstructs display text from them at read time.
 model WeaponRefinementValue {
   id           Int                       @id @default(autoincrement())

@@ -774,7 +774,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14752,
         "characterId": 2,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Book of Blinding Light",
@@ -5197,7 +5197,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14753,
         "characterId": 10,
         "slot": "Passive3",
         "name": "Polaris",
@@ -9594,7 +9594,7 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
+            "id": 54271,
             "talentId": 120,
             "label": "Impale the Night Healing (1)",
             "formatCode": "P",
@@ -11285,7 +11285,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14754,
         "characterId": 22,
         "slot": "Passive3",
         "name": "A Star With Which to Start the Journey",
@@ -13226,7 +13226,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14755,
         "characterId": 26,
         "slot": "Passive3",
         "name": "Choice Treasures",
@@ -14269,7 +14269,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14756,
         "characterId": 28,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Ode to Ascension",
@@ -16659,7 +16659,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14757,
         "characterId": 33,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Phantasmal Nocturne",
@@ -27587,7 +27587,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14758,
         "characterId": 56,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Sparkborne Magic",
@@ -31510,7 +31510,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14759,
         "characterId": 64,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Unhealing Thorn",
@@ -34136,7 +34136,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14760,
         "characterId": 69,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Genesis of Starsigns",
@@ -37163,7 +37163,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14761,
         "characterId": 75,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Light in the Darkness",
@@ -39963,7 +39963,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14762,
         "characterId": 80,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Witchseeker's Vow",
@@ -40572,7 +40572,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14763,
         "characterId": 81,
         "slot": "Passive3",
         "name": "Seven Sacred Treasures",
@@ -41827,7 +41827,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14764,
         "characterId": 83,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Surge of Lightning",
@@ -46752,7 +46752,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14765,
         "characterId": 93,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Sevenfold Transmutation",
@@ -48873,7 +48873,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14766,
         "characterId": 117,
         "slot": "Passive3",
         "name": "Foreign Windwrath",
@@ -49418,7 +49418,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14767,
         "characterId": 737,
         "slot": "Passive4",
         "name": "Foreign Permafrost",
@@ -49837,7 +49837,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14768,
         "characterId": 120,
         "slot": "Passive3",
         "name": "Foreign Verdalume",
@@ -50363,7 +50363,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14769,
         "characterId": 119,
         "slot": "Passive3",
         "name": "Foreign Thundertrail",
@@ -50782,7 +50782,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14770,
         "characterId": 118,
         "slot": "Passive3",
         "name": "Foreign Adamantine",
@@ -51276,7 +51276,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14771,
         "characterId": 121,
         "slot": "Passive3",
         "name": "Foreign Aqualis",
@@ -51710,7 +51710,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14772,
         "characterId": 122,
         "slot": "Passive3",
         "name": "Foreign Starfire",
@@ -51784,7 +51784,7 @@
     ]
   },
   {
-    "id": "UNKNOWN",
+    "id": 3383,
     "name": "Traveler (Male) (Anemo)",
     "element": "Anemo",
     "weaponType": "Sword",
@@ -51806,16 +51806,16 @@
     },
     "talents": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14773,
+        "characterId": 3383,
         "slot": "NormalAttack",
         "name": "Foreign Ironwind",
         "description": "Normal Attack\nPerforms up to 5 rapid strikes.\n\nCharged Attack\nConsumes a certain amount of Stamina to unleash 2 rapid sword strikes.\n\nPlunging Attack\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
         "iconUrl": "https://enka.network/ui/Skill_A_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54272,
+            "talentId": 14773,
             "label": "1-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51829,8 +51829,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54273,
+            "talentId": 14773,
             "label": "2-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51844,8 +51844,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54274,
+            "talentId": 14773,
             "label": "3-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51859,8 +51859,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54275,
+            "talentId": 14773,
             "label": "4-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51874,8 +51874,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54276,
+            "talentId": 14773,
             "label": "5-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51889,8 +51889,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54277,
+            "talentId": 14773,
             "label": "Charged Attack DMG (Part 1)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51904,8 +51904,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54278,
+            "talentId": 14773,
             "label": "Charged Attack DMG (Part 2)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51919,8 +51919,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54279,
+            "talentId": 14773,
             "label": "Charged Attack Stamina Cost",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -51934,8 +51934,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54280,
+            "talentId": 14773,
             "label": "Plunge DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -51949,8 +51949,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54281,
+            "talentId": 14773,
             "label": "Low/High Plunge DMG (1)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -51964,8 +51964,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54282,
+            "talentId": 14773,
             "label": "Low/High Plunge DMG (2)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -51982,16 +51982,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14774,
+        "characterId": 3383,
         "slot": "Skill",
         "name": "Palm Vortex",
         "description": "Grasping the wind's might, you form a vortex of vacuum in your palm, causing continuous Anemo DMG to opponents in front of you.\nThe vacuum vortex explodes when the skill duration ends, causing a greater amount of Anemo DMG over a larger area.\n\nHold\nDMG and AoE will gradually increase.\n\nElemental Absorption\nIf the vortex comes into contact with Hydro/Pyro/Cryo/Electro, it will deal additional elemental DMG of that type.\nElemental Absorption may only occur once per use.",
         "iconUrl": "https://enka.network/ui/Skill_S_PlayerWind_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54283,
+            "talentId": 14774,
             "label": "Initial Cutting DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52005,8 +52005,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54284,
+            "talentId": 14774,
             "label": "Max Cutting DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52020,8 +52020,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54285,
+            "talentId": 14774,
             "label": "Initial Storm DMG",
             "formatCode": "P",
             "curveType": "Elemental1",
@@ -52035,8 +52035,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54286,
+            "talentId": 14774,
             "label": "Max Storm DMG",
             "formatCode": "P",
             "curveType": "Elemental1",
@@ -52050,8 +52050,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54287,
+            "talentId": 14774,
             "label": "Base CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52065,8 +52065,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54288,
+            "talentId": 14774,
             "label": "Max Charging CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52083,16 +52083,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14775,
+        "characterId": 3383,
         "slot": "Burst",
         "name": "Gust Surge",
         "description": "Guiding the path of the wind currents, you summon a forward-moving tornado that pulls objects and opponents towards itself, dealing continuous Anemo DMG.\n\nElemental Absorption\nIf the tornado comes into contact with Hydro/Pyro/Cryo/Electro, it will deal additional elemental DMG of that type.\nElemental Absorption may only occur once per use.",
         "iconUrl": "https://enka.network/ui/Skill_E_PlayerWind_01_HD.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54289,
+            "talentId": 14775,
             "label": "Tornado DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52106,8 +52106,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54290,
+            "talentId": 14775,
             "label": "Additional Elemental DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52121,8 +52121,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54291,
+            "talentId": 14775,
             "label": "Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52136,8 +52136,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54292,
+            "talentId": 14775,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52151,8 +52151,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54293,
+            "talentId": 14775,
             "label": "Energy Cost",
             "formatCode": "I",
             "curveType": "Constant",
@@ -52169,8 +52169,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14776,
+        "characterId": 3383,
         "slot": "Passive1",
         "name": "Slitting Wind",
         "description": "The last hit of a Normal Attack combo unleashes a wind blade, dealing 60% of ATK as Anemo DMG to all opponents in its path.",
@@ -52179,8 +52179,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14777,
+        "characterId": 3383,
         "slot": "Passive2",
         "name": "Second Wind",
         "description": "Palm Vortex kills regenerate 2% HP for 5s.\nThis effect can only occur once every 5s.",
@@ -52189,8 +52189,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14778,
+        "characterId": 3383,
         "slot": "Passive3",
         "name": "Foreign Windwrath",
         "description": "Draw new strength from journeys past. For every element you have resonated with, you gain additional buffs.\n\nAdditionally, when Pyro, Hydro, Cryo, or Electro attacks from nearby party members hit opponents, Traveler will receive 1 stack of Blade of the Dawn Breeze. Each Elemental Type can grant 1 Blade of the Dawn Breeze stack. After obtaining at least 2 stacks of Blade of the Dawn Breeze, performing a Charged Attack will consume all stacks of Blade of the Dawn Breeze and transform into the special Charged Attack: Whirlwind.\n\nCharged Attack: Whirlwind\n· Each Charged Attack hit deals increased Anemo DMG. Increase in DMG is equal to 60% of Traveler's ATK.\n· Every time a Blade of the Dawn Breeze of a certain elemental type is consumed, a Blade Wind matching this elemental type will also be summoned, dealing elemental DMG equal to 50% of Traveler's ATK. This DMG is considered Charged Attack DMG.\n· Charged Attack: Whirlwind can be triggered up to once every 15s.\n· For the duration of Charged Attack: Whirlwind, no Blade of the Dawn Breeze will be obtained.\n\nAdditional Buff Effects\nThe Traveler gains an attribute bonus for every element they have resonated with: \nAnemo: CRIT Rate is increased by 10%,\nGeo: DEF is increased by 20%,\nElectro: Energy Recharge is increased by 20%, \nDendro: Elemental Mastery is increased by 60,\nHydro: HP is increased by 20%,\nPyro: ATK is increased by 20%,\nCryo: CRIT DMG is increased by 20%.",
@@ -52201,8 +52201,8 @@
     ],
     "constellations": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14371,
+        "characterId": 3383,
         "number": 1,
         "name": "Raging Vortex",
         "description": "Palm Vortex pulls in opponents and objects within a 5m radius.",
@@ -52211,8 +52211,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14372,
+        "characterId": 3383,
         "number": 2,
         "name": "Uprising Whirlwind",
         "description": "Increases Energy Recharge by 16%.",
@@ -52220,8 +52220,8 @@
         "boostedTalentSlot": null,
         "statBonuses": [
           {
-            "id": "UNKNOWN",
-            "constellationId": "UNKNOWN",
+            "id": 15,
+            "constellationId": 14372,
             "statTypeId": 8,
             "value": 16,
             "statType": {
@@ -52232,8 +52232,8 @@
         ]
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14373,
+        "characterId": 3383,
         "number": 3,
         "name": "Sweeping Gust",
         "description": "Increases the Level of Gust Surge by 3.\nMaximum upgrade level is 15.",
@@ -52242,8 +52242,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14374,
+        "characterId": 3383,
         "number": 4,
         "name": "Cherishing Breezes",
         "description": "Reduces DMG taken while casting Palm Vortex by 10%.",
@@ -52252,8 +52252,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14375,
+        "characterId": 3383,
         "number": 5,
         "name": "Vortex Stellaris",
         "description": "Increases the Level of Palm Vortex by 3.\nMaximum upgrade level is 15.",
@@ -52262,8 +52262,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14376,
+        "characterId": 3383,
         "number": 6,
         "name": "Intertwined Winds",
         "description": "Targets who take DMG from Gust Surge have their Anemo RES decreased by 20%.\nIf an Elemental Absorption occurred, then their RES towards the corresponding Element is also decreased by 20%.",
@@ -52274,7 +52274,7 @@
     ]
   },
   {
-    "id": "UNKNOWN",
+    "id": 3384,
     "name": "Traveler (Male) (Cryo)",
     "element": "Cryo",
     "weaponType": "Sword",
@@ -52296,16 +52296,16 @@
     },
     "talents": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14779,
+        "characterId": 3384,
         "slot": "NormalAttack",
         "name": "Foreign Frostglint",
         "description": "Normal Attack\nPerforms up to 5 rapid strikes.\n\nCharged Attack\nConsumes a certain amount of Stamina to unleash 2 rapid sword strikes.\n\nPlunging Attack\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
         "iconUrl": "https://enka.network/ui/Skill_A_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54294,
+            "talentId": 14779,
             "label": "1-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52319,8 +52319,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54295,
+            "talentId": 14779,
             "label": "2-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52334,8 +52334,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54296,
+            "talentId": 14779,
             "label": "3-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52349,8 +52349,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54297,
+            "talentId": 14779,
             "label": "4-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52364,8 +52364,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54298,
+            "talentId": 14779,
             "label": "5-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52379,8 +52379,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54299,
+            "talentId": 14779,
             "label": "Charged Attack DMG (Part 1)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52394,8 +52394,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54300,
+            "talentId": 14779,
             "label": "Charged Attack DMG (Part 2)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52409,8 +52409,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54301,
+            "talentId": 14779,
             "label": "Charged Attack Stamina Cost",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52424,8 +52424,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54302,
+            "talentId": 14779,
             "label": "Plunge DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52439,8 +52439,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54303,
+            "talentId": 14779,
             "label": "Low/High Plunge DMG (1)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -52454,8 +52454,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54304,
+            "talentId": 14779,
             "label": "Low/High Plunge DMG (2)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -52472,16 +52472,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14780,
+        "characterId": 3384,
         "slot": "Skill",
         "name": "Ice Fog Piercer",
         "description": "Stabs at the opponent with the Traveler's weapon, which releases an ice-cold fog. This deals Cryo DMG to opponents up ahead and forms a Frostpierce Star next to the Traveler.\n\nFrostpierce Star\n· Follows your own party members around the field and periodically fires ice crystals at nearby opponents, dealing Cryo DMG.\nRadiance: Stellar-Conduct: The Frostpierce Star will no longer fire ice crystals at opponents at intervals but will instead fire an ice crystal at opponents in a coordinated attack when the Traveler hits an opponent with a Normal Attack, Charged Attack, or Plunging Attack. This effect can trigger once every 0.2s.\n· When an opponent is hit with an ice crystal, the Traveler gains 1 stack of **Frostglow** (max 8 stacks).\n· When not in combat, Frostglow expires after 30s.",
         "iconUrl": "https://enka.network/ui/Skill_E_PlayerIce_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54305,
+            "talentId": 14780,
             "label": "Skill DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52495,8 +52495,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54306,
+            "talentId": 14780,
             "label": "Ice Crystal DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52510,8 +52510,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54307,
+            "talentId": 14780,
             "label": "Frostpierce Star Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52525,8 +52525,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54308,
+            "talentId": 14780,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52543,16 +52543,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14781,
+        "characterId": 3384,
         "slot": "Burst",
         "name": "Frostbound Javelin",
         "description": "Generates an ice javelin with the power of Cryo, then directs it at enemies to deal multiple instances of Cryo DMG.\nWhen cast, the Traveler consumes all existing stacks of Frostglow, which in turn increases the DMG dealt by this Elemental Burst. When 8 stacks of **Frostglow** are consumed, the number of DMG instances caused by the javelins is also increased.\n\n**Radiance: Stellar Glimmer**: DMG from the current Elemental Burst is changed to Cryo DMG of the corresponding Stellar Glimmer reaction type.\n\nRadiance: Stellar Glimmer\nRadiance: Stellar-Conduct and Radiance: Stellar Swirl are both considered Radiance: Stellar Glimmer states.\nCharacters can only be affected by one Radiance state at any one time, and where more than one state can be triggered, Radiance: Stellar-Conduct shall apply first.",
         "iconUrl": "https://enka.network/ui/Skill_S_PlayerIce_01_HD.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54309,
+            "talentId": 14781,
             "label": "Ice Javelin DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52566,8 +52566,8 @@
             "suffix": "/Strike"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54310,
+            "talentId": 14781,
             "label": "Frostglow DMG Bonus",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52581,8 +52581,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54311,
+            "talentId": 14781,
             "label": "Stellar-Conduct Ice Javelin Single Strike DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52596,8 +52596,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54312,
+            "talentId": 14781,
             "label": "Stellar-Conduct Frostglow DMG Bonus",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52611,8 +52611,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54313,
+            "talentId": 14781,
             "label": "Stellar Swirl Ice Javelin Single Strike DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52626,8 +52626,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54314,
+            "talentId": 14781,
             "label": "Stellar Swirl Frostglow DMG Bonus",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -52641,8 +52641,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54315,
+            "talentId": 14781,
             "label": "No. of Strikes in Attack",
             "formatCode": "I",
             "curveType": "Constant",
@@ -52656,8 +52656,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54316,
+            "talentId": 14781,
             "label": "Additional Frostglow Attack Strikes at Stack Max",
             "formatCode": "I",
             "curveType": "Constant",
@@ -52671,8 +52671,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54317,
+            "talentId": 14781,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52686,8 +52686,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54318,
+            "talentId": 14781,
             "label": "Energy Cost",
             "formatCode": "I",
             "curveType": "Constant",
@@ -52704,8 +52704,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14782,
+        "characterId": 3384,
         "slot": "Passive1",
         "name": "Ever-Keen Frost",
         "description": "Radiance: Stellar-Conduct: When a Frostpierce Star is on the field, DMG from the Traveler's Normal Attacks, Charged Attacks, and Plunging Attacks are converted to Cryo DMG that cannot be overridden by another elemental infusion, and DMG dealt is also increased by 80% of the Traveler's ATK.",
@@ -52714,8 +52714,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14783,
+        "characterId": 3384,
         "slot": "Passive2",
         "name": "Lucent Ice",
         "description": "The Traveler's Elemental Mastery is increased by 8% of their ATK. Up to 160 Elemental Mastery can be gained in this way.",
@@ -52724,8 +52724,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14784,
+        "characterId": 3384,
         "slot": "Passive3",
         "name": "Stellar Jubilee: Illusory Frostmirror",
         "description": "The Traveler will enter the **Radiance: Stellar-Conduct** state when inside a Polestar Field, or the Radiance: Stellar Swirl state for 8s after a nearby party member triggers a Stellar Swirl reaction.\nWhen a party member triggers a Superconduct or Cryo Swirl reaction, it becomes a Stellar-Conduct or Stellar Swirl reaction instead, and the Base DMG of said reaction is also increased by 0.35% for every 100 points of the Traveler's ATK. A maximum 7% increase can be obtained in this way.\n\nPolestar Field\nWhen Stellar-Conduct is triggered, the surrounding area will transform into a Polestar Field for a short period of time, and when inside a Polestar Field, certain characters will enter the Radiance: Stellar-Conduct state, which grants various skill buffs.",
@@ -52734,8 +52734,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14785,
+        "characterId": 3384,
         "slot": "Passive4",
         "name": "Foreign Permafrost",
         "description": "Draws new strength and power from their past travels: Every Elemental Type the Traveler has resonated with now grants an additional **enhancement effect**.\n\nAdditionally, when a nearby party member deals Stellar-Conduct or Stellar Swirl DMG, the Traveler gains 1 stack of \"Icepoint.\" 1 stack of Icepoint can be obtained in this way once every 2s, max 3 stacks. When the Traveler unleashes a Charged Attack at 3 stacks of Icepoint, all stacks are consumed to change the attack into a special **Charged Attack: Freezing Ice**.\n\nCharged Attack: Freezing Ice\n· Cryo DMG dealt is increased by 140% of the Traveler's ATK, and the Traveler also gains 2 stacks of **Frostglow**.\n· Charged Attack: Freezing Ice can be unleashed once every 15s. Additionally, the DMG Bonus from the Ascension Talent \"Ever-Keen Frost\" does not apply to Charged Attack: Freezing Ice.\n**Radiance: Stellar Glimmer**: DMG from Charged Attack: Freezing Ice is instead considered Cryo DMG of the corresponding Stellar Glimmer reaction type.\n\nAdditional Buff Effects\nThe Traveler gains an attribute bonus for every element they have resonated with: \nAnemo: CRIT Rate is increased by 10%,\nGeo: DEF is increased by 20%,\nElectro: Energy Recharge is increased by 20%, \nDendro: Elemental Mastery is increased by 60,\nHydro: HP is increased by 20%,\nPyro: ATK is increased by 20%,\nCryo: CRIT DMG is increased by 20%.",
@@ -52746,8 +52746,8 @@
     ],
     "constellations": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14377,
+        "characterId": 3384,
         "number": 1,
         "name": "Somber Freeze",
         "description": "The Traveler regenerates 5 Elemental Energy when they deal Stellar Glimmer DMG. This effect can trigger once every 0.5s.",
@@ -52756,8 +52756,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14378,
+        "characterId": 3384,
         "number": 2,
         "name": "Frostfall Reverberation",
         "description": "The active character's Elemental Mastery is increased by 60 for 5s when an opponent is hit by an ice crystal fired by the Elemental Skill **Ice Fog Piercer**.\nAdditionally, when a character affected by the aforementioned effect triggers a Stellar Glimmer reaction or deals Stellar Glimmer reaction DMG, the Elemental Mastery boost described above will be increased to 120 for its duration.",
@@ -52766,8 +52766,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14379,
+        "characterId": 3384,
         "number": 3,
         "name": "Glacial Shard",
         "description": "Increases the Level of the Elemental Burst **Frostbound Javelin** by 3.\nMaximum upgrade level is 15.",
@@ -52776,8 +52776,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14380,
+        "characterId": 3384,
         "number": 4,
         "name": "Enduring Ice",
         "description": "The duration of the Frostpierce Star created by the Elemental Skill **Ice Fog Piercer** is increased by 25%.",
@@ -52786,8 +52786,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14381,
+        "characterId": 3384,
         "number": 5,
         "name": "Bittercold Fog",
         "description": "Increases the Level of the Elemental Skill **Ice Fog Piercer** by 3.\nMaximum upgrade level is 15.",
@@ -52796,8 +52796,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14382,
+        "characterId": 3384,
         "number": 6,
         "name": "Brumal Grimfrost",
         "description": "Every stack of **Frostglow** consumed when using the Elemental Burst **Frostbound Javelin** increases Stellar Glimmer reaction DMG dealt by other party members by 5% for 15s. A maximum 40% increase can be obtained in this way.",
@@ -52808,7 +52808,7 @@
     ]
   },
   {
-    "id": "UNKNOWN",
+    "id": 3385,
     "name": "Traveler (Male) (Dendro)",
     "element": "Dendro",
     "weaponType": "Sword",
@@ -52830,16 +52830,16 @@
     },
     "talents": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14786,
+        "characterId": 3385,
         "slot": "NormalAttack",
         "name": "Foreign Fieldcleaver",
         "description": "Normal Attack\nPerforms up to 5 rapid strikes.\n\nCharged Attack\nConsumes a certain amount of Stamina to unleash 2 rapid sword strikes.\n\nPlunging Attack\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
         "iconUrl": "https://enka.network/ui/Skill_A_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54319,
+            "talentId": 14786,
             "label": "1-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52853,8 +52853,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54320,
+            "talentId": 14786,
             "label": "2-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52868,8 +52868,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54321,
+            "talentId": 14786,
             "label": "3-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52883,8 +52883,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54322,
+            "talentId": 14786,
             "label": "4-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52898,8 +52898,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54323,
+            "talentId": 14786,
             "label": "5-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52913,8 +52913,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54324,
+            "talentId": 14786,
             "label": "Charged Attack DMG (Part 1)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52928,8 +52928,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54325,
+            "talentId": 14786,
             "label": "Charged Attack DMG (Part 2)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52943,8 +52943,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54326,
+            "talentId": 14786,
             "label": "Charged Attack Stamina Cost",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -52958,8 +52958,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54327,
+            "talentId": 14786,
             "label": "Plunge DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -52973,8 +52973,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54328,
+            "talentId": 14786,
             "label": "Low/High Plunge DMG (1)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -52988,8 +52988,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54329,
+            "talentId": 14786,
             "label": "Low/High Plunge DMG (2)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -53006,16 +53006,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14787,
+        "characterId": 3385,
         "slot": "Skill",
         "name": "Razorgrass Blade",
         "description": "With a flourish of your blade, you unleash a spray of razor-sharp leaves that go before you and deal Dendro DMG.",
         "iconUrl": "https://enka.network/ui/Skill_E_PlayerGrass_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54330,
+            "talentId": 14787,
             "label": "Skill DMG",
             "formatCode": "P",
             "curveType": "Elemental1",
@@ -53029,8 +53029,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54331,
+            "talentId": 14787,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53047,16 +53047,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14788,
+        "characterId": 3385,
         "slot": "Burst",
         "name": "Surgent Manifestation",
         "description": "Calling upon the might of the flora all around you, you create a Lea Lotus Lamp.\nThis Lamp will deal continuous Dendro DMG to opponents within its AoE.\n\nLotuslight Transfiguration\nThe Lea Lotus Lamp will undergo the following changes after it comes into contact with Hydro/Electro/Pyro:\n·Hydro: the Lamp's AoE and the AoE of its attacks are increased.\n·Electro: the Lamp's ATK SPD is increased.\n·Pyro: the Lamp will explode after a short delay and then disappear, dealing AoE Dendro DMG.\nThe Lea Lotus Lamp can only undergo one Lotuslight Transfiguration in its duration.\n\nOnly one Lamp created by the Traveler can exist at any one time.",
         "iconUrl": "https://enka.network/ui/Skill_S_PlayerGrass_01_HD.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54332,
+            "talentId": 14788,
             "label": "Lea Lotus Lamp Attack DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -53070,8 +53070,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54333,
+            "talentId": 14788,
             "label": "Explosion DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -53085,8 +53085,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54334,
+            "talentId": 14788,
             "label": "Lea Lotus Lamp Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53100,8 +53100,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54335,
+            "talentId": 14788,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53115,8 +53115,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54336,
+            "talentId": 14788,
             "label": "Energy Cost",
             "formatCode": "I",
             "curveType": "Constant",
@@ -53133,8 +53133,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14789,
+        "characterId": 3385,
         "slot": "Passive1",
         "name": "Verdant Overgrowth",
         "description": "Lea Lotus Lamp will obtain one level of Overflowing Lotuslight every second it is on the field, increasing the Elemental Mastery of active character(s) within its AoE by 6. Overflowing Lotuslight has a maximum of 10 stacks.",
@@ -53143,8 +53143,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14790,
+        "characterId": 3385,
         "slot": "Passive2",
         "name": "Verdant Luxury",
         "description": "Every point of Elemental Mastery the Traveler possesses increases the DMG dealt by Razorgrass Blade by 0.15% and the DMG dealt by Surgent Manifestation by 0.1%.",
@@ -53153,8 +53153,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14791,
+        "characterId": 3385,
         "slot": "Passive3",
         "name": "Foreign Verdalume",
         "description": "Draw new strength from journeys past. For every element you have resonated with, you gain additional buffs. \n\nAdditionally, when Dendro Cores (including Bountiful Cores, Seeds of Deceit) appear nearby on the field, or when the party obtains Verdant Dew, Traveler will receive 1 stack of Blade of Verdant Viridis. These two methods can each grant the Traveler up to 1 stack of Blade of Verdant Viridis every 4s, max 3 stacks. After obtaining 3 stacks of Blade of Verdant Viridis, performing a Charged Attack will consume all stacks of Blade of Verdant Viridis and transform into the special Charged Attack: Verdessence.\n\nCharged Attack: Verdessence\n· Each Charged Attack hit deals increased Dendro DMG. The increase in DMG is equal to 80% of Traveler's ATK. Two Vinecores will also be created on the spot, which will explode after 4/8s respectively, inflicting Dendro DMG equal to 120% of Traveler's ATK. This DMG is considered Charged Attack DMG.\n· Charged Attack: Verdessence can be triggered up to once every 15s.\n\nAdditional Buff Effects\nThe Traveler gains an attribute bonus for every element they have resonated with: \nAnemo: CRIT Rate is increased by 10%,\nGeo: DEF is increased by 20%,\nElectro: Energy Recharge is increased by 20%, \nDendro: Elemental Mastery is increased by 60,\nHydro: HP is increased by 20%,\nPyro: ATK is increased by 20%,\nCryo: CRIT DMG is increased by 20%.",
@@ -53165,8 +53165,8 @@
     ],
     "constellations": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14383,
+        "characterId": 3385,
         "number": 1,
         "name": "Symbiotic Creeper",
         "description": "After Razorgrass Blade hits an opponent, it will regenerate 3.5 Energy for the Traveler.",
@@ -53175,8 +53175,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14384,
+        "characterId": 3385,
         "number": 2,
         "name": "Green Resilience",
         "description": "Lea Lotus Lamp's duration is increased by 3s.",
@@ -53185,8 +53185,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14385,
+        "characterId": 3385,
         "number": 3,
         "name": "Whirling Weeds",
         "description": "Increases the Level of Razorgrass Blade by 3.\nMaximum upgrade level is 15.",
@@ -53195,8 +53195,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14386,
+        "characterId": 3385,
         "number": 4,
         "name": "Treacle Grass",
         "description": "After the Lea Lotus Lamp triggers a Lotuslight Transfiguration, it will obtain 5 stacks of the Overflowing Lotuslight effect from the Ascension Talent \"Verdant Overgrowth.\"\nYou must first unlock the Ascension Talent \"Verdant Overgrowth.\"",
@@ -53205,8 +53205,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14387,
+        "characterId": 3385,
         "number": 5,
         "name": "Viridian Transience",
         "description": "Increases the Level of Surgent Manifestation by 3.\nMaximum upgrade level is 15.",
@@ -53215,8 +53215,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14388,
+        "characterId": 3385,
         "number": 6,
         "name": "Withering Aggregation",
         "description": "The Dendro DMG Bonus of the character under the effect of Overflowing Lotuslight as created by the Lea Lotus Lamp is increased by 12%. If the Lamp has experienced a Lotuslight Transfiguration previously, the character will also gain 12% DMG Bonus for the corresponding element.",
@@ -53227,7 +53227,7 @@
     ]
   },
   {
-    "id": "UNKNOWN",
+    "id": 3386,
     "name": "Traveler (Male) (Electro)",
     "element": "Electro",
     "weaponType": "Sword",
@@ -53249,16 +53249,16 @@
     },
     "talents": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14792,
+        "characterId": 3386,
         "slot": "NormalAttack",
         "name": "Foreign Thundershock",
         "description": "Normal Attack\nPerforms up to 5 rapid strikes.\n\nCharged Attack\nConsumes a certain amount of Stamina to unleash 2 rapid sword strikes.\n\nPlunging Attack\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
         "iconUrl": "https://enka.network/ui/Skill_A_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54337,
+            "talentId": 14792,
             "label": "1-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53272,8 +53272,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54338,
+            "talentId": 14792,
             "label": "2-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53287,8 +53287,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54339,
+            "talentId": 14792,
             "label": "3-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53302,8 +53302,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54340,
+            "talentId": 14792,
             "label": "4-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53317,8 +53317,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54341,
+            "talentId": 14792,
             "label": "5-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53332,8 +53332,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54342,
+            "talentId": 14792,
             "label": "Charged Attack DMG (Part 1)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53347,8 +53347,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54343,
+            "talentId": 14792,
             "label": "Charged Attack DMG (Part 2)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53362,8 +53362,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54344,
+            "talentId": 14792,
             "label": "Charged Attack Stamina Cost",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53377,8 +53377,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54345,
+            "talentId": 14792,
             "label": "Plunge DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53392,8 +53392,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54346,
+            "talentId": 14792,
             "label": "Low/High Plunge DMG (1)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -53407,8 +53407,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54347,
+            "talentId": 14792,
             "label": "Low/High Plunge DMG (2)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -53425,16 +53425,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14793,
+        "characterId": 3386,
         "slot": "Skill",
         "name": "Lightning Blade",
         "description": "Unleashes three swift thunder shadows that deal Electro DMG to opponents and leave an Abundance Amulet behind after hitting an opponent.\n2 Abundance Amulets can be created initially. Using this skill will reset any Abundance Amulets that were generated.\n\nAbundance Amulets\nWhen a character is near an Abundance Amulet, they will absorb it and obtain the following effects:\n·Restores Elemental Energy\n·Increases Energy Recharge during the Abundance Amulet's duration.",
         "iconUrl": "https://enka.network/ui/Skill_S_PlayerElectric_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54348,
+            "talentId": 14793,
             "label": "Skill DMG",
             "formatCode": "P",
             "curveType": "Elemental1",
@@ -53448,8 +53448,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54349,
+            "talentId": 14793,
             "label": "Energy Regeneration",
             "formatCode": "F1",
             "curveType": "Custom",
@@ -53479,8 +53479,8 @@
             "suffix": " Per Amulet"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54350,
+            "talentId": 14793,
             "label": "Energy Recharge Increase",
             "formatCode": "P",
             "curveType": "Constant",
@@ -53494,8 +53494,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54351,
+            "talentId": 14793,
             "label": "Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53509,8 +53509,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54352,
+            "talentId": 14793,
             "label": "Abundance Amulet Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53524,8 +53524,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54353,
+            "talentId": 14793,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53542,16 +53542,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14794,
+        "characterId": 3386,
         "slot": "Burst",
         "name": "Bellowing Thunder",
         "description": "You call upon the protection of lightning, knocking nearby opponents back and dealing Electro DMG to them.\n\nLightning Shroud\nWhen your active character's Normal or Charged Attacks hit opponents, they will call Falling Thunder forth, dealing Electro DMG.\nWhen Falling Thunder hits opponents, it will regenerate Energy for that character.\nOne instance of Falling Thunder can be generated every 0.5s.",
         "iconUrl": "https://enka.network/ui/Skill_E_PlayerElectric_01_HD.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54354,
+            "talentId": 14794,
             "label": "Skill DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -53565,8 +53565,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54355,
+            "talentId": 14794,
             "label": "Falling Thunder DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -53580,8 +53580,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54356,
+            "talentId": 14794,
             "label": "Energy Regeneration",
             "formatCode": "F1",
             "curveType": "Custom",
@@ -53611,8 +53611,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54357,
+            "talentId": 14794,
             "label": "Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53626,8 +53626,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54358,
+            "talentId": 14794,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53641,8 +53641,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54359,
+            "talentId": 14794,
             "label": "Energy Cost",
             "formatCode": "I",
             "curveType": "Constant",
@@ -53659,8 +53659,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14795,
+        "characterId": 3386,
         "slot": "Passive1",
         "name": "Thunderflash",
         "description": "When another nearby character in the party obtains an Abundance Amulet created by Lightning Blade, Lightning Blade's CD is decreased by 1.5s.",
@@ -53669,8 +53669,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14796,
+        "characterId": 3386,
         "slot": "Passive2",
         "name": "Resounding Roar",
         "description": "Increases the Energy Recharge effect granted by Lightning Blade's Abundance Amulet by 10% of the Traveler's Energy Recharge.",
@@ -53679,8 +53679,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14797,
+        "characterId": 3386,
         "slot": "Passive3",
         "name": "Foreign Thundertrail",
         "description": "Draw new strength from journeys past. For every element you have resonated with, you gain additional buffs.\n\nIn addition, when nearby party members unleash an Elemental Burst, Traveler will receive 1 stack of Blade of Resounding Thunder, max 3 stacks. After obtaining 3 stacks of Blade of Resounding Thunder, performing a Charged Attack will consume all stacks of Blade of Resounding Thunder and transform into the special Charged Attack: Detonate.\n\nCharged Attack: Detonate\n· Each Charged Attack hit deals increased Electro DMG. Increase in DMG is equal to 100% of Traveler's ATK. \n· 3s after hitting the enemy, 1 additional lightning strike will be triggered, dealing Electro DMG equal to 200% of Traveler's ATK. 1 Abundance Amulet will also be created. This DMG is considered Charged Attack DMG.\n· Charged Attack: Detonate can be triggered up to once every 15s.\n\nAdditional Buff Effects\nThe Traveler gains an attribute bonus for every element they have resonated with: \nAnemo: CRIT Rate is increased by 10%,\nGeo: DEF is increased by 20%,\nElectro: Energy Recharge is increased by 20%, \nDendro: Elemental Mastery is increased by 60,\nHydro: HP is increased by 20%,\nPyro: ATK is increased by 20%,\nCryo: CRIT DMG is increased by 20%.",
@@ -53691,8 +53691,8 @@
     ],
     "constellations": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14389,
+        "characterId": 3386,
         "number": 1,
         "name": "Spring Thunder of Fertility",
         "description": "The number of Abundance Amulets that can be generated using Lightning Blade is increased to 3.",
@@ -53701,8 +53701,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14390,
+        "characterId": 3386,
         "number": 2,
         "name": "Violet Vehemence",
         "description": "When Falling Thunder created by Bellowing Thunder hits an opponent, it will decrease their Electro RES by 15% for 8s.",
@@ -53711,8 +53711,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14391,
+        "characterId": 3386,
         "number": 3,
         "name": "Distant Crackling",
         "description": "Increases the Level of Bellowing Thunder by 3.\nMaximum upgrade level is 15.",
@@ -53721,8 +53721,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14392,
+        "characterId": 3386,
         "number": 4,
         "name": "Fickle Cloudstrike",
         "description": "When a character obtains Abundance Amulets generated by Lightning Blade, if this character's Energy is less than 35%, the Energy restored by the Abundance Amulets is increased by 100%.",
@@ -53731,8 +53731,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14393,
+        "characterId": 3386,
         "number": 5,
         "name": "Clamor in the Wilds",
         "description": "Increases the Level of Lightning Blade by 3.\nMaximum upgrade level is 15.",
@@ -53741,8 +53741,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14394,
+        "characterId": 3386,
         "number": 6,
         "name": "World-Shaker",
         "description": "Every 2 Falling Thunder attacks triggered by Bellowing Thunder will greatly increase the DMG dealt by the next Falling Thunder, which will deal 200% of its original DMG and will restore an additional 1 Energy to the current character.",
@@ -53753,7 +53753,7 @@
     ]
   },
   {
-    "id": "UNKNOWN",
+    "id": 3387,
     "name": "Traveler (Male) (Geo)",
     "element": "Geo",
     "weaponType": "Sword",
@@ -53775,16 +53775,16 @@
     },
     "talents": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14798,
+        "characterId": 3387,
         "slot": "NormalAttack",
         "name": "Foreign Rockblade",
         "description": "Normal Attack\nPerforms up to 5 rapid strikes.\n\nCharged Attack\nConsumes a certain amount of Stamina to unleash 2 rapid sword strikes.\n\nPlunging Attack\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
         "iconUrl": "https://enka.network/ui/Skill_A_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54360,
+            "talentId": 14798,
             "label": "1-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53798,8 +53798,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54361,
+            "talentId": 14798,
             "label": "2-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53813,8 +53813,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54362,
+            "talentId": 14798,
             "label": "3-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53828,8 +53828,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54363,
+            "talentId": 14798,
             "label": "4-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53843,8 +53843,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54364,
+            "talentId": 14798,
             "label": "5-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53858,8 +53858,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54365,
+            "talentId": 14798,
             "label": "Charged Attack DMG (Part 1)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53873,8 +53873,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54366,
+            "talentId": 14798,
             "label": "Charged Attack DMG (Part 2)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53888,8 +53888,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54367,
+            "talentId": 14798,
             "label": "Charged Attack Stamina Cost",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53903,8 +53903,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54368,
+            "talentId": 14798,
             "label": "Plunge DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -53918,8 +53918,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54369,
+            "talentId": 14798,
             "label": "Low/High Plunge DMG (1)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -53933,8 +53933,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54370,
+            "talentId": 14798,
             "label": "Low/High Plunge DMG (2)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -53951,16 +53951,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14799,
+        "characterId": 3387,
         "slot": "Skill",
         "name": "Starfell Sword",
         "description": "You disgorge a meteorite from the depths of the earth, dealing AoE Geo DMG.\nThe meteorite is considered a Geo Construct, and can be climbed or used to block attacks.\n\nHold\nThis skill's positioning may be adjusted.",
         "iconUrl": "https://enka.network/ui/Skill_S_PlayerRock_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54371,
+            "talentId": 14799,
             "label": "Skill DMG",
             "formatCode": "P",
             "curveType": "Elemental1",
@@ -53974,8 +53974,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54372,
+            "talentId": 14799,
             "label": "Meteorite Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -53989,8 +53989,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54373,
+            "talentId": 14799,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54007,16 +54007,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14800,
+        "characterId": 3387,
         "slot": "Burst",
         "name": "Wake of Earth",
         "description": "Energizing the Geo deep underground, you set off expanding shockwaves.\nLaunches surrounding opponents back and deals AoE Geo DMG.\nA stone wall is erected at the edges of the shockwave.\nThe stone wall is considered a Geo Construct, and may be used to block attacks.",
         "iconUrl": "https://enka.network/ui/Skill_E_PlayerRock_01_HD.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54374,
+            "talentId": 14800,
             "label": "DMG Per Shockwave",
             "formatCode": "P",
             "curveType": "Elemental1",
@@ -54030,8 +54030,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54375,
+            "talentId": 14800,
             "label": "Stonewall Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54045,8 +54045,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54376,
+            "talentId": 14800,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54060,8 +54060,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54377,
+            "talentId": 14800,
             "label": "Energy Cost",
             "formatCode": "I",
             "curveType": "Constant",
@@ -54078,8 +54078,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14801,
+        "characterId": 3387,
         "slot": "Passive1",
         "name": "Shattered Darkrock",
         "description": "Reduces Starfell Sword's CD by 2s.",
@@ -54088,8 +54088,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14802,
+        "characterId": 3387,
         "slot": "Passive2",
         "name": "Frenzied Rockslide",
         "description": "The final hit of a Normal Attack combo triggers a collapse, dealing 60% of ATK as AoE Geo DMG.",
@@ -54098,8 +54098,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14803,
+        "characterId": 3387,
         "slot": "Passive3",
         "name": "Foreign Adamantine",
         "description": "Draw new strength from journeys past. For every element you have resonated with, you gain additional buffs.\n\nAdditionally, when nearby party members become protected by a shield, when the shield is replaced for any reason, or when Geo Constructs are created, the Traveler will receive 1 stack of Blade of Archaic Petra, max 3 stacks. Up to 1 stack may be obtained every second in this way. After obtaining 3 stacks of Blade of Archaic Petra, performing a Charged Attack will consume all stacks of Blade of Archaic Petra and transform into the special Charged Attack: Rockfell.\n\nCharged Attack: Rockfell\n· Each Charged Attack hit deals increased Geo DMG. Increase in DMG is equal to 120% of Traveler's ATK.\n· For 15s after hitting an opponent, nearby party members will have their shield strength temporarily increased by 20%.\n· Charged Attack: Rockfell can be triggered up to once every 15s.\n\nAdditional Buff Effects\nThe Traveler gains an attribute bonus for every element they have resonated with: \nAnemo: CRIT Rate is increased by 10%,\nGeo: DEF is increased by 20%,\nElectro: Energy Recharge is increased by 20%, \nDendro: Elemental Mastery is increased by 60,\nHydro: HP is increased by 20%,\nPyro: ATK is increased by 20%,\nCryo: CRIT DMG is increased by 20%.",
@@ -54110,8 +54110,8 @@
     ],
     "constellations": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14395,
+        "characterId": 3387,
         "number": 1,
         "name": "Invincible Stonewall",
         "description": "Party members within the radius of Wake of Earth have their CRIT Rate increased by 10% and have increased resistance against interruption.",
@@ -54120,8 +54120,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14396,
+        "characterId": 3387,
         "number": 2,
         "name": "Rockcore Meltdown",
         "description": "When the meteorite created by Starfell Sword is destroyed, it will also explode, dealing additional AoE Geo DMG equal to the amount of damage dealt by Starfell Sword.",
@@ -54130,8 +54130,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14397,
+        "characterId": 3387,
         "number": 3,
         "name": "Will of the Rock",
         "description": "Increases the Level of Wake of Earth by 3.\nMaximum upgrade level is 15.",
@@ -54140,8 +54140,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14398,
+        "characterId": 3387,
         "number": 4,
         "name": "Reaction Force",
         "description": "The shockwave triggered by Wake of Earth regenerates 5 Energy for every opponent hit.\nA maximum of 25 Energy can be regenerated in this manner at any one time.",
@@ -54150,8 +54150,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14399,
+        "characterId": 3387,
         "number": 5,
         "name": "Meteorite Impact",
         "description": "Increases the Level of Starfell Sword by 3.\nMaximum upgrade level is 15.",
@@ -54160,8 +54160,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14400,
+        "characterId": 3387,
         "number": 6,
         "name": "Everlasting Boulder",
         "description": "The barrier created by Wake of Earth lasts 5s longer.\nThe meteorite created by Starfell Sword lasts 10s longer.",
@@ -54172,7 +54172,7 @@
     ]
   },
   {
-    "id": "UNKNOWN",
+    "id": 3388,
     "name": "Traveler (Male) (Hydro)",
     "element": "Hydro",
     "weaponType": "Sword",
@@ -54194,16 +54194,16 @@
     },
     "talents": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14804,
+        "characterId": 3388,
         "slot": "NormalAttack",
         "name": "Foreign Stream",
         "description": "Normal Attack\nPerforms up to 5 rapid strikes.\n\nCharged Attack\nConsumes a certain amount of Stamina to unleash 2 rapid sword strikes.\n\nPlunging Attack\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
         "iconUrl": "https://enka.network/ui/Skill_A_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54378,
+            "talentId": 14804,
             "label": "1-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54217,8 +54217,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54379,
+            "talentId": 14804,
             "label": "2-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54232,8 +54232,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54380,
+            "talentId": 14804,
             "label": "3-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54247,8 +54247,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54381,
+            "talentId": 14804,
             "label": "4-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54262,8 +54262,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54382,
+            "talentId": 14804,
             "label": "5-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54277,8 +54277,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54383,
+            "talentId": 14804,
             "label": "Charged Attack DMG (Part 1)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54292,8 +54292,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54384,
+            "talentId": 14804,
             "label": "Charged Attack DMG (Part 2)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54307,8 +54307,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54385,
+            "talentId": 14804,
             "label": "Charged Attack Stamina Cost",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54322,8 +54322,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54386,
+            "talentId": 14804,
             "label": "Plunge DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54337,8 +54337,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54387,
+            "talentId": 14804,
             "label": "Low/High Plunge DMG (1)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -54352,8 +54352,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54388,
+            "talentId": 14804,
             "label": "Low/High Plunge DMG (2)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -54370,16 +54370,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14805,
+        "characterId": 3388,
         "slot": "Skill",
         "name": "Aquacrest Saber",
         "description": "Unleashes a torrent that can cleanse the world.\n\nPress\nSends a Torrent Surge forward that will deal Hydro DMG to opponents it comes into contact with.\n\nHold\nEnter Aiming Mode and constantly fire off Dewdrops in the direction in which you are aiming, dealing Hydro DMG to opponents they hit.\nWhen the skill ends, it will send a Torrent Surge forward that will deal Hydro DMG to opponents it comes into contact with.\nSuffusion: When using the Hold configuration of this skill, if the Traveler's HP is higher than 50%, the DMG dealt by Dewdrops will increase based on the Traveler's Max HP, and the Traveler will lose a fixed amount of HP every second.\n\nArkhe: Pneuma\nAt certain intervals, after using Torrent Surge, this skill will unleash a Spiritbreath Thorn that pierces opponents, dealing Pneuma-aligned Hydro DMG.",
         "iconUrl": "https://enka.network/ui/Skill_S_PlayerWater_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54389,
+            "talentId": 14805,
             "label": "Torrent Surge DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54393,8 +54393,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54390,
+            "talentId": 14805,
             "label": "Dewdrop DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54408,8 +54408,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54391,
+            "talentId": 14805,
             "label": "Spiritbreath Thorn DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54423,8 +54423,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54392,
+            "talentId": 14805,
             "label": "Spiritbreath Thorn Interval",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54438,8 +54438,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54393,
+            "talentId": 14805,
             "label": "Suffusion HP Cost",
             "formatCode": "F2P",
             "curveType": "Constant",
@@ -54453,8 +54453,8 @@
             "suffix": " Max HP"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54394,
+            "talentId": 14805,
             "label": "Suffusion DMG Bonus",
             "formatCode": "F2P",
             "curveType": "Elemental1",
@@ -54468,8 +54468,8 @@
             "suffix": " Max HP"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54395,
+            "talentId": 14805,
             "label": "Hold Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54483,8 +54483,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54396,
+            "talentId": 14805,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54501,16 +54501,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14806,
+        "characterId": 3388,
         "slot": "Burst",
         "name": "Rising Waters",
         "description": "Unleashes a slow-moving floating bubble that deals continuous Hydro DMG to nearby opponents.",
         "iconUrl": "https://enka.network/ui/Skill_E_PlayerWater_01_HD.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54397,
+            "talentId": 14806,
             "label": "Skill DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54524,8 +54524,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54398,
+            "talentId": 14806,
             "label": "Duration",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54539,8 +54539,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54399,
+            "talentId": 14806,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54554,8 +54554,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54400,
+            "talentId": 14806,
             "label": "Energy Cost",
             "formatCode": "I",
             "curveType": "Constant",
@@ -54572,8 +54572,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14807,
+        "characterId": 3388,
         "slot": "Passive1",
         "name": "Spotless Waters",
         "description": "After the Dewdrop fired by the Hold Mode of the Aquacrest Saber hits an opponent, a Sourcewater Droplet will be generated near to the Traveler. If the Traveler picks it up, they will restore 7% HP.\n1 Droplet can be created this way every second, and each use of Aquacrest Saber can create 4 Droplets at most.",
@@ -54582,8 +54582,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14808,
+        "characterId": 3388,
         "slot": "Passive2",
         "name": "Clear Waters",
         "description": "If HP has been consumed via Suffusion while using the Hold Mode Aquacrest Saber, the Torrent Surge at the skill's end will deal Bonus DMG equal to 45% of the total HP the Traveler has consumed in this skill use via Suffusion.\nThe maximum DMG Bonus that can be gained this way is 5,000.",
@@ -54592,8 +54592,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14809,
+        "characterId": 3388,
         "slot": "Passive3",
         "name": "Foreign Aqualis",
         "description": "Draw new strength from journeys past. For every element you have resonated with, you gain additional buffs.\n\nAdditionally, when nearby party members' current HP increases or decreases by 5%, Traveler will receive 1 stack of Blade of Many Waters. You can gain 1 stack of Blade of Many Waters this way once every 4s, max 3 stacks. After obtaining 3 stacks of Blade of Many Waters, performing a Charged Attack will consume all stacks of Blade of Many Waters and transform into the special Charged Attack: Tidebound.\n\nCharged Attack: Tidebound\n· Each Charged Attack hit deals increased Hydro DMG. Increase in DMG is equal to 150% of Traveler's ATK,\n· When Traveler's HP is no less than 50%, 10% of Traveler's Max HP will be consumed to increase DMG inflicted by each Charged Attack hit by 100% of Traveler's ATK.\n· When Traveler's HP is lower than 50%, one instance of healing equal to 25% of Traveler's Max HP will be restored upon hitting an enemy.\n· Charged Attack: Tidebound can be triggered up to once every 15s.\n\nAdditional Buff Effects\nThe Traveler gains an attribute bonus for every element they have resonated with: \nAnemo: CRIT Rate is increased by 10%,\nGeo: DEF is increased by 20%,\nElectro: Energy Recharge is increased by 20%, \nDendro: Elemental Mastery is increased by 60,\nHydro: HP is increased by 20%,\nPyro: ATK is increased by 20%,\nCryo: CRIT DMG is increased by 20%.",
@@ -54604,8 +54604,8 @@
     ],
     "constellations": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14401,
+        "characterId": 3388,
         "number": 1,
         "name": "Swelling Lake",
         "description": "Picking up a Sourcewater Droplet will restore 2 Energy to the Traveler.\nYou must first unlock the Ascension Talent \"Spotless Waters.\"",
@@ -54614,8 +54614,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14402,
+        "characterId": 3388,
         "number": 2,
         "name": "Trickling Purity",
         "description": "The Movement SPD of Rising Waters' bubble will be decreased by 30%, and its duration increased by 3s.",
@@ -54624,8 +54624,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14403,
+        "characterId": 3388,
         "number": 3,
         "name": "Turbulent Ripples",
         "description": "Increases the Level of Aquacrest Saber by 3.\nMaximum upgrade level is 15.",
@@ -54634,8 +54634,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14404,
+        "characterId": 3388,
         "number": 4,
         "name": "Pouring Descent",
         "description": "When using Aquacrest Saber, an Aquacrest Aegis that can absorb 10% of the Traveler's Max HP in DMG will be created and will absorb Hydro DMG with 250% effectiveness. It will persist until the Traveler finishes using the skill.\nOnce every 2s, after a Dewdrop hits an opponent, if the Traveler is being protected by Aquacrest Aegis, the DMG Absorption of the Aegis will be restored to 10% of the Traveler's Max HP. If the Traveler is not presently being protected by an Aegis, one will be redeployed.",
@@ -54644,8 +54644,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14405,
+        "characterId": 3388,
         "number": 5,
         "name": "Churning Whirlpool",
         "description": "Increases the Level of Rising Waters by 3.\nMaximum upgrade level is 15.",
@@ -54654,8 +54654,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14406,
+        "characterId": 3388,
         "number": 6,
         "name": "Tides of Justice",
         "description": "When the Traveler picks up a Sourcewater Droplet, they will restore HP to a nearby party member with the lowest remaining HP percentage based on 6% of said member's Max HP.",
@@ -54666,7 +54666,7 @@
     ]
   },
   {
-    "id": "UNKNOWN",
+    "id": 3389,
     "name": "Traveler (Male) (Pyro)",
     "element": "Pyro",
     "weaponType": "Sword",
@@ -54688,16 +54688,16 @@
     },
     "talents": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14810,
+        "characterId": 3389,
         "slot": "NormalAttack",
         "name": "Foreign Blaze",
         "description": "Normal Attack\nPerforms up to 5 rapid strikes.\n\nCharged Attack\nConsumes a certain amount of Stamina to unleash 2 rapid sword strikes.\n\nPlunging Attack\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
         "iconUrl": "https://enka.network/ui/Skill_A_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54401,
+            "talentId": 14810,
             "label": "1-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54711,8 +54711,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54402,
+            "talentId": 14810,
             "label": "2-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54726,8 +54726,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54403,
+            "talentId": 14810,
             "label": "3-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54741,8 +54741,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54404,
+            "talentId": 14810,
             "label": "4-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54756,8 +54756,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54405,
+            "talentId": 14810,
             "label": "5-Hit DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54771,8 +54771,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54406,
+            "talentId": 14810,
             "label": "Charged Attack DMG (Part 1)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54786,8 +54786,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54407,
+            "talentId": 14810,
             "label": "Charged Attack DMG (Part 2)",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54801,8 +54801,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54408,
+            "talentId": 14810,
             "label": "Charged Attack Stamina Cost",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54816,8 +54816,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54409,
+            "talentId": 14810,
             "label": "Plunge DMG",
             "formatCode": "F1P",
             "curveType": "Physical1",
@@ -54831,8 +54831,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54410,
+            "talentId": 14810,
             "label": "Low/High Plunge DMG (1)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -54846,8 +54846,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54411,
+            "talentId": 14810,
             "label": "Low/High Plunge DMG (2)",
             "formatCode": "P",
             "curveType": "Physical1",
@@ -54864,16 +54864,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14811,
+        "characterId": 3389,
         "slot": "Skill",
         "name": "Flowfire Blade",
         "description": "Wields a searing flame that can incinerate the very earth. Has different effects when Tapped or Held.\n\nTap\nCall forth flames in a raging blaze. When used, the Traveler gains 42 Nightsoul points and enters the Nightsoul's Blessing state, summoning a Blazing Threshold that follows the current active character.\nWhen the Blazing Threshold gets close to opponents, it will deal Nightsoul-aligned Pyro DMG to nearby opponents at intervals.\n\nHold\nUnleash fire in a composed manner, dealing Nightsoul-aligned AoE Pyro DMG to nearby opponents. When used, the Traveler gains 42 Nightsoul points and enters the Nightsoul's Blessing state, summoning a Scorching Threshold that follows the current active character.\nWhen the current active character within a Scorching Threshold deals DMG to opponents, the Threshold will launch a Coordinated Attack that deals Nightsoul-aligned Pyro DMG based on the Traveler's ATK. This effect can occur once every 3s.\n\nNightsoul's Blessing: Traveler\nContinuously consumes Nightsoul points. The Traveler's Nightsoul's Blessing state lasts 12s at maximum, and when their Nightsoul points are exhausted, this state will end. If this Elemental Skill is used again while active, the Traveler's Nightsoul points will be reset to 42 points.\nBlazing and Scorching Thresholds will disappear once the Traveler's Nightsoul's Blessing state ends, and only 1 Blazing or Scorching Threshold summoned by the Traveler themselves can exist at any one time.",
         "iconUrl": "https://enka.network/ui/Skill_S_PlayerFire_01.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54412,
+            "talentId": 14811,
             "label": "Blazing Threshold",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54887,8 +54887,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54413,
+            "talentId": 14811,
             "label": "Hold DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54902,8 +54902,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54414,
+            "talentId": 14811,
             "label": "Scorching Threshold",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54917,8 +54917,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54415,
+            "talentId": 14811,
             "label": "Nightsoul Point Limit",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54932,8 +54932,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54416,
+            "talentId": 14811,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54950,16 +54950,16 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14812,
+        "characterId": 3389,
         "slot": "Burst",
         "name": "Plains Scorcher",
         "description": "Condense the flames into a mark, dealing Nightsoul-aligned AoE Pyro DMG to opponents up ahead. The Traveler restores 7 Nightsoul points per second for the next 4s.",
         "iconUrl": "https://enka.network/ui/Skill_E_PlayerFire_01_HD.png",
         "attributes": [
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54417,
+            "talentId": 14812,
             "label": "Skill DMG",
             "formatCode": "F1P",
             "curveType": "Elemental1",
@@ -54973,8 +54973,8 @@
             "suffix": null
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54418,
+            "talentId": 14812,
             "label": "CD",
             "formatCode": "F1",
             "curveType": "Constant",
@@ -54988,8 +54988,8 @@
             "suffix": "s"
           },
           {
-            "id": "UNKNOWN",
-            "talentId": "UNKNOWN",
+            "id": 54419,
+            "talentId": 14812,
             "label": "Energy Cost",
             "formatCode": "I",
             "curveType": "Constant",
@@ -55006,8 +55006,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14813,
+        "characterId": 3389,
         "slot": "Passive1",
         "name": "True Flame of Incineration",
         "description": "When the Traveler has over 20 Nightsoul points, the attack AoE of the Blazing and Scorching Thresholds from the Elemental Skill Flowfire Blade after they hit opponents is increased.",
@@ -55016,8 +55016,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14814,
+        "characterId": 3389,
         "slot": "Passive2",
         "name": "Embers Unspent",
         "description": "After the current active character inside a Blazing Threshold or Scorching Threshold triggers a Pyro-related reaction, the Traveler will regain 5 Energy. This can occur once every 12s. Additionally, when a nearby party member triggers a Nightsoul Burst, the Traveler will regain 4 Energy.",
@@ -55026,8 +55026,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14815,
+        "characterId": 3389,
         "slot": "Passive3",
         "name": "Foreign Starfire",
         "description": "Draw new strength from journeys past. For every element you have resonated with, you gain additional buffs.\n\nAdditionally, when nearby party members trigger Nightsoul Burst, Traveler will receive 1 stack of Blade of the Sacred Flame, max 2 stacks. After obtaining 2 stacks of Blade of the Sacred Flame, performing a Charged Attack will consume all stacks of Blade of the Sacred Flame and transform into a special Charged Attack: Inferno.\n\nCharged Attack: Inferno\n· Each Charged Attack hit deals increased, Nightsoul-aligned Pyro DMG. Increase in DMG is equal to 200% of Traveler's ATK.\n· Charged Attack: Inferno can be triggered up to once every 15s.\n\nAdditional Buff Effects\nThe Traveler gains an attribute bonus for every element they have resonated with: \nAnemo: CRIT Rate is increased by 10%,\nGeo: DEF is increased by 20%,\nElectro: Energy Recharge is increased by 20%, \nDendro: Elemental Mastery is increased by 60,\nHydro: HP is increased by 20%,\nPyro: ATK is increased by 20%,\nCryo: CRIT DMG is increased by 20%.",
@@ -55038,8 +55038,8 @@
     ],
     "constellations": [
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14407,
+        "characterId": 3389,
         "number": 1,
         "name": "Starfire's Flowing Light",
         "description": "While Blazing Threshold or Scorching Threshold are active, the current active character deals 6% increased DMG. If said character is in the Nightsoul's Blessing state, they will deal an additional 9% DMG.",
@@ -55048,8 +55048,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14408,
+        "characterId": 3389,
         "number": 2,
         "name": "Ever-Lit Candle",
         "description": "Within 12s of using the Elemental Skill Flowfire Blade, after nearby party members trigger a Pyro-related reaction on an opponent, the Traveler will regain 14 Nightsoul points. Each use of Flowfire Blade will restore at most 28 Nightsoul points in this way.",
@@ -55058,8 +55058,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14409,
+        "characterId": 3389,
         "number": 3,
         "name": "Relayed Beacon",
         "description": "Increases the Level of Flowfire Blade by 3.\nMaximum upgrade level is 15.",
@@ -55068,8 +55068,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14410,
+        "characterId": 3389,
         "number": 4,
         "name": "Ravaging Flame",
         "description": "After using the Elemental Burst Plains Scorcher, the Traveler gains 20% Pyro DMG Bonus for 9s.",
@@ -55078,8 +55078,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14411,
+        "characterId": 3389,
         "number": 5,
         "name": "The Fire Inextinguishable",
         "description": "Increases the Level of Plains Scorcher by 3.\nMaximum upgrade level is 15.",
@@ -55088,8 +55088,8 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
-        "characterId": "UNKNOWN",
+        "id": 14412,
+        "characterId": 3389,
         "number": 6,
         "name": "The Sacred Flame Imperishable",
         "description": "While in the Nightsoul's Blessing state, the Traveler's Normal, Charged, and Plunging Attacks will be converted to Nightsoul-aligned Pyro DMG that cannot be overridden, and the CRIT DMG of these attacks is increased by 40%.",
@@ -56324,7 +56324,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14816,
         "characterId": 98,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Dawn's Return",
@@ -56828,7 +56828,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14817,
         "characterId": 99,
         "slot": "Passive3",
         "name": "Witch's Eve Rite: Temporal Wind's Eulogy",
@@ -58823,7 +58823,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14818,
         "characterId": 101,
         "slot": "Passive3",
         "name": "There Shall Be an Unveiling for Injustice",
@@ -62227,7 +62227,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14819,
         "characterId": 108,
         "slot": "Passive3",
         "name": "Edict of Cleansing",
@@ -64573,7 +64573,7 @@
         "statBonuses": []
       },
       {
-        "id": "UNKNOWN",
+        "id": 14820,
         "characterId": 113,
         "slot": "Passive3",
         "name": "Vast Be the Dream",

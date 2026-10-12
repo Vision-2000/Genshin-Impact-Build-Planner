@@ -8,7 +8,7 @@
 // have -- a genuine structural difference, not a reworded number).
 //
 // The classification into template + per-placeholder curve happens
-// upstream, in weapons-v2.json itself (hand-maintained against Lunaris/
+// upstream, in weapons.json itself (hand-maintained against Lunaris/
 // Project Amber/HoYoWiki) -- this module only reconstructs display text
 // from the already-classified template + curves at read time.
 //

@@ -1,5 +1,5 @@
 MASTER DATA FORMULAS
-Companion reference for characters-v2.json / weapons-v2.json / artifact-sets-v2.json / stat-types-v2.json.
+Companion reference for characters.json / weapons.json / artifact-sets.json / stat-types.json.
 Everything here + those 4 files reproduces the full per-level/per-refinement game data (HP/ATK/DEF
 at every level, talent values at every level, passive text at every refinement).
 
@@ -86,9 +86,9 @@ EXCEPTIONS:
   - Traveler permanent story buff (all 14 rows; added 2026-10-07): after a story quest the Traveler
     permanently gains +50 base HP, +10 base ATK and +15 base Elemental Mastery (flat, NOT on the
     level curve: never add them to baseHp/baseAttack, which are multiplied by the curve). Handled in
-    the app, NOT stored in characters-v2.json; the official stat tables (Lunaris, HoYoWiki) and the
+    the app, NOT stored in characters.json; the official stat tables (Lunaris, HoYoWiki) and the
     formulas above exclude it. Values as stated by Eugene (not verified against a game source).
-  - Lauma / Nefer: characters-v2.json field `baseElementalMastery` is 200 / 100 (every other
+  - Lauma / Nefer: characters.json field `baseElementalMastery` is 200 / 100 (every other
     character is 0). This is a flat EM floor from level 1, OUTSIDE this formula entirely, and
     ADDITIVE with bonusStat() above when the character's own ascensionStat IS Elemental Mastery
     (true for Lauma). Total EM = baseElementalMastery + bonusStat("Elemental Mastery", ...).
@@ -113,7 +113,7 @@ secondaryStatMultiplier(level):
   (stepped, not interpolated -- levels 1-4 use level 1's value, 5-9 use level 5's, etc.)
 
 EXCEPTION:
-  - Sword of Descension: weapons-v2.json field `attackCurveRarity` is 3 even though `rarity` is 4.
+  - Sword of Descension: weapons.json field `attackCurveRarity` is 3 even though `rarity` is 4.
     ATK/level curve comes from the rarity-3 table; the ASCENSION value still comes from the
     rarity-4 table (keyed off `rarity`, never `attackCurveRarity`). Every other weapon has
     attackCurveRarity == null -- just use `rarity` for both.
@@ -247,7 +247,7 @@ render(template, slots, refinement):
   plain text in the template)
 
 EXCEPTIONS:
-  - Exaiphanes Blade: weapons-v2.json field `passiveDescriptionTemplate` is null -- use
+  - Exaiphanes Blade: weapons.json field `passiveDescriptionTemplate` is null -- use
     `refinementEffects` instead (5 raw rows, already the final text, no rendering needed).
     Its passive gains an entire extra clause starting at R2 that R1 doesn't have at all.
   - 14 weapons have small pure copy-editing differences between refinement tiers that don't
@@ -266,7 +266,7 @@ EXCEPTIONS:
 6. WEAPON STAT BONUSES -- unconditional passive bonuses shown on the stat screen
 ===============================================================================
 
-One row per (weapon, statType) in weapons-v2.json's `statBonuses`, using the SAME
+One row per (weapon, statType) in weapons.json's `statBonuses`, using the SAME
 curveType/baseValue/slope/customValues shape as section 5's slots (Constant/Linear/Custom
 instead of just Linear/Custom -- see below for why):
 
@@ -302,7 +302,7 @@ TALENT_ATTRIBUTE_LEVEL_COUNT = 15
   matter in boosted trial-mode content)
 
 MIN_REFINEMENT = 1
-MAX_REFINEMENT = per-weapon -- see weapons-v2.json field `maxRefinement`
+MAX_REFINEMENT = per-weapon -- see weapons.json field `maxRefinement`
   (5 for almost every weapon; 1 for Kagotsurube Isshin, Predator, Sword of Descension)
 
 
@@ -310,7 +310,7 @@ MAX_REFINEMENT = per-weapon -- see weapons-v2.json field `maxRefinement`
 8. EXCEPTIONS -- QUICK INDEX
 ===============================================================================
 Every exception below is already a plain field on the relevant character/weapon row in the
-v2 JSON -- nothing here needs a separate lookup table.
+JSON -- nothing here needs a separate lookup table.
 
   Traveler (all 14 rows)         named "Traveler (<Female|Male>) (<Element>)"; Female = Lumine, Male = Aether;
                                  Male differs only in iconUrl and Charged Attack DMG (Part 2) (section 2)

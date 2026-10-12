@@ -21,10 +21,10 @@ import {
 
 // ---------------------------------------------------------------------------
 // This script no longer talks to genshin-db (or any live data source) at
-// all. The 4 JSON files in data-export/ ARE the master data -- a separate
+// all. The 4 JSON files in data-source/ ARE the master data -- a separate
 // Claude session maintains them against Lunaris/Project Amber/HoYoWiki for
 // each game update (see CLAUDE.md's Key decisions and
-// data-export/master-data-formulas.txt), and this script's only job is to
+// data-source/master-data-formulas.txt), and this script's only job is to
 // import them into Postgres faithfully, with no re-derivation of anything.
 // That session marks a genuinely new row's `id` (and every id field that
 // points at it) "UNKNOWN", since it has no way to know what the DB will
@@ -34,7 +34,7 @@ import {
 type JsonId = number | "UNKNOWN";
 
 function readJson<T>(fileName: string): T {
-  return JSON.parse(fs.readFileSync(path.join(process.cwd(), "data-export", fileName), "utf-8"));
+  return JSON.parse(fs.readFileSync(path.join(process.cwd(), "data-source", fileName), "utf-8"));
 }
 
 // A real number when the external session already knows this row's id
@@ -78,7 +78,7 @@ async function resetSequences() {
 
 // ---------------------------------------------------------------------------
 // JSON shapes -- deliberately loose (the external session's own tooling is
-// what validates these in depth, per data-export/master-data-formulas.txt);
+// what validates these in depth, per data-source/master-data-formulas.txt);
 // this is just enough typing to catch a renamed/missing field at compile time.
 // ---------------------------------------------------------------------------
 
@@ -448,10 +448,10 @@ async function seedArtifactSet(artifactSet: ArtifactSetJson, statTypeIdByName: M
 }
 
 async function main() {
-  const statTypes = readJson<StatTypeJson[]>("stat-types-v2.json");
-  const characters = readJson<CharacterJson[]>("characters-v2.json");
-  const weapons = readJson<WeaponJson[]>("weapons-v2.json");
-  const artifactSets = readJson<ArtifactSetJson[]>("artifact-sets-v2.json");
+  const statTypes = readJson<StatTypeJson[]>("stat-types.json");
+  const characters = readJson<CharacterJson[]>("characters.json");
+  const weapons = readJson<WeaponJson[]>("weapons.json");
+  const artifactSets = readJson<ArtifactSetJson[]>("artifact-sets.json");
 
   const statTypeIdByName = await seedStatTypes(statTypes);
 

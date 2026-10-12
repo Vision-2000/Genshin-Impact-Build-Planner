@@ -8,7 +8,7 @@ import { TALENT_CURVES } from "./talent-curves";
 // escape hatch for the small residual that fits none of the above -- same
 // treatment the wiki itself gives named one-off exceptions like Beidou/
 // Zhongli/Yoimiya. Classification into one of these happens upstream, in
-// characters-v2.json itself (hand-maintained against Lunaris/Project
+// characters.json itself (hand-maintained against Lunaris/Project
 // Amber/HoYoWiki) -- this module only reconstructs a value from the
 // already-classified curve at read time.
 export type TalentCurveType = keyof typeof TALENT_CURVES | "Linear" | "Constant" | "Custom";

@@ -10,16 +10,22 @@ Unofficial fan project. Not affiliated with or endorsed by HoYoverse. Don't impl
 official affiliation anywhere in the UI or README.
 
 ## Tech stack
-- Next.js, App Router, TypeScript, Tailwind CSS
 - PostgreSQL hosted on Neon
-- Prisma ORM
-- Zod for input validation on Server Actions
 - Deploy target: Vercel
 
 ## Data model overview
 Grouped by domain. Master/reference tables are static game data, shared across all
-users, seeded once from an external community dataset (e.g. genshin-db) — never
-user-editable.
+users, never user-editable. Sourced from `data-source/{characters,weapons,
+artifact-sets,stat-types}.json` — hand-maintained master data curated directly
+against Lunaris, Project Amber, and HoYoWiki by a separate Claude session for each
+game update (see Key decisions below and `data-source/master-data-formulas.txt`).
+`prisma/seed.ts` only imports this JSON into Postgres; it no longer talks to
+genshin-db or any live data source, and does zero re-derivation, filtering, or
+text-fixing of its own — all of that now happens upstream, in the JSON itself.
+`data-export/` is reserved for the opposite direction — ad hoc dumps of the
+current DB's master data, written by `data-export/export-master-data.mts`, for
+diffing against `data-source/` or debugging; nothing in it is ever read back by
+the app or the seed script.
 
 **Accounts**
 - User — app account, email/password
@@ -36,7 +42,7 @@ user-editable.
 
 **Master/reference data (shared, static, seeded once)**
 - Character — all playable characters (name, element, weapon type, rarity,
-  `iconUrl`, `exclusivityGroup`, and `ascensionStatId` — a nullable FK to
+  `iconUrl`, `splashUrl`, `exclusivityGroup`, and `ascensionStatId` — a nullable FK to
   StatType for the fixed special stat this character's ascension unlocks,
   e.g. Bennett's is Energy Recharge%). Base HP/ATK/DEF (level 1, ascension
   phase 0) and each stat's own max-ascension bonus are stored directly on
@@ -52,22 +58,23 @@ user-editable.
   loadout). `exclusivityGroup` is nullable and null for nearly every
   character — see Traveler handling below for the one exception.
 - Talent — one row per character per talent slot: Normal Attack, Skill,
-  Burst (normalized to these three regardless of genshin-db's per-character
-  naming quirks like `combatsp`/`combatju`), and each Passive. Just name,
-  icon, and the level-independent flavor `description` — the level-scaling
-  numbers live in TalentAttribute, not here.
-- TalentAttribute — child rows (talentId, label, formatCode) for combat
-  talents only (Normal Attack/Skill/Burst have levels; Passives don't).
-  One row per labeled stat genshin-db reports (e.g. "1-Hit DMG", "Charged
+  Burst, and each Passive. Just name, icon, and the level-independent flavor
+  `description` — the level-scaling numbers live in TalentAttribute, not here.
+- TalentAttribute — child rows (talentId, label, formatCode, hitCount, prefix,
+  suffix) for combat talents only (Normal Attack/Skill/Burst have levels;
+  Passives don't). One row per labeled stat (e.g. "1-Hit DMG", "Charged
   Attack Stamina Cost"). Rather than storing all 15 per-level values, each
-  row is classified at seed time into one of a small set of named
-  level-scaling curves and stored as `curveType` + `baseValue` (plus
-  `linearSlope`/`capLevel` for the Linear family, or `customValues` as a
-  raw fallback for genuine one-offs) — the value at any talent level is
-  computed via `src/lib/talent-scaling.ts` (see Key decisions) —
-  display-only string formatting (`formatCode` says how, e.g. `F1P` = one
-  decimal, shown as a percentage), never fed into any damage formula (see
-  Key decisions on calculation scope).
+  row is classified into one of a small set of named level-scaling curves
+  and stored as `curveType` + `baseValue` (plus `linearSlope`/`capLevel` for
+  the Linear family, or `customValues` as a raw fallback for genuine
+  one-offs) — the classification itself happens upstream, in the JSON (see
+  Key decisions), not at seed time in this repo; the value at any talent
+  level is reconstructed via `src/lib/talent-scaling.ts`. `hitCount`
+  (default 1) covers multi-hit attributes like Aino's 3-hit Normal Attack;
+  `prefix`/`suffix` are optional display affixes. `formatCode` is
+  display-only string formatting (e.g. `F1P` = one decimal, shown as a
+  percentage), never fed into any damage formula (see Key decisions on
+  calculation scope).
 - TalentStatBonus — optional child rows (talentId, statTypeId, value) for
   the subset of Passive talents whose effect is an unconditional bonus that
   actually appears on the in-game character stat screen. Zero rows is the
@@ -75,8 +82,8 @@ user-editable.
   stay text-only and are excluded from any computed total.
 - Constellation — one row per character per constellation (1-6): name,
   icon, description. Modeled separately from Talent (not as extra talent
-  slots) since genshin-db treats them as a structurally distinct concept —
-  no levels, no attributes, always a fixed effect once unlocked.
+  slots) since it's a structurally distinct concept — no levels, no
+  attributes, always a fixed effect once unlocked.
 - ConstellationStatBonus — same idea and same rarity as TalentStatBonus,
   for the subset of constellations (a bit more common than passives, e.g.
   "increases Elemental Mastery by X") that are unconditional stat bonuses.
@@ -94,8 +101,8 @@ user-editable.
   build relevance) and the Prized Isshin Blade (story-quest-only, never
   obtainable as a real player weapon).
 - WeaponRefinementEffect — child rows (weaponId, refinement, description)
-  holding genshin-db's own raw passive text for one refinement level.
-  Barely used now: almost every weapon's passive is instead represented by
+  holding the raw passive text for one refinement level. Barely used now:
+  almost every weapon's passive is instead represented by
   `Weapon.passiveDescriptionTemplate` + WeaponRefinementValue (see Key
   decisions), and this table only holds rows for the rare weapon whose
   refinement text can't be templated at all (currently just Exaiphanes
@@ -115,14 +122,11 @@ user-editable.
   text, one icon URL column per slot: `flowerIconUrl`, `featherIconUrl`,
   `sandsIconUrl`, `gobletIconUrl`, `circletIconUrl` — not one column per set,
   since each slot has visually distinct art within the same set and these
-  render on the build page). Seed excludes sets with only a 1-piece effect —
-  these can't populate the required `twoPieceEffect` field, so excluding them
-  isn't a workaround, it's the schema correctly rejecting data that doesn't
-  fit the shape we defined. Seed also excludes sets that never drop above 3★
-  (Adventurer, Lucky Dog, Traveling Doctor) — same "no meaningful build
-  relevance" reasoning as the weapon rarity cutoff. `rarity` is
-  `max(rarityList)` from genshin-db — the same value already computed for
-  that exclusion check.
+  render on the build page). Sets with only a 1-piece effect, and sets that
+  never drop above 3★ (Adventurer, Lucky Dog, Traveling Doctor — same "no
+  meaningful build relevance" reasoning as the weapon rarity cutoff), are
+  simply absent from artifact-sets.json; this repo's seed.ts does no
+  filtering of its own (see Key decisions).
 - ArtifactSetStatBonus — optional child rows (artifactSetId, piece: TWO |
   FOUR, statTypeId, value) for the subset of 2pc/4pc effects that are
   unconditional stat bonuses. Almost always true for 2pc effects; rarely
@@ -208,25 +212,65 @@ user-editable.
 - A build can be reused across multiple teams/rosters simultaneously.
 - A build can never contain the same character twice within one team/roster —
   this is what the denormalized owned_character_id + unique constraint enforces.
-- Traveler is modeled as one `Character` row per element (6 rows total), not one
-  row with a variable element and not split by gender — this lets each element
-  have its own real build, matching how the character actually plays. Gender is
-  deliberately not modeled at all: it only affects appearance/voice, never stats,
-  talents, or kit, so it carries no information relevant to anything this app
-  tracks. (If genshin-db's raw data happens to split by gender, collapse it down
-  to 6 rows during seeding — don't propagate a distinction upstream that doesn't
-  matter here. If a field is ever sourced from the gendered raw data, default
-  to the female variant, Lumine.)
+- Master data (Character, Weapon, ArtifactSet, StatType and all their child
+  tables) is sourced entirely from `data-source/{characters,weapons,
+  artifact-sets,stat-types}.json` — hand-maintained JSON that a separate
+  Claude session curates directly against Lunaris, Project Amber, and HoYoWiki
+  for each game update (handoff notes and the full curve/formula reference
+  live in `data-source/`, e.g. `master-data-formulas.txt`). `prisma/seed.ts`
+  only imports this JSON into Postgres; genshin-db is no longer a dependency
+  anywhere in this project, and the script does zero re-derivation, filtering,
+  rarity-cutoff logic, or text-fixing of its own — all of that already
+  happened upstream, in the JSON. Top-level tables (Character, Weapon,
+  ArtifactSet, StatType) are upserted BY ID, never by name — critical because
+  a row can be renamed in place (e.g. the Traveler gender split below), and a
+  name-keyed upsert would miss that and create a duplicate instead of
+  recognizing the rename. Child tables (Talent, TalentAttribute,
+  TalentStatBonus, Constellation, ConstellationStatBonus,
+  WeaponRefinementEffect, WeaponRefinementValue, WeaponStatBonus,
+  ArtifactSetStatBonus) are deleted and recreated fresh, scoped to their
+  parent, each time — but this does NOT mean every child row gets a new id.
+  The recreate step passes each row's known id explicitly, and Postgres
+  honors that on insert regardless of the preceding delete, so a row that
+  already had a known id comes back with that EXACT same id (verified
+  directly: a pre-existing character's talent/attribute/constellation ids
+  were unchanged after a reseed). Only a genuinely new row's `id` is marked
+  `"UNKNOWN"` in the JSON (the curating session has no way to know what
+  Postgres will assign); `resolveId()` turns that into `id: undefined` on
+  create, which Prisma treats as "field not specified" and falls through to
+  the real autoincrement default — verified live before trusting it
+  broadly. Every table seeded with
+  explicit ids gets its sequence reset
+  (`setval(pg_get_serial_sequence(...), MAX(id))`) after import, so a later
+  autoincrement-assigned id can't collide with one of these explicit inserts.
+  Foreign keys into StatType (`ascensionStatId`, `secondaryStatId`, every
+  `*StatBonus.statTypeId`) are resolved via the JSON's nested `{id, name}`
+  object's `name`, through a name→id map built from stat-types.json — not
+  the raw numeric id, to avoid assuming cross-file id consistency. None of
+  this ever touches owned-side tables (OwnedCharacter/OwnedWeapon/
+  OwnedArtifact/Build/...), which point at master data by plain foreign key
+  with no cascade — safe by construction, since master-data ids are
+  preserved across reseeds rather than dropped and recreated.
+- Traveler is modeled as one `Character` row per (element, gender) combination
+  — 14 rows total (7 elements × 2 genders) — reversing an earlier decision to
+  collapse gender into element-only rows. That earlier collapse assumed gender
+  affects only appearance/voice, never stats, talents, or kit; the
+  hand-maintained master data surfaced a real, confirmed counterexample —
+  Aether's and Lumine's Normal Attack "Charged Attack DMG (Part 2)" talent
+  value genuinely differs (0.60716 vs 0.7224) — so gender is now a
+  first-class axis, not folded away. Names: `"Traveler (<Female|Male>)
+  (<Element>)"`.
   The catch this exists to solve: only one Traveler can ever be in a party
-  regardless of element, and the base uniqueness constraint doesn't know the 6
-  rows are related. Fixed with a nullable `exclusivityGroup` field on
-  `Character`: null for every normal character (no behavior change), set to the
-  single shared value `"traveler"` for all 6 elemental rows. Team/Roster
+  regardless of element or gender, and the base uniqueness constraint doesn't
+  know all 14 rows are related. Fixed with a nullable `exclusivityGroup`
+  field on `Character`: null for every normal character (no behavior change),
+  set to the single shared value `"traveler"` for all 14 rows. Team/Roster
   composition checks (both the live warning during build selection and full
   validation) must also block on a shared non-null `exclusivityGroup` between
-  builds already present, not just on owned_character_id. If a future character
-  rework ever needs the same mechanic, reuse this field rather than adding a
-  special case — it's intentionally not named after Traveler specifically.
+  builds already present, not just on owned_character_id. If a future
+  character rework ever needs the same mechanic, reuse this field rather
+  than adding a special case — it's intentionally not named after Traveler
+  specifically.
 - Pagination on Characters was removed in favor of a full scrollable list —
   it's bounded, slow-growing master data (~125 rows, only grows with game
   updates), and rendering all of it at once is well within normal browser
@@ -311,8 +355,8 @@ user-editable.
   page only) vs. `level`/`constellation` (shown as a second line under the
   name, owned page only) are mutually exclusive per page, never both.
 - Artifact rarity moved from `OwnedArtifact` (originally a free-choice field
-  set per piece when adding it) to `ArtifactSet` (fixed, seeded from
-  genshin-db). Real in-game sets have a fixed max rarity — Instructor, The
+  set per piece when adding it) to `ArtifactSet` (fixed, part of the
+  hand-maintained master data). Real in-game sets have a fixed max rarity — Instructor, The
   Exile, Berserker, and other old domain-drop sets top out at 4★, while most
   current sets top out at 5★ — so letting the add form offer any rarity for
   any set (including a 4-star pick on a 5-star-only set) was letting the UI
@@ -360,17 +404,14 @@ user-editable.
   floor outside the normal ascension system entirely, confirmed on the wiki
   (Attribute page): "Elemental Mastery starts at 0 for most playable
   characters, excluding Lauma and Nefer whose Elemental Mastery begin at
-  200 and 100 respectively." Confirmed absent from genshin-db's data (no
-  field anywhere in either character's raw object or `stats()` output), so
-  it's hardcoded from the wiki at seed time (`CHARACTER_BASE_ELEMENTAL_
-  MASTERY` in prisma/seed.ts) rather than sourced — same treatment as the
-  Traveler and Sword of Descension scaling exceptions. Modeled as a single
-  scalar column, `Character.baseElementalMastery` (default 0), not a
-  general "innate constant stat" mechanism — the wiki only documents this
-  exception for Elemental Mastery specifically, so a narrower, single-stat
-  column matches what's actually confirmed rather than speculatively
-  generalizing. Additive with any ascension-stat EM bonus (Lauma's own
-  ascension stat IS Elemental Mastery, so she has both at once).
+  200 and 100 respectively." Modeled as a single scalar column,
+  `Character.baseElementalMastery` (default 0), not a general "innate
+  constant stat" mechanism — the wiki only documents this exception for
+  Elemental Mastery specifically, so a narrower, single-stat column matches
+  what's actually confirmed rather than speculatively generalizing.
+  Additive with any ascension-stat EM bonus (Lauma's own ascension stat IS
+  Elemental Mastery, so she has both at once). Now just a plain field in
+  characters.json like any other — no seed-time special-casing.
 - Character/weapon base HP/ATK/DEF and secondary/ascension stat values are
   computed on demand from a small set of base + max-ascension scalars
   (`Character.baseHp`/`baseAttack`/`baseDefense`/`maxAscensionHp`/etc.,
@@ -385,7 +426,7 @@ user-editable.
   of shared curves keyed by rarity/tier, not unique data per character/
   weapon. Verified to 100% agreement against an independently wiki-sourced
   formula (12,192 character rows, 23,232 weapon rows, 0 mismatches) before
-  the per-level tables were dropped; see data-export/ for the wiki source
+  the per-level tables were dropped; see data-source/ for the wiki source
   reports and verification scripts kept alongside the master-data JSON
   exports. Two real, previously-undetected exceptions surfaced by this
   cross-checking are now explicitly modeled rather than worked around:
@@ -395,15 +436,16 @@ user-editable.
   Descension (a real, player-obtainable PS4/5-exclusive weapon, not
   story-exclusive) draws its ATK curve from a different rarity tier than
   its own stored rarity, via `Weapon.attackCurveRarity`.
-- Combat talent numbers need our own display logic: genshin-db exposes
-  them as a list of labeled attributes (e.g. "1-Hit DMG"), each with its
-  own per-level value array — classified at seed time into one of a small
-  set of named level-scaling curves (the same kind of curve-based
-  compaction as the stat values above) and stored as `curveType` +
-  `baseValue` (plus `linearSlope`/`capLevel` for the Linear family, or
-  `customValues` as a raw fallback for the handful of genuine one-off
-  curves, e.g. Beidou/Zhongli/Yoimiya) rather than all 15 raw per-level
-  values — reconstructed via `src/lib/talent-scaling.ts` at display time,
+- Combat talent numbers need our own display logic: each labeled attribute
+  (e.g. "1-Hit DMG") is classified into one of a small set of named
+  level-scaling curves (the same kind of curve-based compaction as the stat
+  values above) and stored as `curveType` + `baseValue` (plus
+  `linearSlope`/`capLevel` for the Linear family, or `customValues` as a raw
+  fallback for the handful of genuine one-off curves, e.g. Beidou/Zhongli/
+  Yoimiya) rather than all 15 raw per-level values. That classification
+  happens upstream now, in characters.json itself (see Key decisions
+  above on the JSON-import architecture) — `src/lib/talent-scaling.ts` only
+  reconstructs a value from the already-classified curve at display time,
   alongside `formatCode` saying how to render it (e.g. one decimal, as a
   percentage). Neither of these numbers is ever used in a stat or damage
   total, only rendered as text.
@@ -420,13 +462,14 @@ user-editable.
   needed, just baked into the template as plain text), 444 scale perfectly
   linearly, and only 5 are genuine irregular exceptions (kept via a
   `Custom` raw-value fallback, same treatment as TalentAttribute's own
-  `Custom`) — see data-export/verify-weapon-refinement-scaling.mts. A
-  further 13 weapons have pure copy-editing inconsistencies between
-  refinement tiers that don't affect any number (e.g. "an opponent" vs
-  "an enemy", a missing "the") — the template's wording is always taken
-  from the LAST known refinement rather than the first, which loses
-  nothing since the drift is never a meaning change (verified per-weapon,
-  see data-export/diagnose-weapon-refinement-mismatches.mts). Only 1
+  `Custom`) — verified once against every seeded weapon's real text, the
+  one-off verification scripts since removed (their job was superseded by
+  the JSON-import architecture above). A further 13 weapons have pure
+  copy-editing inconsistencies between refinement tiers that don't affect
+  any number (e.g. "an opponent" vs "an enemy", a missing "the") — the
+  template's wording is always taken from the LAST known refinement rather
+  than the first, which loses nothing since the drift is never a meaning
+  change (verified per-weapon the same way). Only 1
   weapon (Exaiphanes Blade) is a genuine structural exception — an entire
   clause exists starting at R2 that R1 doesn't have at all — and keeps the
   original per-refinement WeaponRefinementEffect rows instead of a
@@ -435,8 +478,10 @@ user-editable.
   (not an in-game restriction — a genshin-db gap); rather than silently
   showing no passive text past R1 (the previous, undetected behavior),
   `Weapon.maxRefinement` caps what the app lets a player set/see for these
-  3 specifically. Render logic lives in
-  `src/lib/weapon-refinement-scaling.ts`.
+  3 specifically. This template/value-curve split now happens upstream too,
+  in weapons.json itself (see Key decisions above) — `src/lib/
+  weapon-refinement-scaling.ts` only reconstructs display text from the
+  already-classified template + curves at read time.
 - Hover-card detail popovers (see build order) are sequenced after master
   data completeness, not before — the point of building them is to absorb
   the stats/talents/effects data landing on top of the current cards, so
@@ -448,8 +493,8 @@ user-editable.
 2. Auth + profile switcher: User and GameProfile tables, plus a minimal
    create/select-profile flow (real session/password hardening can come later —
    every other table depends on GameProfile existing, so this has to come first)
-3. Master/reference data: Character, Weapon, ArtifactSet, StatType — seed from an
-   external Genshin dataset
+3. Master/reference data: Character, Weapon, ArtifactSet, StatType — seed from
+   hand-maintained master-data JSON (`data-source/`)
 4. Owned inventory CRUD: character roster toggle, weapon add (with refinement),
    artifact add (with substats) — establishes reusable list/filter/sort/search
    patterns for all three pages
@@ -458,7 +503,7 @@ user-editable.
    CharacterLevelStat/WeaponLevelStat snapshot tables, later compacted into
    base+ascension scalars — see Key decisions), Talent + TalentAttribute,
    Constellation, WeaponRefinementEffect, and the four `*StatBonus` tables —
-   seeded from genshin-db, master data only, no owned-side fields yet
+   master data only, no owned-side fields yet
 7. Owned-side leveling: OwnedCharacter/OwnedWeapon gain level, ascension
    phase, talent levels, and constellation, with UI to set them
 8. Final-stats calculation module (pure function: build -> aggregate stat
@@ -489,26 +534,18 @@ user-editable.
 - Unlockable "bonus" passives some characters get outside the normal kit
   (e.g. Nicole's Hexerei-only "Witch's Eve Rite: Light in the Darkness",
   unlocked via a quest, active only with 2+ Hexerei party members; Diona
-  and Fischl are reported to have their own equivalents). Investigated and
-  shelved: genshin-db (this project's only data source) has zero coverage
-  of these anywhere in its dataset -- confirmed by grepping its entire raw
-  JSON for the passive's name and for "faction passive", no matches. A
-  community API (gi.yatta.moe/Project Amber) does expose at least Nicole's
-  under an extra numbered `talent` key beyond the normal 3 passives, but
-  that was only confirmed for one character via one ad hoc query -- not
-  enough to build a real seed pipeline on (unknown whether the key is
-  consistent across characters, no bulk listing endpoint found, other
-  candidate sites like lunaris.moe are client-rendered SPAs with no
-  fetchable static/API content found). Not worth wiring in a second live
-  data source for a handful of characters. When this gets picked up again:
-  a manual entry path (paste the character's wiki text, parse/store the
-  bonus passive from it) is the intended approach, not automated seeding --
-  and explicitly do NOT conflate this with flavor-only constellation text
-  that reads like a buff but does nothing mechanically (called out
-  specifically for Traveler; not actually observed as an issue in the
-  currently-installed genshin-db version, but worth independently
-  verifying whatever's pasted in actually corresponds to a real effect
-  before it's treated as one).
+  and Fischl are reported to have their own equivalents). Originally shelved
+  because genshin-db (the project's only data source at the time) had zero
+  coverage of these, and wiring in a second live source for a handful of
+  characters wasn't worth it. That blocker no longer applies: master data
+  now comes from a Claude session reading Lunaris/Project Amber/HoYoWiki
+  directly (see Key decisions), and characters.json already contains
+  "Witch's Eve Rite"/Hexerei text, confirmed present. Still not verified:
+  whether it's modeled with the right conditional-unlock semantics
+  (quest-gated, party-composition-gated) or just imported as an ordinary
+  Passive talent row, which may not be enough to represent "active only
+  with 2+ Hexerei party members." Revisit before treating this as done.
+
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over
   clever abstractions or black-box magic.

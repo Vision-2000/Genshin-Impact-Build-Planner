@@ -1,6 +1,6 @@
 // Originally generated from Character_Stats_Scaling_report.txt (summarized
 // from https://genshin-impact.fandom.com/wiki/Character/Level_Scaling, kept
-// in data-export/ as a historical reference only, not regenerated from --
+// in data-source/ as a historical reference only, not regenerated from --
 // see below).
 //
 // Main stat (HP/ATK/DEF): Stat = Base * LevelMultiplier(rarity, level) + MaxAscension * AscensionMultiplier(phase)
@@ -20,7 +20,7 @@
 // precision for these three specifically (every other entry below checked
 // out exact). Corrected to match the wiki directly rather than v1 (v1's
 // own values here are confirmed wrong) -- see
-// data-export/master-data-formulas.txt. Main stat (HP/ATK/DEF) above is
+// data-source/master-data-formulas.txt. Main stat (HP/ATK/DEF) above is
 // unaffected: its own 3dp rounding is a documented step of the wiki's
 // real formula, not an approximation.
 

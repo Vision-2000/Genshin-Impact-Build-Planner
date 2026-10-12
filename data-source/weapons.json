@@ -1462,7 +1462,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1916,
         "weaponId": 29,
         "statTypeId": 13,
         "curveType": "Linear",
@@ -1475,7 +1475,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1917,
         "weaponId": 29,
         "statTypeId": 14,
         "curveType": "Linear",
@@ -1488,7 +1488,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1918,
         "weaponId": 29,
         "statTypeId": 15,
         "curveType": "Linear",
@@ -1501,7 +1501,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1919,
         "weaponId": 29,
         "statTypeId": 16,
         "curveType": "Linear",
@@ -1514,7 +1514,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1920,
         "weaponId": 29,
         "statTypeId": 17,
         "curveType": "Linear",
@@ -1527,7 +1527,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1921,
         "weaponId": 29,
         "statTypeId": 18,
         "curveType": "Linear",
@@ -1540,7 +1540,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1922,
         "weaponId": 29,
         "statTypeId": 19,
         "curveType": "Linear",
@@ -2728,7 +2728,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1923,
         "weaponId": 54,
         "statTypeId": 11,
         "curveType": "Linear",
@@ -3941,7 +3941,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1924,
         "weaponId": 80,
         "statTypeId": 6,
         "curveType": "Linear",
@@ -4097,7 +4097,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1925,
         "weaponId": 84,
         "statTypeId": 13,
         "curveType": "Linear",
@@ -4110,7 +4110,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1926,
         "weaponId": 84,
         "statTypeId": 14,
         "curveType": "Linear",
@@ -4123,7 +4123,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1927,
         "weaponId": 84,
         "statTypeId": 15,
         "curveType": "Linear",
@@ -4136,7 +4136,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1928,
         "weaponId": 84,
         "statTypeId": 16,
         "curveType": "Linear",
@@ -4149,7 +4149,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1929,
         "weaponId": 84,
         "statTypeId": 17,
         "curveType": "Linear",
@@ -4162,7 +4162,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1930,
         "weaponId": 84,
         "statTypeId": 18,
         "curveType": "Linear",
@@ -4175,7 +4175,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1931,
         "weaponId": 84,
         "statTypeId": 19,
         "curveType": "Linear",
@@ -4300,7 +4300,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1932,
         "weaponId": 86,
         "statTypeId": 13,
         "curveType": "Linear",
@@ -4313,7 +4313,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1933,
         "weaponId": 86,
         "statTypeId": 14,
         "curveType": "Linear",
@@ -4326,7 +4326,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1934,
         "weaponId": 86,
         "statTypeId": 15,
         "curveType": "Linear",
@@ -4339,7 +4339,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1935,
         "weaponId": 86,
         "statTypeId": 16,
         "curveType": "Linear",
@@ -4352,7 +4352,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1936,
         "weaponId": 86,
         "statTypeId": 17,
         "curveType": "Linear",
@@ -4365,7 +4365,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1937,
         "weaponId": 86,
         "statTypeId": 18,
         "curveType": "Linear",
@@ -4378,7 +4378,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1938,
         "weaponId": 86,
         "statTypeId": 19,
         "curveType": "Linear",
@@ -5434,7 +5434,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1939,
         "weaponId": 109,
         "statTypeId": 22,
         "curveType": "Linear",
@@ -5577,7 +5577,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1940,
         "weaponId": 112,
         "statTypeId": 13,
         "curveType": "Linear",
@@ -5590,7 +5590,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1941,
         "weaponId": 112,
         "statTypeId": 14,
         "curveType": "Linear",
@@ -5603,7 +5603,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1942,
         "weaponId": 112,
         "statTypeId": 15,
         "curveType": "Linear",
@@ -5616,7 +5616,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1943,
         "weaponId": 112,
         "statTypeId": 16,
         "curveType": "Linear",
@@ -5629,7 +5629,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1944,
         "weaponId": 112,
         "statTypeId": 17,
         "curveType": "Linear",
@@ -5642,7 +5642,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1945,
         "weaponId": 112,
         "statTypeId": 18,
         "curveType": "Linear",
@@ -5655,7 +5655,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1946,
         "weaponId": 112,
         "statTypeId": 19,
         "curveType": "Linear",
@@ -6052,7 +6052,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1947,
         "weaponId": 119,
         "statTypeId": 4,
         "curveType": "Linear",
@@ -7873,7 +7873,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1948,
         "weaponId": 168,
         "statTypeId": 13,
         "curveType": "Linear",
@@ -7886,7 +7886,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1949,
         "weaponId": 168,
         "statTypeId": 14,
         "curveType": "Linear",
@@ -7899,7 +7899,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1950,
         "weaponId": 168,
         "statTypeId": 15,
         "curveType": "Linear",
@@ -7912,7 +7912,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1951,
         "weaponId": 168,
         "statTypeId": 16,
         "curveType": "Linear",
@@ -7925,7 +7925,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1952,
         "weaponId": 168,
         "statTypeId": 17,
         "curveType": "Linear",
@@ -7938,7 +7938,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1953,
         "weaponId": 168,
         "statTypeId": 18,
         "curveType": "Linear",
@@ -7951,7 +7951,7 @@
         }
       },
       {
-        "id": "UNKNOWN",
+        "id": 1954,
         "weaponId": 168,
         "statTypeId": 19,
         "curveType": "Linear",
@@ -8162,7 +8162,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1955,
         "weaponId": 172,
         "statTypeId": 9,
         "curveType": "Linear",
@@ -8724,7 +8724,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1956,
         "weaponId": 184,
         "statTypeId": 22,
         "curveType": "Linear",
@@ -8827,7 +8827,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1957,
         "weaponId": 186,
         "statTypeId": 4,
         "curveType": "Linear",
@@ -9432,7 +9432,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1958,
         "weaponId": 201,
         "statTypeId": 22,
         "curveType": "Linear",
@@ -9624,7 +9624,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1959,
         "weaponId": 205,
         "statTypeId": 5,
         "curveType": "Linear",
@@ -9932,7 +9932,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1960,
         "weaponId": 213,
         "statTypeId": 6,
         "curveType": "Linear",
@@ -10103,7 +10103,7 @@
     ],
     "statBonuses": [
       {
-        "id": "UNKNOWN",
+        "id": 1961,
         "weaponId": 216,
         "statTypeId": 22,
         "curveType": "Linear",

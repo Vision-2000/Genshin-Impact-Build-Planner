@@ -1,6 +1,6 @@
 // Originally generated from Talent_Scaling_report.txt (summarized from
 // https://genshin-impact.fandom.com/wiki/Talent/Level_Scaling, kept in
-// data-export/ as a historical reference only, not regenerated from --
+// data-source/ as a historical reference only, not regenerated from --
 // see below).
 //
 // Manual audit (comparing computed values against the original per-level
@@ -13,7 +13,7 @@
 // with higher-precision values (source: manual audit, not the wiki report
 // above) that reproduce the original per-level data to within ~0.0002
 // percentage points (EffectFlat, used for large flat values, to within
-// ~0.09 absolute) -- see data-export/master-data-formulas.txt for the
+// ~0.09 absolute) -- see data-source/master-data-formulas.txt for the
 // verification writeup. Elemental1, Elemental1Alternative, and
 // BeidouDmgReduction were already exact at the wiki's own precision and are
 // unchanged.

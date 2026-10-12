@@ -41,3 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# data-export/ holds ad hoc, fully-reproducible dumps of the live db's
+# master data (written by data-export/export-master-data.mts) -- never
+# source-of-truth, so never committed. data-source/ is the real source data.
+/data-export/*.json

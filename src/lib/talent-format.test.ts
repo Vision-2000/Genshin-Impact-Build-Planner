@@ -25,7 +25,7 @@ describe("formatTalentValue", () => {
 // returns baseValue unchanged for it regardless of level, which is all
 // groupTalentAttributes needs to exercise here (it's tested against real
 // curve-fitting/round-trip behavior separately in
-// data-export/verify-talent-scaling-roundtrip.mts).
+// data-source/verify-talent-scaling-roundtrip.mts).
 function constantAttribute(label: string, formatCode: string, value: number) {
   return { label, formatCode, curveType: "Constant", baseValue: value, linearSlope: null, capLevel: null, customValues: [] };
 }
