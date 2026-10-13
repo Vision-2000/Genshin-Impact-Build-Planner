@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import type { TalentSlot } from "@/generated/prisma/enums";
-import { characterScalingRarity } from "@/lib/character-scaling";
+import { characterScalingRarity, travelerGenderGroup } from "@/lib/character-scaling";
 import {
   createUpdateCharacterProgressionSchema,
   computeTalentLevelBounds,
@@ -11,14 +11,38 @@ import {
   type UpdateCharacterProgressionErrors,
 } from "./schemas";
 
+// Every other elemental form of the same Traveler protagonist (by shared
+// name prefix, see travelerGenderGroup) -- level, ascension phase, and
+// ownership move together across all of them; null for a non-Traveler,
+// where nothing needs to move beyond the one character itself.
+async function travelerSiblingIds(characterId: number): Promise<number[] | null> {
+  const character = await prisma.character.findUniqueOrThrow({ where: { id: characterId }, select: { name: true } });
+  const genderGroup = travelerGenderGroup(character.name);
+  if (!genderGroup) return null;
+
+  const siblings = await prisma.character.findMany({
+    where: { name: { startsWith: `${genderGroup} ` } },
+    select: { id: true },
+  });
+  return siblings.map((c) => c.id);
+}
+
 export async function setCharacterOwnership(characterId: number, isOwned: boolean) {
   const profile = await requireActiveProfile();
+  const characterIds = (await travelerSiblingIds(characterId)) ?? [characterId];
 
-  await prisma.ownedCharacter.upsert({
-    where: { gameProfileId_characterId: { gameProfileId: profile.id, characterId } },
-    create: { gameProfileId: profile.id, characterId, isOwned },
-    update: { isOwned },
-  });
+  // There's only one protagonist -- owning any one elemental form means
+  // owning all of them (the others just start at level 1/phase 0, same as
+  // any other fresh ownership toggle).
+  await prisma.$transaction(
+    characterIds.map((id) =>
+      prisma.ownedCharacter.upsert({
+        where: { gameProfileId_characterId: { gameProfileId: profile.id, characterId: id } },
+        create: { gameProfileId: profile.id, characterId: id, isOwned },
+        update: { isOwned },
+      })
+    )
+  );
 }
 
 export type CharacterConstellationBoost = { number: number; boostedTalentSlot: TalentSlot | null };
@@ -176,9 +200,28 @@ export async function updateCharacterProgression(
     return { errors: validated.error.flatten().fieldErrors };
   }
 
-  await prisma.ownedCharacter.updateMany({
-    where: { gameProfileId: profile.id, characterId },
-    data: validated.data,
-  });
+  const siblingIds = await travelerSiblingIds(characterId);
+  if (siblingIds) {
+    // Level/ascension belong to the protagonist as a whole -- every
+    // elemental form moves together. Constellation and the 3 talent
+    // levels stay per-element (each element has its own kit), so those
+    // only ever apply to the character actually being edited.
+    const { level, ascensionPhase, ...perElementFields } = validated.data;
+    await prisma.$transaction([
+      prisma.ownedCharacter.updateMany({
+        where: { gameProfileId: profile.id, characterId: { in: siblingIds } },
+        data: { level, ascensionPhase },
+      }),
+      prisma.ownedCharacter.updateMany({
+        where: { gameProfileId: profile.id, characterId },
+        data: perElementFields,
+      }),
+    ]);
+  } else {
+    await prisma.ownedCharacter.updateMany({
+      where: { gameProfileId: profile.id, characterId },
+      data: validated.data,
+    });
+  }
   return { ok: true };
 }

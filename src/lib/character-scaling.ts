@@ -172,3 +172,17 @@ const TRAVELER_STORY_BUFF = { hp: 50, attack: 10, elementalMastery: 15 };
 export function travelerStoryBuffBonus(name: string, stat: "hp" | "attack" | "elementalMastery"): number {
   return isTraveler(name) ? TRAVELER_STORY_BUFF[stat] : 0;
 }
+
+// Level, ascension phase, and ownership belong to the protagonist as a
+// whole, not to any one elemental form -- there's only one adventurer with
+// one growth state, who happens to have 7 elemental kits layered on top
+// (constellations and talent levels DO stay per-element, tracked
+// separately in-game). Returns the shared name prefix ("Traveler
+// (Female)"/"Traveler (Male)") used to find every OwnedCharacter row that
+// needs to move together, or null for a non-Traveler (or a malformed
+// Traveler name missing the gender bracket, which should never happen but
+// shouldn't silently sync every character either).
+export function travelerGenderGroup(name: string): string | null {
+  const match = name.match(/^(Traveler \((?:Female|Male)\))(?= )/);
+  return match ? match[1] : null;
+}

@@ -271,6 +271,24 @@ the app or the seed script.
   character rework ever needs the same mechanic, reuse this field rather
   than adding a special case — it's intentionally not named after Traveler
   specifically.
+- Level, ascension phase, and ownership belong to the Traveler protagonist
+  as a whole, not to any one elemental form — there's only one adventurer
+  with one growth state, who happens to have 7 elemental kits layered on
+  top. `setCharacterOwnership`/`updateCharacterProgression`
+  (characters/actions.ts) resolve the editing character's shared name
+  prefix (`travelerGenderGroup()` in character-scaling.ts — "Traveler
+  (Female)"/"Traveler (Male)") and fan level/ascensionPhase/isOwned out to
+  every `OwnedCharacter` row sharing it, in one transaction. Constellation
+  and the 3 combat-talent levels stay per-element on purpose (each element
+  really does have its own kit, unlocked/leveled independently in-game) —
+  only `level`/`ascensionPhase`/`isOwned` sync.
+  Weapon and artifacts need no equivalent mechanism: `OwnedWeapon`/
+  `OwnedArtifact` are already account-wide (keyed by `gameProfileId`, never
+  by `characterId`) and only become associated with a specific element
+  once placed into that element's own `Build` — nothing stops a user from
+  putting the same owned weapon/artifacts into multiple elements' Builds
+  manually today, which already matches the real mechanic without needing
+  enforced syncing.
 - Pagination on Characters was removed in favor of a full scrollable list —
   it's bounded, slow-growing master data (~125 rows, only grows with game
   updates), and rendering all of it at once is well within normal browser

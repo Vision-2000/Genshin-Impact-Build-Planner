@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { characterLevelMultiplier, travelerStoryBuffBonus, characterScalingRarity } from "./character-scaling";
+import { characterLevelMultiplier, travelerStoryBuffBonus, characterScalingRarity, travelerGenderGroup } from "./character-scaling";
 
 describe("characterLevelMultiplier", () => {
   it("matches the exact LEVEL_95_100_MULTIPLIER values at level 95/100", () => {
@@ -40,5 +40,16 @@ describe("characterScalingRarity", () => {
 
   it("uses the stored rarity for everyone else", () => {
     expect(characterScalingRarity("Aino", 5)).toBe(5);
+  });
+});
+
+describe("travelerGenderGroup", () => {
+  it("returns the shared gender prefix for any Traveler row", () => {
+    expect(travelerGenderGroup("Traveler (Female) (Anemo)")).toBe("Traveler (Female)");
+    expect(travelerGenderGroup("Traveler (Male) (Pyro)")).toBe("Traveler (Male)");
+  });
+
+  it("returns null for a non-Traveler character", () => {
+    expect(travelerGenderGroup("Aino")).toBeNull();
   });
 });
