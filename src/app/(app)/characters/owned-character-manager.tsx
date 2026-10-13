@@ -22,6 +22,7 @@ import {
   minLevelForAscensionPhase,
 } from "@/lib/ascension";
 import { formatStatValue } from "@/lib/stat-format";
+import { roundHalfUp } from "@/lib/round";
 import { computeCharacterMainStat, computeCharacterBonusStat, travelerStoryBuffBonus } from "@/lib/character-scaling";
 import { elementGlowClasses } from "@/lib/element-colors";
 import { groupTalentAttributes } from "@/lib/talent-format";
@@ -305,9 +306,9 @@ function BaseStatsSection({
     <div className="space-y-1 rounded border p-2 text-sm">
       <p className="font-medium">Stats</p>
       <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-500 dark:text-gray-300">
-        <li>Base HP: {Math.round(hp)}</li>
-        <li>Base ATK: {Math.round(attack)}</li>
-        <li>Base DEF: {Math.round(defense)}</li>
+        <li>Base HP: {roundHalfUp(hp, 0)}</li>
+        <li>Base ATK: {roundHalfUp(attack, 0)}</li>
+        <li>Base DEF: {roundHalfUp(defense, 0)}</li>
         {data.ascensionStatName && bonusStat !== null && !isAscensionStatElementalMastery && (
           <li>
             {data.ascensionStatName}: {formatStatValue(data.ascensionStatName, bonusStat)}

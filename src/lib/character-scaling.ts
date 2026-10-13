@@ -1,3 +1,5 @@
+import { roundHalfUp } from "./round";
+
 // Originally generated from Character_Stats_Scaling_report.txt (summarized
 // from https://genshin-impact.fandom.com/wiki/Character/Level_Scaling, kept
 // in data-source/ as a historical reference only, not regenerated from --
@@ -22,7 +24,10 @@
 // own values here are confirmed wrong) -- see
 // data-source/master-data-formulas.txt. Main stat (HP/ATK/DEF) above is
 // unaffected: its own 3dp rounding is a documented step of the wiki's
-// real formula, not an approximation.
+// real formula, not an approximation -- but still uses roundHalfUp below,
+// not native Math.round, since a formula-mandated rounding step can land
+// on an exact tie too, and Math.round has the same float-representation
+// tie-breaking bug as Number.prototype.toFixed (see src/lib/round.ts).
 
 export const CHARACTER_ASCENSION_MULTIPLIER = [0, 38 / 182, 65 / 182, 101 / 182, 128 / 182, 155 / 182, 182 / 182];
 export const CHARACTER_BONUS_STAT_ASCENSION_MULTIPLIER = [0, 0, 1, 2, 2, 3, 4];
@@ -121,8 +126,8 @@ export function characterLevelMultiplier(scalingRarity: number, level: number, s
     return stat === "attack" ? exception.fourStarAtk : exception.fourStarHpDef;
   }
   const base = (100 + 9 * level) / 109;
-  if (scalingRarity >= 5) return Math.round(base * ((1900 + level) / 1901) * 1000) / 1000;
-  return Math.round(base * 1000) / 1000;
+  if (scalingRarity >= 5) return roundHalfUp(base * ((1900 + level) / 1901), 3);
+  return roundHalfUp(base, 3);
 }
 
 export function computeCharacterMainStat(

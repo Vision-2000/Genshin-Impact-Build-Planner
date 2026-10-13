@@ -1,9 +1,16 @@
+import { roundHalfUpFixed } from "./round";
+
 // Flat stats (HP/ATK/DEF/Elemental Mastery) display as whole numbers
 // in-game; every %-based stat (its StatType.name itself ends in "%", e.g.
-// "Crit Rate%", "Energy Recharge%") shows 1 decimal. Mirrors the convention
-// already used inline for artifact substats (owned-artifact-manager.tsx),
-// extracted here since the character progression editor needs the same
-// formatting for ascension/talent/constellation stat bonuses.
+// "Crit Rate%", "Energy Recharge%") shows 1 decimal. Shared by the
+// character progression editor (ascension/talent/constellation stat
+// bonuses) and every artifact substat display.
+// roundHalfUpFixed, not Number.prototype.toFixed, since a totaled stat can
+// land exactly on a tie that toFixed's binary-float rounding gets wrong
+// (see src/lib/round.ts) -- and this also neutralizes any float noise
+// already baked into a stored value (e.g. weapons.json's
+// baseSecondaryStatValue has entries like 6.6667000000000005) before it
+// ever reaches the screen.
 export function formatStatValue(statName: string, value: number): string {
-  return value.toFixed(statName.endsWith("%") ? 1 : 0);
+  return roundHalfUpFixed(value, statName.endsWith("%") ? 1 : 0);
 }

@@ -1,4 +1,5 @@
 import { computeTalentAttributeValue, type TalentCurveType } from "./talent-scaling";
+import { roundHalfUpFixed } from "./round";
 
 // Renders one TalentAttribute value for display, given the format-code
 // convention in data-source/master-data-formulas.txt section 4 (e.g. "F1P"
@@ -7,9 +8,10 @@ import { computeTalentAttributeValue, type TalentCurveType } from "./talent-scal
 export function formatTalentValue(value: number, formatCode: string): string {
   // Rounded half-up, not truncated -- needed for EffectFlat rows, whose
   // stored values have decimals (e.g. 770.3755, 930.89) but display as
-  // plain integers (770, 931). Math.round already rounds half-up for every
-  // value this sees (talent values are never negative).
-  if (formatCode === "I") return String(Math.round(value));
+  // plain integers (770, 931). roundHalfUpFixed, not Math.round/toFixed,
+  // since a value that lands exactly on a tie needs decimal-exact
+  // rounding, not binary-float rounding (see src/lib/round.ts).
+  if (formatCode === "I") return roundHalfUpFixed(value, 0);
 
   let scaled = value;
   if (formatCode.includes("P")) scaled *= 100;
@@ -21,7 +23,7 @@ export function formatTalentValue(value: number, formatCode: string): string {
   // Low/High Plunge DMG shows "164%/204%", not fractional). The only
   // non-"F" code that reaches here is "P" itself ("I" already returned
   // above), so this is unconditionally 0 decimals, not formatCode-derived.
-  const text = formatCode.includes("F") ? scaled.toFixed(Number(formatCode[1])) : scaled.toFixed(0);
+  const text = formatCode.includes("F") ? roundHalfUpFixed(scaled, Number(formatCode[1])) : roundHalfUpFixed(scaled, 0);
 
   return formatCode.includes("P") ? `${text}%` : text;
 }

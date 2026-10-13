@@ -6,6 +6,7 @@ import { ArtifactSlot } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { formatStatValue } from "@/lib/stat-format";
 import { addArtifact } from "../actions";
 import {
   ARTIFACT_RARITIES,
@@ -347,9 +348,7 @@ export function ArtifactCatalog({
                                 className="w-28"
                               />
                               <span className="w-14 text-sm text-gray-400">
-                                {/* Flat stats (HP/ATK/DEF/Elemental Mastery) display as whole
-                                    numbers in-game; every %-based stat shows 1 decimal. */}
-                                {values[currentIndex].toFixed(statName?.endsWith("%") ? 1 : 0)}
+                                {formatStatValue(statName ?? "", values[currentIndex])}
                               </span>
                             </>
                           )}

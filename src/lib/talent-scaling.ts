@@ -1,4 +1,5 @@
 import { TALENT_CURVES } from "./talent-curves";
+import { roundHalfUp } from "./round";
 
 // The curve family a TalentAttribute's per-level value follows. Covers the
 // 9 curves named in Talent_Scaling_report.txt, a "Linear" family the
@@ -56,9 +57,11 @@ export function computeTalentAttributeValue(curve: TalentAttributeCurve, level: 
       // value -- some attributes land exactly on a display-rounding
       // boundary (e.g. 0.8085 -> 80.85% -> "80.9%") and depend on this
       // happening before formatTalentValue's own rounding, not after.
+      // roundHalfUp, not Math.round, in case the product itself lands
+      // exactly on a 6dp tie (see src/lib/round.ts).
       const ratioCurve = TALENT_CURVES[curve.curveType];
       const ratio = ratioCurve[Math.min(index, ratioCurve.length - 1)];
-      return Math.round(curve.baseValue * ratio * 1e6) / 1e6;
+      return roundHalfUp(curve.baseValue * ratio, 6);
     }
   }
 }

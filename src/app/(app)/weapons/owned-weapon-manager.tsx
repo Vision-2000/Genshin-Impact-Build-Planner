@@ -21,6 +21,7 @@ import {
   minLevelForAscensionPhase,
 } from "@/lib/ascension";
 import { formatStatValue } from "@/lib/stat-format";
+import { roundHalfUp } from "@/lib/round";
 import { computeWeaponAttack, computeWeaponSecondaryStat, isExaiphanesBlade, EXAIPHANES_BLADE_STATES } from "@/lib/weapon-scaling";
 import {
   renderWeaponPassiveDescription,
@@ -68,7 +69,7 @@ function BaseStatsSection({
     <div className="space-y-1 rounded border p-2 text-sm">
       <p className="font-medium">Stats</p>
       <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-500 dark:text-gray-300">
-        <li>Base ATK: {Math.round(attack)}</li>
+        <li>Base ATK: {roundHalfUp(attack, 0)}</li>
         {secondaryStatName && secondaryStatValue !== null && (
           <li>
             {secondaryStatName}: {formatStatValue(secondaryStatName, secondaryStatValue)}

@@ -1,4 +1,5 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
+import { roundHalfUp } from "@/lib/round";
 
 // Artifact sets are seeded at 4-5 star only (see prisma/seed.ts), so this is
 // every rarity a set (or a piece from it) can ever be -- shared by the
@@ -86,8 +87,12 @@ export const SUBSTAT_HIGHEST_ROLL: Record<SubstatTypeName, Record<number, number
   "Crit DMG%": { 4: 6.22, 5: 7.77 },
 };
 
+// roundHalfUp (not Math.round) since these are the candidate values the
+// substat slider actually offers -- a tie rounded the wrong way here
+// wouldn't just display wrong, it'd let the user save the wrong number
+// (see src/lib/round.ts).
 function roundTo2(value: number): number {
-  return Math.round(value * 100) / 100;
+  return roundHalfUp(value, 2);
 }
 
 // The most rolls a substat present since the artifact's first appearance

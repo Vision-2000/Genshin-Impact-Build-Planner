@@ -1,3 +1,5 @@
+import { roundHalfUp } from "./round";
+
 // Weapon passive text is stored as a single template (Weapon.
 // passiveDescriptionTemplate) with {0}, {1}, ... placeholders, plus one
 // WeaponRefinementValue row per placeholder describing how that number
@@ -55,8 +57,12 @@ export function computeWeaponValueCurve(
 // balance values like 12, 24.5, 200) -- round away the floating-point
 // noise a linear computation can introduce (e.g. 2.4000000000000004), then
 // let JS's own number->string conversion drop the trailing zeros.
+// roundHalfUp (not Math.round) since a value that lands exactly on a tie
+// at the 4th decimal would otherwise round the wrong way depending on
+// which side of 0 the representation noise happens to fall -- see
+// src/lib/round.ts.
 export function formatWeaponRefinementNumber(value: number): string {
-  return String(Math.round(value * 10000) / 10000);
+  return String(roundHalfUp(value, 4));
 }
 
 // Inserts each slot's value at the given refinement into the template's

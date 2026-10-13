@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { formatStatValue } from "@/lib/stat-format";
 
 function PencilIcon() {
   return (
@@ -139,7 +140,7 @@ export function ArtifactCard({
           <div className="grid min-h-[4.5rem] grid-cols-1 gap-x-2 gap-y-1 @[18rem]:min-h-[2.5rem] @[18rem]:grid-cols-2">
             {substats.map((substat) => (
               <p key={substat.statTypeName} className="truncate text-[11px] leading-tight text-foreground/75">
-                {substat.statTypeName} +{substat.value.toFixed(substat.statTypeName.endsWith("%") ? 1 : 0)}
+                {substat.statTypeName} +{formatStatValue(substat.statTypeName, substat.value)}
               </p>
             ))}
           </div>

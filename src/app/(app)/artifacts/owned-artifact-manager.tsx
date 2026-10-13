@@ -6,6 +6,7 @@ import { ArtifactSlot } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { formatStatValue } from "@/lib/stat-format";
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
@@ -221,9 +222,7 @@ function OwnedArtifactEditor({
                     className="w-28"
                   />
                   <span className="w-14 text-sm text-gray-400">
-                    {/* Flat stats (HP/ATK/DEF/Elemental Mastery) display as whole
-                        numbers in-game; every %-based stat shows 1 decimal. */}
-                    {values[currentIndex].toFixed(statName?.endsWith("%") ? 1 : 0)}
+                    {formatStatValue(statName ?? "", values[currentIndex])}
                   </span>
                 </>
               )}
