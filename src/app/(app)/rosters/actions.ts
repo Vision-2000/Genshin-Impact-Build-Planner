@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
+import { travelerDisplayName } from "@/lib/character-scaling";
 import { CreateRosterSchema, type CreateRosterErrors } from "./schemas";
 import type { RosterMemberItem } from "./filter-sort";
 
@@ -97,7 +98,7 @@ export async function addRosterBuild(rosterId: number, buildId: number): Promise
     member: {
       buildId: candidateBuild.id,
       name: candidateBuild.name,
-      characterName: candidateBuild.ownedCharacter.character.name,
+      characterName: travelerDisplayName(candidateBuild.ownedCharacter.character.name),
       characterIconUrl: candidateBuild.ownedCharacter.character.iconUrl,
     },
   };

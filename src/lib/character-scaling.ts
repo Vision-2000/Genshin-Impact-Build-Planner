@@ -186,3 +186,12 @@ export function travelerGenderGroup(name: string): string | null {
   const match = name.match(/^(Traveler \((?:Female|Male)\))(?= )/);
   return match ? match[1] : null;
 }
+
+// User-facing name for any Traveler row -- just "Traveler", gender and
+// element omitted. A portrait icon (gender) and element badge already
+// carry that information visually everywhere this gets shown (the roster/
+// owned cards, the progression editor header), so the text would just be
+// repeating it. Non-Travelers are returned unchanged.
+export function travelerDisplayName(name: string): string {
+  return travelerGenderGroup(name) ? "Traveler" : name;
+}

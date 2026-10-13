@@ -23,10 +23,22 @@ import {
 } from "@/lib/ascension";
 import { formatStatValue } from "@/lib/stat-format";
 import { roundHalfUp } from "@/lib/round";
-import { computeCharacterMainStat, computeCharacterBonusStat, travelerStoryBuffBonus } from "@/lib/character-scaling";
+import {
+  computeCharacterMainStat,
+  computeCharacterBonusStat,
+  travelerStoryBuffBonus,
+  travelerGenderGroup,
+  travelerDisplayName,
+} from "@/lib/character-scaling";
 import { elementGlowClasses } from "@/lib/element-colors";
 import { groupTalentAttributes } from "@/lib/talent-format";
-import { updateCharacterProgression, getCharacterProgressionData, type CharacterProgressionData } from "./actions";
+import {
+  updateCharacterProgression,
+  getCharacterProgressionData,
+  getTravelerElementSiblings,
+  getOwnedCharacterProgression,
+  type CharacterProgressionData,
+} from "./actions";
 import { computeTalentLevelBounds, type TalentLevelBounds, type UpdateCharacterProgressionInput } from "./schemas";
 import { CharacterCard } from "./character-card";
 import { ElementFilterRow } from "./element-filter-row";
@@ -113,6 +125,44 @@ function ConstellationIcons({
               {c.iconUrl && <Image src={c.iconUrl} alt={c.name} width={30} height={30} />}
             </button>
           </MouseFollowTooltip>
+        );
+      })}
+    </div>
+  );
+}
+
+// Lets the editor switch which of a Traveler's 7 elemental forms it's
+// viewing/editing -- same badge-row layout as ElementFilterRow, but the
+// unactivated state is colourless (grayscale), matching how an unlit
+// ConstellationIcons badge looks, rather than ElementFilterRow's ring
+// highlight (that's a multi-select filter; this is a single pick).
+function TravelerElementPicker({
+  siblings,
+  selectedElement,
+  onSelect,
+}: {
+  siblings: { id: number; element: Element; name: string }[];
+  selectedElement: Element;
+  onSelect: (sibling: { id: number; element: Element; name: string }) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      {siblings.map((sibling) => {
+        const selected = sibling.element === selectedElement;
+        return (
+          <button
+            key={sibling.id}
+            type="button"
+            aria-label={sibling.element}
+            aria-pressed={selected}
+            title={sibling.element}
+            onClick={() => onSelect(sibling)}
+            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 p-1.5 ${
+              selected ? elementGlowClasses(sibling.element) : "border-gray-600 bg-black/30 opacity-50 grayscale"
+            }`}
+          >
+            <Image src={ELEMENT_ICON_URL[sibling.element]} alt={sibling.element} width={22} height={22} />
+          </button>
         );
       })}
     </div>
@@ -334,11 +384,33 @@ function BaseStatsSection({
 // this, and it's a much heavier query than the roster's per-card summary.
 function CharacterProgressionEditor({
   character,
+  preferredTravelerElement,
   onSave,
 }: {
   character: OwnedCharacterItem;
-  onSave: (input: UpdateCharacterProgressionInput) => void;
+  // Which element to auto-select for a Traveler, instead of always landing
+  // on whichever happened to be the representative row (see
+  // collapseTravelerOwnedRows) -- the parent tracks this across the whole
+  // page session, updated whenever a Traveler edit is actually saved.
+  // Ignored for a non-Traveler.
+  preferredTravelerElement: Element;
+  onSave: (characterId: number, input: UpdateCharacterProgressionInput) => void;
 }) {
+  // Which elemental form is actually being viewed/edited right now -- for a
+  // non-Traveler this never changes from `character`'s own id/element; for
+  // a Traveler, the element picker below can switch it to any of the other
+  // 6. level/ascensionPhase stay as one shared piece of state regardless
+  // (see their own comment below); constellation/talent levels get
+  // re-fetched per element on a switch, since those genuinely differ.
+  const [selectedCharacterId, setSelectedCharacterId] = useState(character.id);
+  const [selectedElement, setSelectedElement] = useState(character.element);
+  const [selectedName, setSelectedName] = useState(character.name);
+  const [siblings, setSiblings] = useState<{ id: number; element: Element; name: string }[] | null>(null);
+
+  // Level and ascension phase belong to the Traveler protagonist as a
+  // whole (see travelerGenderGroup in @/lib/character-scaling) -- switching
+  // which element is selected keeps whatever's currently here, in-progress
+  // edits included, rather than re-fetching it per element.
   const [level, setLevel] = useState(character.level);
   const [ascensionPhase, setAscensionPhase] = useState(character.ascensionPhase);
   const [constellation, setConstellation] = useState(character.constellation);
@@ -349,13 +421,46 @@ function CharacterProgressionEditor({
 
   useEffect(() => {
     let cancelled = false;
-    getCharacterProgressionData(character.id).then((result) => {
+    getTravelerElementSiblings(character.id).then((result) => {
+      if (cancelled) return;
+      setSiblings(result);
+      // Land on the preferred element instead of the representative row
+      // that happened to open, if they differ -- same effect as the user
+      // immediately clicking that badge themselves.
+      const preferred = result?.find((sibling) => sibling.element === preferredTravelerElement);
+      if (preferred && preferred.id !== character.id) handleSelectElement(preferred);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- preferredTravelerElement is only meant to apply once, at the mount that opened this particular character; re-running this for a later change would re-fetch and re-apply it mid-edit, which isn't the intent.
+  }, [character.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCharacterProgressionData(selectedCharacterId).then((result) => {
       if (!cancelled) setData(result);
     });
     return () => {
       cancelled = true;
     };
-  }, [character.id]);
+  }, [selectedCharacterId]);
+
+  // Switching to a different elemental form of the same Traveler: swap in
+  // that element's own constellation/talent levels (genuinely per-element),
+  // but leave level/ascensionPhase alone -- they're shared, so whatever's
+  // currently set already applies to the newly-selected element too.
+  function handleSelectElement(sibling: { id: number; element: Element; name: string }) {
+    setSelectedCharacterId(sibling.id);
+    setSelectedElement(sibling.element);
+    setSelectedName(sibling.name);
+    getOwnedCharacterProgression(sibling.id).then((progression) => {
+      setConstellation(progression.constellation);
+      setNormalAttackLevel(progression.normalAttackLevel);
+      setSkillLevel(progression.skillLevel);
+      setBurstLevel(progression.burstLevel);
+    });
+  }
 
   const talentLevelBounds = data ? computeTalentLevelBounds(constellation, data.constellations) : null;
 
@@ -408,12 +513,12 @@ function CharacterProgressionEditor({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-medium">{character.name}</p>
+          <p className="text-lg font-medium">{travelerDisplayName(selectedName)}</p>
           <div className="mt-1 flex items-center gap-1.5">
             <Image
-              src={ELEMENT_ICON_URL[character.element]}
-              alt={character.element}
-              title={character.element}
+              src={ELEMENT_ICON_URL[selectedElement]}
+              alt={selectedElement}
+              title={selectedElement}
               width={20}
               height={20}
             />
@@ -427,6 +532,13 @@ function CharacterProgressionEditor({
           </div>
         </div>
       </div>
+
+      {siblings && (
+        <div className="space-y-1">
+          <p className="text-sm">Element</p>
+          <TravelerElementPicker siblings={siblings} selectedElement={selectedElement} onSelect={handleSelectElement} />
+        </div>
+      )}
 
       <label className="flex items-center gap-2 text-sm">
         Level
@@ -483,7 +595,7 @@ function CharacterProgressionEditor({
           <p className="text-sm text-gray-500">Loading...</p>
         ) : (
           <ConstellationIcons
-            element={character.element}
+            element={selectedElement}
             constellations={data.constellations}
             constellation={constellation}
             talentNames={data.talents.map((t) => t.name)}
@@ -510,14 +622,14 @@ function CharacterProgressionEditor({
         )}
       </div>
 
-      {data && <BaseStatsSection name={character.name} data={data} level={level} ascensionPhase={ascensionPhase} />}
+      {data && <BaseStatsSection name={selectedName} data={data} level={level} ascensionPhase={ascensionPhase} />}
 
       <div className="flex justify-end border-t pt-3">
         <button
           type="button"
           disabled={!talentLevelBounds}
           onClick={() =>
-            onSave({ level, ascensionPhase, constellation, normalAttackLevel, skillLevel, burstLevel })
+            onSave(selectedCharacterId, { level, ascensionPhase, constellation, normalAttackLevel, skillLevel, burstLevel })
           }
           className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
         >
@@ -551,6 +663,11 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
   const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [editingId, setEditingId] = useState<number | null>(null);
+  // Which Traveler element the progression editor should open to -- Pyro by
+  // default, then whatever element was actually saved last, for the rest of
+  // this page session (not persisted beyond it). See
+  // CharacterProgressionEditor's preferredTravelerElement prop.
+  const [lastTravelerElement, setLastTravelerElement] = useState<Element>(Element.Pyro);
   const [, startTransition] = useTransition();
 
   const editingCharacter = editingId === null ? null : (characters.find((c) => c.id === editingId) ?? null);
@@ -595,10 +712,29 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
     });
   }
 
+  // characterId here is whichever elemental form the editor's picker had
+  // selected at Save time -- for a Traveler this often isn't the
+  // representative row this list actually displays (see
+  // collapseTravelerOwnedRows), which may not even be present in `characters`.
+  // The representative's own card still needs updating when that happens,
+  // since level/ascensionPhase are shared across every element of the same
+  // gender -- but its genuinely per-element fields (constellation/talent
+  // levels) belong to whichever element was actually edited, not to the
+  // representative, so those are left untouched on every other row.
   function handleUpdateProgression(characterId: number, input: UpdateCharacterProgressionInput) {
     const previous = characters;
+    const editedCharacter = characters.find((character) => character.id === characterId);
+    const genderGroup = editedCharacter ? travelerGenderGroup(editedCharacter.name) : null;
+    if (genderGroup && editedCharacter) setLastTravelerElement(editedCharacter.element);
+
     setCharacters((prev) =>
-      prev.map((character) => (character.id === characterId ? { ...character, ...input } : character))
+      prev.map((character) => {
+        if (character.id === characterId) return { ...character, ...input };
+        if (genderGroup && travelerGenderGroup(character.name) === genderGroup) {
+          return { ...character, level: input.level, ascensionPhase: input.ascensionPhase };
+        }
+        return character;
+      })
     );
     setEditingId(null);
 
@@ -643,7 +779,7 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
           <CharacterCard
             key={character.id}
             name={character.name}
-            element={character.element}
+            element={character.isTravelerGroup ? undefined : character.element}
             weaponType={character.weaponType}
             rarity={character.rarity}
             iconUrl={character.iconUrl}
@@ -666,7 +802,8 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
           <CharacterProgressionEditor
             key={editingCharacter.id}
             character={editingCharacter}
-            onSave={(input) => handleUpdateProgression(editingCharacter.id, input)}
+            preferredTravelerElement={lastTravelerElement}
+            onSave={handleUpdateProgression}
           />
         )}
       </Modal>

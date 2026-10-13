@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { travelerDisplayName } from "@/lib/character-scaling";
 import { HelpButton } from "@/components/help-button";
 import { slotIconUrl } from "../../artifacts/filter-sort";
 import { BuildCatalog } from "./build-catalog";
@@ -37,7 +38,7 @@ export default async function AddBuildPage() {
   const characterOptions: OwnedCharacterOption[] = ownedCharacters.map((owned) => ({
     ownedCharacterId: owned.id,
     characterId: owned.characterId,
-    name: owned.character.name,
+    name: travelerDisplayName(owned.character.name),
     iconUrl: owned.character.iconUrl,
     weaponType: owned.character.weaponType,
     element: owned.character.element,

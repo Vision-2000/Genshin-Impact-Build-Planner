@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { characterLevelMultiplier, travelerStoryBuffBonus, characterScalingRarity, travelerGenderGroup } from "./character-scaling";
+import {
+  characterLevelMultiplier,
+  travelerStoryBuffBonus,
+  characterScalingRarity,
+  travelerGenderGroup,
+  travelerDisplayName,
+} from "./character-scaling";
 
 describe("characterLevelMultiplier", () => {
   it("matches the exact LEVEL_95_100_MULTIPLIER values at level 95/100", () => {
@@ -51,5 +57,16 @@ describe("travelerGenderGroup", () => {
 
   it("returns null for a non-Traveler character", () => {
     expect(travelerGenderGroup("Aino")).toBeNull();
+  });
+});
+
+describe("travelerDisplayName", () => {
+  it("drops the gender and element brackets for any Traveler row", () => {
+    expect(travelerDisplayName("Traveler (Female) (Anemo)")).toBe("Traveler");
+    expect(travelerDisplayName("Traveler (Male) (Pyro)")).toBe("Traveler");
+  });
+
+  it("returns a non-Traveler name unchanged", () => {
+    expect(travelerDisplayName("Aino")).toBe("Aino");
   });
 });

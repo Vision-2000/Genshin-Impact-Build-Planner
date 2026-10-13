@@ -289,6 +289,59 @@ the app or the seed script.
   putting the same owned weapon/artifacts into multiple elements' Builds
   manually today, which already matches the real mechanic without needing
   enforced syncing.
+- Across genders, the two Travelers are treated as completely separate
+  characters — no sync, no build migration. The only cross-gender rule is
+  that only one gender can be owned at a time (matches the real game: you
+  only ever play one Traveler): `setCharacterOwnership` owning one gender
+  auto-unowns the other gender's 7 rows first, in the same transaction.
+  This reused the ordinary ownership-toggle path rather than a dedicated
+  "switch" action — un-owning the other gender this way is identical to
+  un-owning any other character (its Builds just hide from `/builds` and
+  from team/roster pickers; nothing is deleted or re-pointed). An earlier,
+  more elaborate design was considered and rejected: collapsing both
+  genders into one roster card with 3 reachable states (both/male-only/
+  female-only), plus auto-migrating a gender's existing Builds onto the
+  other gender's matching-element `OwnedCharacter` when "switching" —
+  dropped as overcomplicated for a feature real gameplay never exposes
+  (players pick a gender once, permanently); the plain auto-unown-the-other-
+  gender behavior gives the same practical outcome (can't own both) with
+  none of that migration/collision-handling complexity.
+  `/characters/roster` reflects this by collapsing each gender's (up to) 7
+  surviving elemental rows into one card, keyed by `travelerGenderGroup()`
+  (`collapseTravelerRosterRows()` in `characters/filter-sort.ts`, run right
+  after the existing search/element/weapon-type/rarity filter but before
+  the ownership filter and sort — collapsing earlier would break
+  per-element filtering, since a synthetic row can't be checked against a
+  single `Element`). The card shows no element badge (`CharacterCard`'s
+  `element` prop is optional for exactly this case, via a `isTravelerGroup`
+  flag on the synthetic row) — with ownership now mutually exclusive
+  between genders there are only 3 reachable states (neither/male/female),
+  so the card is a plain toggle like any other character's, no dedicated
+  "switch" affordance needed.
+  `/characters` (the owned page) gets the same collapsing
+  (`collapseTravelerOwnedRows()`, same shape/placement as the roster's own
+  function), since an owned Traveler gender is up to 7 separate
+  `OwnedCharacter` rows (one per element) that would otherwise show as 7
+  cards. Opening the collapsed card's editor lands on whichever element
+  happened to be the representative; a new element picker inside
+  `CharacterProgressionEditor` (`TravelerElementPicker`, styled like
+  `ConstellationIcons`'s lit/unlit treatment rather than
+  `ElementFilterRow`'s ring-highlight, since this is a single pick, not a
+  multi-select filter -- unselected badges are grayscale/dimmed, the
+  selected one gets that element's own glow color via `elementGlowClasses`)
+  lets the user switch to any of the other 6 within the same modal. Two new
+  lazily-fetched reads back this: `getTravelerElementSiblings()` (the 7
+  element rows' id/element/name, null for a non-Traveler) and
+  `getOwnedCharacterProgression()` (one element's constellation + 3 talent
+  levels). Switching elements swaps in that element's own constellation/
+  talent levels but deliberately leaves level/ascensionPhase untouched --
+  those are shared across the whole gender (including any unsaved
+  in-progress edit), so re-fetching them on every switch would either be a
+  no-op or, worse, clobber an edit the user hadn't saved yet. Saving always
+  targets whichever element is currently selected in the picker (not
+  necessarily the id the modal opened with) -- `onSave`'s signature carries
+  that id explicitly rather than the parent assuming it's always the
+  representative.
 - Pagination on Characters was removed in favor of a full scrollable list —
   it's bounded, slow-growing master data (~125 rows, only grows with game
   updates), and rendering all of it at once is well within normal browser

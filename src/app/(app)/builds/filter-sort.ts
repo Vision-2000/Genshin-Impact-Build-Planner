@@ -1,5 +1,6 @@
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import type { SortDirection } from "@/lib/sort";
+import { travelerDisplayName } from "@/lib/character-scaling";
 import { slotIconUrl } from "../artifacts/filter-sort";
 
 export type { SortDirection };
@@ -93,7 +94,7 @@ export function toBuildItem(row: BuildRow): BuildItem {
     id: row.id,
     name: row.name,
     ownedCharacterId: row.ownedCharacterId,
-    characterName: row.ownedCharacter.character.name,
+    characterName: travelerDisplayName(row.ownedCharacter.character.name),
     characterIconUrl: row.ownedCharacter.character.iconUrl,
     characterElement: row.ownedCharacter.character.element,
     characterRarity: row.ownedCharacter.character.rarity,

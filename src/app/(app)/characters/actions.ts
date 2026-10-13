@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
-import type { TalentSlot } from "@/generated/prisma/enums";
+import type { Element, TalentSlot } from "@/generated/prisma/enums";
 import { characterScalingRarity, travelerGenderGroup } from "@/lib/character-scaling";
 import {
   createUpdateCharacterProgressionSchema,
@@ -29,20 +29,84 @@ async function travelerSiblingIds(characterId: number): Promise<number[] | null>
 
 export async function setCharacterOwnership(characterId: number, isOwned: boolean) {
   const profile = await requireActiveProfile();
-  const characterIds = (await travelerSiblingIds(characterId)) ?? [characterId];
+  const character = await prisma.character.findUniqueOrThrow({ where: { id: characterId }, select: { name: true } });
+  const genderGroup = travelerGenderGroup(character.name);
 
-  // There's only one protagonist -- owning any one elemental form means
-  // owning all of them (the others just start at level 1/phase 0, same as
-  // any other fresh ownership toggle).
-  await prisma.$transaction(
-    characterIds.map((id) =>
+  let characterIds = [characterId];
+  let otherGenderIds: number[] = [];
+
+  if (genderGroup) {
+    const travelers = await prisma.character.findMany({
+      where: { name: { startsWith: "Traveler (" } },
+      select: { id: true, name: true },
+    });
+    characterIds = travelers.filter((c) => c.name.startsWith(`${genderGroup} `)).map((c) => c.id);
+    otherGenderIds = travelers.filter((c) => !c.name.startsWith(`${genderGroup} `)).map((c) => c.id);
+  }
+
+  await prisma.$transaction([
+    // Only one Traveler gender can ever be owned at a time -- owning this
+    // one un-owns the other. A plain ownership flip, same as un-owning any
+    // other character: builds just hide, nothing is deleted or migrated.
+    ...(isOwned && otherGenderIds.length > 0
+      ? [
+          prisma.ownedCharacter.updateMany({
+            where: { gameProfileId: profile.id, characterId: { in: otherGenderIds } },
+            data: { isOwned: false },
+          }),
+        ]
+      : []),
+    // There's only one protagonist per gender -- owning any one elemental
+    // form means owning all 7 (the others just start at level 1/phase 0,
+    // same as any other fresh ownership toggle).
+    ...characterIds.map((id) =>
       prisma.ownedCharacter.upsert({
         where: { gameProfileId_characterId: { gameProfileId: profile.id, characterId: id } },
         create: { gameProfileId: profile.id, characterId: id, isOwned },
         update: { isOwned },
       })
-    )
-  );
+    ),
+  ]);
+}
+
+// The editor's element picker needs every elemental form of a Traveler to
+// render a badge for -- null for a non-Traveler, where there's nothing to
+// pick between. Master data only (id/element/name); the owned-side numbers
+// for whichever one gets picked come from getOwnedCharacterProgression
+// below, fetched only on an actual switch.
+export async function getTravelerElementSiblings(
+  characterId: number
+): Promise<{ id: number; element: Element; name: string }[] | null> {
+  const character = await prisma.character.findUniqueOrThrow({ where: { id: characterId }, select: { name: true } });
+  const genderGroup = travelerGenderGroup(character.name);
+  if (!genderGroup) return null;
+
+  return prisma.character.findMany({
+    where: { name: { startsWith: `${genderGroup} ` } },
+    select: { id: true, element: true, name: true },
+    orderBy: { element: "asc" },
+  });
+}
+
+export type OwnedCharacterProgressionSnapshot = {
+  constellation: number;
+  normalAttackLevel: number;
+  skillLevel: number;
+  burstLevel: number;
+};
+
+// Fetched when the editor's element picker switches to a different
+// elemental form -- level/ascensionPhase are shared across all of them
+// already (see setCharacterOwnership/updateCharacterProgression), so the
+// editor just keeps its current in-progress value for those rather than
+// re-fetching; only constellation and the 3 talent levels are genuinely
+// per-element and need a fresh read.
+export async function getOwnedCharacterProgression(characterId: number): Promise<OwnedCharacterProgressionSnapshot> {
+  const profile = await requireActiveProfile();
+  return prisma.ownedCharacter.findUniqueOrThrow({
+    where: { gameProfileId_characterId: { gameProfileId: profile.id, characterId } },
+    select: { constellation: true, normalAttackLevel: true, skillLevel: true, burstLevel: true },
+  });
 }
 
 export type CharacterConstellationBoost = { number: number; boostedTalentSlot: TalentSlot | null };

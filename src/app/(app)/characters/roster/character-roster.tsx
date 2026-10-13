@@ -6,6 +6,7 @@ import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import type { SortDirection } from "@/lib/sort";
+import { travelerGenderGroup } from "@/lib/character-scaling";
 import { setCharacterOwnership } from "../actions";
 import { CharacterCard } from "../character-card";
 import { ElementFilterRow } from "../element-filter-row";
@@ -55,16 +56,39 @@ export function CharacterRoster({ roster }: { roster: CharacterRosterItem[] }) {
     sortDirection,
   });
 
+  // Mirrors setCharacterOwnership's server-side fan-out for the optimistic
+  // local update: owning a Traveler gender syncs isOwned across all 7 of
+  // its elements, and -- since only one gender can be owned at a time --
+  // also un-owns every row of the other gender. Without this, the local
+  // state only ever patched the single clicked id, so switching to the
+  // other gender left the previous gender's card still showing as owned
+  // until a full refresh re-fetched the real server state.
   function handleToggleOwnership(characterId: number, nextIsOwned: boolean) {
+    const target = characters.find((character) => character.id === characterId);
+    const genderGroup = target ? travelerGenderGroup(target.name) : null;
+
+    const updates = new Map<number, boolean>();
+    if (genderGroup) {
+      for (const character of characters) {
+        const group = travelerGenderGroup(character.name);
+        if (group === genderGroup) updates.set(character.id, nextIsOwned);
+        else if (nextIsOwned && group) updates.set(character.id, false);
+      }
+    } else {
+      updates.set(characterId, nextIsOwned);
+    }
+
+    const previous = new Map(characters.filter((character) => updates.has(character.id)).map((character) => [character.id, character.isOwned] as const));
+
     setCharacters((prev) =>
-      prev.map((character) => (character.id === characterId ? { ...character, isOwned: nextIsOwned } : character))
+      prev.map((character) => (updates.has(character.id) ? { ...character, isOwned: updates.get(character.id)! } : character))
     );
 
     startTransition(() => {
       setCharacterOwnership(characterId, nextIsOwned).catch(() => {
         setCharacters((prev) =>
           prev.map((character) =>
-            character.id === characterId ? { ...character, isOwned: !nextIsOwned } : character
+            previous.has(character.id) ? { ...character, isOwned: previous.get(character.id)! } : character
           )
         );
       });
@@ -121,7 +145,7 @@ export function CharacterRoster({ roster }: { roster: CharacterRosterItem[] }) {
           <CharacterCard
             key={character.id}
             name={character.name}
-            element={character.element}
+            element={character.isTravelerGroup ? undefined : character.element}
             weaponType={character.weaponType}
             rarity={character.rarity}
             iconUrl={character.iconUrl}

@@ -36,7 +36,9 @@ export function CharacterCard({
   progression,
 }: {
   name: string;
-  element: Element;
+  // Undefined only for the collapsed Traveler-gender roster card, which
+  // spans all 7 elements at once -- no single element badge applies there.
+  element?: Element;
   weaponType: WeaponType;
   rarity: number;
   iconUrl: string | null;
@@ -82,9 +84,11 @@ export function CharacterCard({
           />
         )}
 
-        <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
-          <Image src={ELEMENT_ICON_URL[element]} alt={element} width={26} height={26} />
-        </span>
+        {element && (
+          <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
+            <Image src={ELEMENT_ICON_URL[element]} alt={element} width={26} height={26} />
+          </span>
+        )}
         <span className="absolute right-2 top-2 h-9 w-9 rounded-full shadow">
           <Image
             src={WEAPON_TYPE_ICON_URL[weaponType]}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { travelerDisplayName } from "@/lib/character-scaling";
 import { RosterManager } from "./roster-manager";
 import type { BuildOption, RosterItem } from "./filter-sort";
 
@@ -31,7 +32,7 @@ export default async function RostersPage() {
   const buildOptions: BuildOption[] = builds.map((build) => ({
     buildId: build.id,
     name: build.name,
-    characterName: build.ownedCharacter.character.name,
+    characterName: travelerDisplayName(build.ownedCharacter.character.name),
     characterIconUrl: build.ownedCharacter.character.iconUrl,
     ownedCharacterId: build.ownedCharacterId,
     exclusivityGroup: build.ownedCharacter.character.exclusivityGroup,
@@ -45,7 +46,7 @@ export default async function RostersPage() {
     members: roster.rosterBuilds.map((rb) => ({
       buildId: rb.build.id,
       name: rb.build.name,
-      characterName: rb.build.ownedCharacter.character.name,
+      characterName: travelerDisplayName(rb.build.ownedCharacter.character.name),
       characterIconUrl: rb.build.ownedCharacter.character.iconUrl,
     })),
   }));

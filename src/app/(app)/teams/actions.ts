@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
+import { travelerDisplayName } from "@/lib/character-scaling";
 import { CreateTeamSchema, type CreateTeamErrors } from "./schemas";
 import { MAX_TEAM_SIZE, type TeamMemberItem } from "./filter-sort";
 
@@ -98,7 +99,7 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
     member: {
       buildId: candidateBuild.id,
       name: candidateBuild.name,
-      characterName: candidateBuild.ownedCharacter.character.name,
+      characterName: travelerDisplayName(candidateBuild.ownedCharacter.character.name),
       characterIconUrl: candidateBuild.ownedCharacter.character.iconUrl,
     },
   };
