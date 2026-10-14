@@ -30,6 +30,7 @@ function ownedItem(overrides: Partial<OwnedCharacterItem>): OwnedCharacterItem {
     weaponType: WeaponType.Sword,
     rarity: 4,
     iconUrl: null,
+    splashUrl: null,
     level: 1,
     ascensionPhase: 0,
     constellation: 0,

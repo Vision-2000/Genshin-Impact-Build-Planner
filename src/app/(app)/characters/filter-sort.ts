@@ -29,6 +29,10 @@ export type OwnedCharacterItem = {
   weaponType: WeaponType;
   rarity: number;
   iconUrl: string | null;
+  // Gacha/profile splash art, distinct from iconUrl -- used as the
+  // progression editor's background. See Character.splashUrl in
+  // schema.prisma.
+  splashUrl: string | null;
   level: number;
   ascensionPhase: number;
   constellation: number;

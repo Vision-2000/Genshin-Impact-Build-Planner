@@ -69,21 +69,27 @@ export async function setCharacterOwnership(characterId: number, isOwned: boolea
   ]);
 }
 
+export type TravelerElementSibling = {
+  id: number;
+  element: Element;
+  name: string;
+  splashUrl: string | null;
+};
+
 // The editor's element picker needs every elemental form of a Traveler to
 // render a badge for -- null for a non-Traveler, where there's nothing to
-// pick between. Master data only (id/element/name); the owned-side numbers
-// for whichever one gets picked come from getOwnedCharacterProgression
-// below, fetched only on an actual switch.
-export async function getTravelerElementSiblings(
-  characterId: number
-): Promise<{ id: number; element: Element; name: string }[] | null> {
+// pick between. Master data only (splash art included, since the editor's
+// background swaps to match whichever element is selected); the owned-side
+// numbers for whichever one gets picked come from
+// getOwnedCharacterProgression below, fetched only on an actual switch.
+export async function getTravelerElementSiblings(characterId: number): Promise<TravelerElementSibling[] | null> {
   const character = await prisma.character.findUniqueOrThrow({ where: { id: characterId }, select: { name: true } });
   const genderGroup = travelerGenderGroup(character.name);
   if (!genderGroup) return null;
 
   return prisma.character.findMany({
     where: { name: { startsWith: `${genderGroup} ` } },
-    select: { id: true, element: true, name: true },
+    select: { id: true, element: true, name: true, splashUrl: true },
     orderBy: { element: "asc" },
   });
 }

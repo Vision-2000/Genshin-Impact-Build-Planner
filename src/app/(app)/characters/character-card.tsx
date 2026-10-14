@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
@@ -53,6 +54,14 @@ export function CharacterCard({
   // (constellation, talent levels) is hover-only -- see the overlay below.
   progression?: CharacterCardProgression;
 }) {
+  // A freshly-started dev server (or just a cold browser cache) has never
+  // fetched this icon before, and Image renders nothing at all while it's
+  // in flight -- on a page with 100+ of these at once (the roster), that
+  // reads as a wall of blank cards. A spinner over the empty space, same
+  // treatment as the progression editor's splash art, says something's
+  // actually loading rather than broken.
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   return (
     <li>
       <div
@@ -75,13 +84,28 @@ export function CharacterCard({
         } ${showOwnershipBorder ? (isOwned ? "border-green-500" : "border-gray-600") : "border-gray-600"} ${rarityGradientClasses(rarity)}`}
       >
         {iconUrl && (
-          <Image
-            src={iconUrl}
-            alt={name}
-            fill
-            sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-            className="object-cover"
-          />
+          <>
+            {/* Always rendered, never conditionally removed -- opacity
+                toggled by a class instead, so the very first client render
+                (imageLoaded still false, same as the server) produces an
+                identical tree. Structurally adding/removing this node based
+                on load state caused a hydration mismatch for any image that
+                happened to resolve from cache fast enough to flip
+                imageLoaded before hydration's diff settled. */}
+            <div
+              className={`absolute inset-0 flex items-center justify-center transition-opacity ${imageLoaded ? "opacity-0" : "opacity-100"}`}
+            >
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+            </div>
+            <Image
+              src={iconUrl}
+              alt={name}
+              fill
+              sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+              className="object-cover"
+              onLoad={() => setImageLoaded(true)}
+            />
+          </>
         )}
 
         {element && (
@@ -109,10 +133,17 @@ export function CharacterCard({
             <p className="text-sm font-semibold text-white">
               Lv. {progression.level}/{characterMaxLevelForAscensionPhase(progression.ascensionPhase)}
             </p>
-            <p className="text-sm text-gray-200">Constellation {progression.constellation}</p>
-            <p className="text-xs text-gray-300">Normal Attack: Lv.{progression.normalAttackLevel}</p>
-            <p className="text-xs text-gray-300">Elemental Skill: Lv.{progression.skillLevel}</p>
-            <p className="text-xs text-gray-300">Elemental Burst: Lv.{progression.burstLevel}</p>
+            {/* Constellation/talent levels are per-element -- level/ascension
+                is all that's shared across a Traveler gender, so the
+                collapsed card (no single `element`) only shows that much. */}
+            {element && (
+              <>
+                <p className="text-sm text-gray-200">Constellation {progression.constellation}</p>
+                <p className="text-xs text-gray-300">Normal Attack: Lv.{progression.normalAttackLevel}</p>
+                <p className="text-xs text-gray-300">Elemental Skill: Lv.{progression.skillLevel}</p>
+                <p className="text-xs text-gray-300">Elemental Burst: Lv.{progression.burstLevel}</p>
+              </>
+            )}
           </div>
         )}
       </div>

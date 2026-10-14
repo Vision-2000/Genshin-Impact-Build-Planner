@@ -28,6 +28,7 @@ export default async function CharactersPage() {
     weaponType: ownedCharacter.character.weaponType,
     rarity: ownedCharacter.character.rarity,
     iconUrl: ownedCharacter.character.iconUrl,
+    splashUrl: ownedCharacter.character.splashUrl,
     level: ownedCharacter.level,
     ascensionPhase: ownedCharacter.ascensionPhase,
     constellation: ownedCharacter.constellation,
