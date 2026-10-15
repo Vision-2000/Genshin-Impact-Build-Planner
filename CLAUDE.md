@@ -379,6 +379,38 @@ the app or the seed script.
   reasoning as Characters), and an owned-weapon collection is nowhere near
   Artifacts-scale unbounded (a refinement is one value per copy, not a
   physical-piece entity with per-substat rows).
+- `/weapons/add`'s catalog card no longer has an inline refinement picker.
+  It defaults to a representative "fully leveled" state —
+  `defaultWeaponProgression()` in `@/lib/weapon-scaling`, level 90/R1 for
+  almost every weapon. Exaiphanes Blade has no (level 90, R1) combination
+  among its own 7 valid states at all, so it maps to its *last* one
+  instead (level 90, its own highest refinement R4) — the most upgraded
+  this weapon can be shown at, same "fully leveled" spirit as everyone
+  else's default, not literally R1. Clicking the card's own Add button
+  adds it at exactly that state; clicking anywhere else on the card opens
+  a modal (same `WeaponProgressionForm` the owned-weapons page's own edit
+  modal uses, extracted into its own file once a second call site needed
+  it) to customize level/ascension/refinement before adding instead —
+  `addWeapon` takes the full triple now, not just refinement, validated
+  the same way `updateWeaponProgression` already validates an edit.
+  Hovering a catalog card (the same `cursor-pointer hover:opacity-90` cue
+  Characters' roster toggle already uses, now that the whole card is a
+  click target here too) reveals exact stats/passive at that same default
+  state, computed once server-side in `/weapons/add/page.tsx` rather than
+  shipped as raw curve data for ~230 cards to recompute client-side on
+  hover — it's always the same fixed state regardless of what the user
+  does with the card, so there's nothing to recompute live the way the
+  modal's own sliders need. Shown via `MouseFollowTooltip` (the same
+  floating-near-the-cursor tooltip the character progression editor uses
+  for constellation/talent hovers, extended with an optional
+  `wrapperClassName` so it can wrap a full card instead of just a small
+  icon) rather than a fixed overlay baked into the card itself — a card-
+  sized box left the passive text cramped, and sat in the same DOM
+  position as (so visually covered, and at a glance seemed to block
+  clicks on) the card's own Add button. Deliberately omits each stat
+  bonus's own restated number beneath the passive text — the passive's
+  own description already says it; the owned-weapon editor's modal still
+  shows both; that's an existing, unrelated design and out of scope here.
 - Artifacts got the same owned/catalog page split as Weapons
   (`/artifacts` + `/artifacts/add`), for the same reasons — but `/artifacts`
   is the one page that explicitly keeps pagination, since `OwnedArtifact` is

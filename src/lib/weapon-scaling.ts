@@ -1,3 +1,5 @@
+import { MAX_LEVEL, MAX_ASCENSION_PHASE } from "./ascension";
+
 // Originally generated from Weapon_Stats_Scaling_report.txt (summarized
 // from https://genshin-impact.fandom.com/wiki/Weapon/Level_Scaling, kept in
 // data-source/ as a historical reference only, not regenerated from). Not
@@ -169,3 +171,16 @@ export const EXAIPHANES_BLADE_STATES: { ascensionPhase: number; level: number; r
   { ascensionPhase: 6, level: 90, refinement: 3 },
   { ascensionPhase: 6, level: 90, refinement: 4 },
 ];
+
+// Universal default for a freshly-added weapon: max level, base refinement
+// -- lets the add-weapon catalog show (and quick-add) every weapon at a
+// representative "fully leveled" state without the user configuring
+// anything first. Exaiphanes Blade has no (level 90, refinement 1)
+// combination among its 7 valid states above -- its last state (also level
+// 90, but its highest refinement, R4) is the closest equivalent: the most
+// upgraded this weapon can be shown at, same spirit as every other
+// weapon's own "fully leveled" default.
+export function defaultWeaponProgression(name: string): { level: number; ascensionPhase: number; refinement: number } {
+  if (isExaiphanesBlade(name)) return EXAIPHANES_BLADE_STATES[EXAIPHANES_BLADE_STATES.length - 1];
+  return { level: MAX_LEVEL, ascensionPhase: MAX_ASCENSION_PHASE, refinement: 1 };
+}

@@ -68,7 +68,7 @@ export function CharacterCard({
         onClick={onSelect}
         role={onSelect ? "button" : undefined}
         tabIndex={onSelect ? 0 : undefined}
-        title={name}
+        title={progression ? undefined : name}
         onKeyDown={
           onSelect
             ? (event) => {

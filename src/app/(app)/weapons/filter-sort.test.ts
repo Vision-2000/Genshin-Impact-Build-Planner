@@ -16,6 +16,7 @@ function catalogItem(overrides: Partial<WeaponCatalogItem>): WeaponCatalogItem {
     secondaryStatName: null,
     iconUrl: null,
     maxRefinement: 5,
+    hoverDetail: { attack: 0, secondaryStatValue: null, passiveName: null, passiveDescription: null },
     ...overrides,
   };
 }

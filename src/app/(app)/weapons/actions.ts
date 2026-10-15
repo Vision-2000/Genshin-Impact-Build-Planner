@@ -3,41 +3,52 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import type { OwnedWeaponItem } from "./filter-sort";
-import {
-  UpdateWeaponProgressionInputSchema,
-  MIN_REFINEMENT,
-  type UpdateWeaponProgressionErrors,
-} from "./schemas";
+import { UpdateWeaponProgressionInputSchema, type UpdateWeaponProgressionErrors } from "./schemas";
 
-// maxRefinement is per-weapon (see Weapon.maxRefinement) -- 5 for almost
-// every weapon, but a documented few (see prisma/seed.ts's
-// maxKnownRefinement) cap lower, so the ceiling can't be the flat
-// MAX_REFINEMENT constant alone.
-function clampRefinement(refinement: number, maxRefinement: number) {
-  return Math.min(maxRefinement, Math.max(MIN_REFINEMENT, Math.trunc(refinement)));
-}
+export type AddWeaponResult = { weapon: OwnedWeaponItem } | { errors: UpdateWeaponProgressionErrors };
 
-export async function addWeapon(weaponId: number, refinement: number): Promise<OwnedWeaponItem> {
+// Takes the full (level, ascensionPhase, refinement) triple now, not just
+// refinement -- a freshly-added weapon used to always start at the
+// OwnedWeapon schema's own level 1/phase 0 defaults; the catalog now adds
+// at a representative default state instead (see
+// defaultWeaponProgression in @/lib/weapon-scaling), or whatever the user
+// customized via the "add with details" modal. Same validation path as
+// updateWeaponProgression -- never trust client input, even though the
+// quick-add button's own values are always correct by construction.
+export async function addWeapon(
+  weaponId: number,
+  input: { level: number; ascensionPhase: number; refinement: number }
+): Promise<AddWeaponResult> {
   const profile = await requireActiveProfile();
 
+  const validated = UpdateWeaponProgressionInputSchema.safeParse(input);
+  if (!validated.success) {
+    return { errors: validated.error.flatten().fieldErrors };
+  }
+
   const weapon = await prisma.weapon.findUniqueOrThrow({ where: { id: weaponId }, select: { maxRefinement: true } });
+  if (validated.data.refinement > weapon.maxRefinement) {
+    return { errors: { refinement: [`This weapon can only be refined up to R${weapon.maxRefinement}.`] } };
+  }
 
   const created = await prisma.ownedWeapon.create({
-    data: { gameProfileId: profile.id, weaponId, refinement: clampRefinement(refinement, weapon.maxRefinement) },
+    data: { gameProfileId: profile.id, weaponId, ...validated.data },
     include: { weapon: { include: { secondaryStat: true } } },
   });
 
   return {
-    id: created.id,
-    weaponId: created.weaponId,
-    name: created.weapon.name,
-    weaponType: created.weapon.weaponType,
-    rarity: created.weapon.rarity,
-    secondaryStatName: created.weapon.secondaryStat?.name ?? null,
-    iconUrl: created.weapon.iconUrl,
-    refinement: created.refinement,
-    level: created.level,
-    ascensionPhase: created.ascensionPhase,
+    weapon: {
+      id: created.id,
+      weaponId: created.weaponId,
+      name: created.weapon.name,
+      weaponType: created.weapon.weaponType,
+      rarity: created.weapon.rarity,
+      secondaryStatName: created.weapon.secondaryStat?.name ?? null,
+      iconUrl: created.weapon.iconUrl,
+      refinement: created.refinement,
+      level: created.level,
+      ascensionPhase: created.ascensionPhase,
+    },
   };
 }
 

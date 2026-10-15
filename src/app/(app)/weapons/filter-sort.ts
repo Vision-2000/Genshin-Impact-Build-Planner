@@ -3,7 +3,20 @@ import type { SortDirection } from "@/lib/sort";
 
 export type { SortDirection };
 
-export const REFINEMENTS = [1, 2, 3, 4, 5];
+// The add-catalog card's hover tooltip -- exact stats/passive at this
+// weapon's own defaultWeaponProgression() state (see @/lib/weapon-scaling),
+// computed once server-side in page.tsx rather than per-render client-side:
+// it's always the same fixed state regardless of what the user does with
+// the card, so there's no reason to ship the raw curve data down and
+// recompute it, the way the owned-weapon editor's live sliders need to.
+// Deliberately no statBonuses here -- the tooltip shows the passive's own
+// text only, not a separate restatement of the bonus it describes.
+export type WeaponHoverDetail = {
+  attack: number;
+  secondaryStatValue: number | null;
+  passiveName: string | null;
+  passiveDescription: string | null;
+};
 
 export type WeaponCatalogItem = {
   id: number;
@@ -13,8 +26,10 @@ export type WeaponCatalogItem = {
   secondaryStatName: string | null;
   iconUrl: string | null;
   // A documented few weapons cap below 5 (see Weapon.maxRefinement) --
-  // caps the refinement picker on this weapon's add-catalog card.
+  // caps the refinement slider in the add-catalog card's own "customize
+  // before adding" modal.
   maxRefinement: number;
+  hoverDetail: WeaponHoverDetail;
 };
 
 export type OwnedWeaponItem = {

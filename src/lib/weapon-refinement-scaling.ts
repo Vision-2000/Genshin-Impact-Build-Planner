@@ -67,7 +67,14 @@ export function formatWeaponRefinementNumber(value: number): string {
 
 // Inserts each slot's value at the given refinement into the template's
 // {0}, {1}, ... placeholders. A regex replace rather than positional
-// splicing, so it doesn't care about slot order or count.
+// splicing, so it doesn't care about slot order or count. Each inserted
+// value is wrapped in **markers** -- the same convention genshin-db's own
+// raw text uses for an emphasized term -- so HighlightedText (every caller
+// of this function renders its result through that) highlights it in the
+// same neutral yellow as a talent/constellation name, with no separate
+// rendering logic needed here: HighlightedText's bold-term pattern doesn't
+// care whether the ** came from genshin-db's own data or from this
+// function inserting a number.
 export function renderWeaponPassiveDescription(
   template: string,
   slots: Pick<WeaponRefinementSlot, "slotIndex" | "curveType" | "baseValue" | "slope" | "customValues">[],
@@ -77,6 +84,6 @@ export function renderWeaponPassiveDescription(
   return template.replace(/\{(\d+)\}/g, (match, indexStr) => {
     const slot = bySlot.get(Number(indexStr));
     if (!slot) return match;
-    return formatWeaponRefinementNumber(computeWeaponValueCurve(slot, refinement));
+    return `**${formatWeaponRefinementNumber(computeWeaponValueCurve(slot, refinement))}**`;
   });
 }
