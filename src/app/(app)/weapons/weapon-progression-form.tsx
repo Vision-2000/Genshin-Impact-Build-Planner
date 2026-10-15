@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { WeaponType } from "@/generated/prisma/enums";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { DiamondSelector } from "@/components/diamond-selector";
-import { StatBonusList } from "@/components/stat-bonus-list";
 import { HighlightedText } from "@/components/highlighted-text";
 import {
   MIN_LEVEL,
@@ -17,12 +18,7 @@ import {
 import { formatStatValue } from "@/lib/stat-format";
 import { roundHalfUp } from "@/lib/round";
 import { computeWeaponAttack, computeWeaponSecondaryStat, isExaiphanesBlade, EXAIPHANES_BLADE_STATES } from "@/lib/weapon-scaling";
-import {
-  renderWeaponPassiveDescription,
-  computeWeaponValueCurve,
-  type WeaponRefinementCurveType,
-  type WeaponValueCurveType,
-} from "@/lib/weapon-refinement-scaling";
+import { renderWeaponPassiveDescription, type WeaponRefinementCurveType } from "@/lib/weapon-refinement-scaling";
 import { getWeaponProgressionData, type WeaponProgressionData } from "./actions";
 import { MIN_REFINEMENT, MAX_REFINEMENT, type UpdateWeaponProgressionInput } from "./schemas";
 
@@ -46,9 +42,9 @@ function BaseStatsSection({
       : null;
 
   return (
-    <div className="space-y-1 rounded border p-2 text-sm">
+    <div className="rounded border p-3 text-sm">
       <p className="font-medium">Stats</p>
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-500 dark:text-gray-300">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-300">
         <li>Base ATK: {roundHalfUp(attack, 0)}</li>
         {secondaryStatName && secondaryStatValue !== null && (
           <li>
@@ -61,12 +57,14 @@ function BaseStatsSection({
 }
 
 // The weapon's passive (if it has one -- low-rarity weapons don't), shown
-// with the current refinement's text and stat bonus. The common case
-// renders passiveDescriptionTemplate's {0}/{1}/... placeholders via
+// with the current refinement's text. The common case renders
+// passiveDescriptionTemplate's {0}/{1}/... placeholders via
 // @/lib/weapon-refinement-scaling; the one weapon whose refinement text is
 // structurally different between tiers (not just reworded numbers) has no
 // template at all and falls back to its raw per-refinement row instead --
-// see WeaponProgressionData's own comment.
+// see WeaponProgressionData's own comment. Deliberately no stat-bonus
+// restatement below the text -- the passive's own description already
+// says it, same reasoning the add-catalog hover tooltip already applies.
 function PassiveSection({ data, refinement }: { data: WeaponProgressionData; refinement: number }) {
   if (!data.passiveName) return null;
   const description = data.passiveDescriptionTemplate
@@ -77,18 +75,13 @@ function PassiveSection({ data, refinement }: { data: WeaponProgressionData; ref
       )
     : data.refinementEffects.find((e) => e.refinement === refinement)?.description;
   if (!description) return null;
-  const statBonuses = data.statBonuses.map((b) => ({
-    statTypeName: b.statTypeName,
-    value: computeWeaponValueCurve({ ...b, curveType: b.curveType as WeaponValueCurveType }, refinement),
-  }));
 
   return (
-    <div className="space-y-1 rounded border p-2 text-sm">
+    <div className="rounded border p-3 text-sm">
       <p className="font-medium text-yellow-100">{data.passiveName}</p>
-      <p className="whitespace-pre-line text-gray-500 dark:text-gray-300">
+      <p className="mt-1 whitespace-pre-line text-gray-300">
         <HighlightedText text={description} talentNames={[data.passiveName]} />
       </p>
-      <StatBonusList statBonuses={statBonuses} />
     </div>
   );
 }
@@ -104,9 +97,17 @@ function PassiveSection({ data, refinement }: { data: WeaponProgressionData; ref
 // Progression data (base stats/passive) is fetched lazily here rather than
 // passed in -- only the weapon actually being viewed/added needs it, and
 // it's a much heavier query than either call site's own list/catalog one.
+//
+// Laid out as a two-column, rarity-tinted panel -- the same splash-art/
+// form-column split CharacterProgressionEditor uses (see
+// owned-character-manager.tsx), just with the weapon's own icon standing in
+// for a character's splash art (weapons have no portrait art to show) and
+// rarityGradientClasses standing in for element-tinted background (weapons
+// have no element either).
 export function WeaponProgressionForm({
   weaponId,
   name,
+  weaponType,
   rarity,
   iconUrl,
   secondaryStatName,
@@ -118,6 +119,7 @@ export function WeaponProgressionForm({
 }: {
   weaponId: number;
   name: string;
+  weaponType: WeaponType;
   rarity: number;
   iconUrl: string | null;
   secondaryStatName: string | null;
@@ -183,90 +185,107 @@ export function WeaponProgressionForm({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg p-1.5 ${rarityGradientClasses(rarity)}`}>
-          {iconUrl && <Image src={iconUrl} alt="" width={56} height={56} />}
+    // -m-5 bleeds back out over the Modal's own padding so this fills the
+    // whole rounded panel, same as CharacterProgressionEditor. text-white
+    // is forced site-wide for the same reason as there: most labels here
+    // rely on the default (theme-dependent) foreground color, which isn't
+    // reliably legible over a dark rarity-tinted panel.
+    <div className={`relative -m-5 flex flex-col overflow-hidden rounded-lg text-white sm:flex-row ${rarityGradientClasses(rarity)}`}>
+      <div className="relative flex h-56 w-full shrink-0 flex-col sm:h-auto sm:w-72">
+        <div className="px-3 pt-3">
+          <p className="pl-2 text-2xl font-medium">{name}</p>
+          <div className="mt-1 flex items-center gap-2 pl-2">
+            <Image src={WEAPON_TYPE_ICON_URL[weaponType]} alt={weaponType} title={weaponType} width={32} height={32} />
+            <div className="flex items-center gap-0.5" aria-label={`Rarity ${rarity}`}>
+              {Array.from({ length: rarity }, (_, i) => i).map((i) => (
+                <span key={i} className="text-xl text-amber-400">
+                  ★
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-lg font-medium">{name}</p>
-        </div>
+        <div className="relative min-h-0 flex-1 p-6">{iconUrl && <Image src={iconUrl} alt="" fill className="object-contain" />}</div>
       </div>
 
-      {isExaiphanesBlade(name) ? (
-        <div className="space-y-1">
-          <p className="text-sm">Statues Unlocked</p>
-          <DiamondSelector
-            count={EXAIPHANES_BLADE_STATES.length - 1}
-            value={statuesUnlocked}
-            onChange={handleStatuesUnlockedChange}
-            litClassName="border-amber-400 bg-amber-400"
-            ariaLabel={(n) => `${n} statues unlocked`}
-          />
-          <p className="text-xs text-gray-400">
-            Level {level}, Ascension {ascensionPhase}, Refinement R{refinement}
-          </p>
-        </div>
-      ) : (
-        <>
-          <label className="flex items-center gap-2 text-sm">
-            Level
-            <input
-              type="range"
-              min={MIN_LEVEL}
-              max={MAX_LEVEL}
-              value={level}
-              onChange={(event) => handleLevelChange(Number(event.target.value))}
-              className="-mt-1 w-32"
-            />
-            <span className="w-14 text-gray-400">
-              {level}/{maxLevelForAscensionPhase(ascensionPhase)}
-            </span>
-          </label>
+      <div className="flex min-w-0 flex-1 flex-col justify-center p-5 pr-14">
+        <div className="w-fit space-y-4">
+          {isExaiphanesBlade(name) ? (
+            <div className="space-y-1">
+              <p className="text-sm">Statues Unlocked</p>
+              <DiamondSelector
+                count={EXAIPHANES_BLADE_STATES.length - 1}
+                value={statuesUnlocked}
+                onChange={handleStatuesUnlockedChange}
+                litClassName="border-amber-400 bg-amber-400"
+                ariaLabel={(n) => `${n} statues unlocked`}
+              />
+              <p className="text-xs text-gray-300">
+                Level {level}, Ascension {ascensionPhase}, Refinement R{refinement}
+              </p>
+            </div>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 text-sm">
+                Level
+                <input
+                  type="range"
+                  min={MIN_LEVEL}
+                  max={MAX_LEVEL}
+                  value={level}
+                  onChange={(event) => handleLevelChange(Number(event.target.value))}
+                  className="-mt-1 w-32"
+                />
+                <span className="w-14 text-gray-300">
+                  {level}/{maxLevelForAscensionPhase(ascensionPhase)}
+                </span>
+              </label>
 
-          <div className="space-y-1">
-            <p className="text-sm">Ascension</p>
-            <DiamondSelector
-              count={MAX_ASCENSION_PHASE}
-              value={ascensionPhase}
-              onChange={handleAscensionPhaseChange}
-              litClassName="border-amber-400 bg-amber-400"
-              ariaLabel={(phase) => `Ascension phase ${phase}`}
-            />
+              <div className="space-y-1">
+                <p className="text-sm">Ascension</p>
+                <DiamondSelector
+                  count={MAX_ASCENSION_PHASE}
+                  value={ascensionPhase}
+                  onChange={handleAscensionPhaseChange}
+                  litClassName="border-amber-400 bg-amber-400"
+                  ariaLabel={(phase) => `Ascension phase ${phase}`}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm">
+                Refinement
+                <input
+                  type="range"
+                  min={MIN_REFINEMENT}
+                  max={data?.maxRefinement ?? MAX_REFINEMENT}
+                  value={refinement}
+                  onChange={(event) => setRefinement(Number(event.target.value))}
+                  className="w-32"
+                />
+                <span className="w-8 text-gray-300">R{refinement}</span>
+              </label>
+            </>
+          )}
+
+          {!data ? (
+            <p className="text-sm text-gray-300">Loading...</p>
+          ) : (
+            <>
+              <BaseStatsSection data={data} level={level} ascensionPhase={ascensionPhase} secondaryStatName={secondaryStatName} />
+              <PassiveSection data={data} refinement={refinement} />
+            </>
+          )}
+
+          <div className="flex justify-end border-t pt-3">
+            <button
+              type="button"
+              onClick={() => onSubmit({ level, ascensionPhase, refinement })}
+              className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+            >
+              {submitLabel}
+            </button>
           </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            Refinement
-            <input
-              type="range"
-              min={MIN_REFINEMENT}
-              max={data?.maxRefinement ?? MAX_REFINEMENT}
-              value={refinement}
-              onChange={(event) => setRefinement(Number(event.target.value))}
-              className="w-32"
-            />
-            <span className="w-8 text-gray-400">R{refinement}</span>
-          </label>
-        </>
-      )}
-
-      {!data ? (
-        <p className="text-sm text-gray-500">Loading...</p>
-      ) : (
-        <>
-          <BaseStatsSection data={data} level={level} ascensionPhase={ascensionPhase} secondaryStatName={secondaryStatName} />
-          <PassiveSection data={data} refinement={refinement} />
-        </>
-      )}
-
-      <div className="flex justify-end border-t pt-3">
-        <button
-          type="button"
-          onClick={() => onSubmit({ level, ascensionPhase, refinement })}
-          className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
-        >
-          {submitLabel}
-        </button>
+        </div>
       </div>
     </div>
   );

@@ -752,9 +752,18 @@ function CharacterProgressionEditor({
         </div>
       )}
 
-      <label className="flex items-center gap-2 text-sm">
-        Level
+      {/* Only the word itself is the <label> (tied to the slider via
+          htmlFor/id) -- it used to wrap the whole row, which made the
+          slider/buttons/counter all implicitly "belong" to one label.
+          Browsers give a label's own hover/click affordance to its
+          associated control across its ENTIRE area, so hovering the extra-
+          level buttons below was visually highlighting the slider as if it
+          were being hovered directly, even though the two don't overlap.
+          A plain sibling div for the rest avoids that. */}
+      <div className="flex items-center gap-2 text-sm">
+        <label htmlFor="character-level-slider">Level</label>
         <input
+          id="character-level-slider"
           type="range"
           min={MIN_LEVEL}
           max={MAX_LEVEL}
@@ -782,7 +791,7 @@ function CharacterProgressionEditor({
             splash art alongside it) visibly grow the moment you reached
             it. invisible keeps the space without showing or allowing
             clicks on it below phase 6. */}
-        <div className={`flex gap-1 ${ascensionPhase === MAX_ASCENSION_PHASE ? "" : "invisible"}`}>
+        <div className={`flex items-center gap-1 ${ascensionPhase === MAX_ASCENSION_PHASE ? "" : "invisible"}`}>
           {CHARACTER_EXTRA_LEVELS.map((extraLevel) => (
             <button
               key={extraLevel}
@@ -792,17 +801,38 @@ function CharacterProgressionEditor({
               // DiamondSelector uses -- 90 specifically (not the other
               // extra level), since that's the normal slider's own ceiling.
               onClick={() => handleLevelChange(level === extraLevel ? MAX_LEVEL : extraLevel)}
-              className={`rounded border px-1.5 py-0.5 text-xs ${
+              // cursor-pointer explicitly -- <button> defaults to
+              // cursor: default in the browser UA stylesheet (unlike
+              // anchors), so without this these looked inert. Both states
+              // get their own hover feedback (the selected one a touch
+              // brighter, not just the unselected one) so hovering an
+              // already-active button still visibly reacts, same
+              // expectation as any other button here.
+              //
+              // -mt-1 nudges the whole button box up to line up with the
+              // level counter span beside it -- box position confirmed
+              // correct with plain symmetric py-0.5, so padding here stays
+              // untouched; only the digit INSIDE gets nudged (see the span
+              // below), since it's specifically the glyph that still sits
+              // high, not the box itself.
+              className={`-mt-1 cursor-pointer rounded border px-1.5 py-0.5 text-xs transition-colors ${
                 level === extraLevel
-                  ? "border-amber-400 bg-amber-400/20 text-amber-400"
-                  : "border-gray-600 text-gray-400"
+                  ? "border-amber-400 bg-amber-400/20 text-amber-400 hover:bg-amber-400/35"
+                  : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
               }`}
             >
-              {extraLevel}
+              {/* relative + top-px shifts only the painted glyph down a
+                  hair -- digits have no descender, so the line box's
+                  normal vertical centering (which accounts for descender
+                  room letters like "g"/"y" would need) leaves a bare
+                  digit looking high. A plain positional offset here
+                  doesn't touch the button's own border-box size/position,
+                  unlike padding would. */}
+              <span className="relative top-px">{extraLevel}</span>
             </button>
           ))}
         </div>
-      </label>
+      </div>
 
       <div className="space-y-1">
         <p className="text-sm">Ascension</p>
@@ -1054,6 +1084,7 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
         onClose={() => setEditingId(null)}
         maxWidthClassName="max-w-[51rem]"
         fitContent
+        closeButtonClassName="text-white hover:bg-white/10"
       >
         {editingCharacter && (
           <CharacterProgressionEditor

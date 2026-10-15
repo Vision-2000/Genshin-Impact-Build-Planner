@@ -161,12 +161,19 @@ export function WeaponCatalog({
         {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
       </ul>
 
-      <Modal open={customizingWeapon !== null} onClose={() => setCustomizingId(null)} maxWidthClassName="max-w-xl">
+      <Modal
+        open={customizingWeapon !== null}
+        onClose={() => setCustomizingId(null)}
+        maxWidthClassName="max-w-3xl"
+        fitContent
+        closeButtonClassName="text-white hover:bg-white/10"
+      >
         {customizingWeapon && customizingDefaults && (
           <WeaponProgressionForm
             key={customizingWeapon.id}
             weaponId={customizingWeapon.id}
             name={customizingWeapon.name}
+            weaponType={customizingWeapon.weaponType}
             rarity={customizingWeapon.rarity}
             iconUrl={customizingWeapon.iconUrl}
             secondaryStatName={customizingWeapon.secondaryStatName}

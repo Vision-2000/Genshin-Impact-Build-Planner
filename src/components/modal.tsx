@@ -14,6 +14,7 @@ export function Modal({
   children,
   maxWidthClassName = "max-w-md",
   fitContent = false,
+  closeButtonClassName = "text-gray-500 hover:bg-black/5 hover:text-foreground",
 }: {
   open: boolean;
   onClose: () => void;
@@ -33,6 +34,12 @@ export function Modal({
   // "fill whatever's given" layout -- those have no definite width to
   // size against once the panel itself stops providing one.
   fitContent?: boolean;
+  // The default gray reads fine against the usual white/bg-background
+  // panel, but is nearly invisible over the dark element/rarity-tinted
+  // panels the character/weapon progression editors render as their own
+  // content (see owned-character-manager.tsx, weapon-progression-form.tsx)
+  // -- those pass a white-based override instead.
+  closeButtonClassName?: string;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -61,7 +68,7 @@ export function Modal({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded text-gray-500 hover:bg-black/5 hover:text-foreground"
+          className={`absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded ${closeButtonClassName}`}
         >
           <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
             <path d="M4 4l8 8M12 4l-8 8" />

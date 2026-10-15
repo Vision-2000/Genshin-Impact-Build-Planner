@@ -161,12 +161,19 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
       </ul>
 
-      <Modal open={editingWeapon !== null} onClose={() => setEditingId(null)} maxWidthClassName="max-w-xl">
+      <Modal
+        open={editingWeapon !== null}
+        onClose={() => setEditingId(null)}
+        maxWidthClassName="max-w-3xl"
+        fitContent
+        closeButtonClassName="text-white hover:bg-white/10"
+      >
         {editingWeapon && (
           <WeaponProgressionForm
             key={editingWeapon.id}
             weaponId={editingWeapon.weaponId}
             name={editingWeapon.name}
+            weaponType={editingWeapon.weaponType}
             rarity={editingWeapon.rarity}
             iconUrl={editingWeapon.iconUrl}
             secondaryStatName={editingWeapon.secondaryStatName}

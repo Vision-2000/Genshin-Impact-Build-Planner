@@ -60,18 +60,6 @@ export type WeaponRefinementValueData = {
   customValues: number[];
 };
 
-// One row per (weapon, stat) rather than per refinement -- the actual
-// value at a given refinement is computed via
-// @/lib/weapon-refinement-scaling's computeWeaponValueCurve, same as
-// refinementValues above.
-export type WeaponStatBonusData = {
-  statTypeName: string;
-  curveType: string;
-  baseValue: number;
-  slope: number | null;
-  customValues: number[];
-};
-
 export type WeaponProgressionData = {
   passiveName: string | null;
   rarity: number;
@@ -91,7 +79,6 @@ export type WeaponProgressionData = {
   passiveDescriptionTemplate: string | null;
   refinementValues: WeaponRefinementValueData[];
   refinementEffects: { refinement: number; description: string }[];
-  statBonuses: WeaponStatBonusData[];
 };
 
 // Everything the progression editor needs beyond the OwnedWeaponItem it
@@ -106,7 +93,6 @@ export async function getWeaponProgressionData(weaponId: number): Promise<Weapon
     include: {
       refinementEffects: { orderBy: { refinement: "asc" } },
       refinementValues: { orderBy: { slotIndex: "asc" } },
-      statBonuses: { include: { statType: true } },
     },
   });
 
@@ -126,13 +112,6 @@ export async function getWeaponProgressionData(weaponId: number): Promise<Weapon
       customValues: v.customValues,
     })),
     refinementEffects: weapon.refinementEffects.map((r) => ({ refinement: r.refinement, description: r.description })),
-    statBonuses: weapon.statBonuses.map((b) => ({
-      statTypeName: b.statType.name,
-      curveType: b.curveType,
-      baseValue: b.baseValue,
-      slope: b.slope,
-      customValues: b.customValues,
-    })),
   };
 }
 
