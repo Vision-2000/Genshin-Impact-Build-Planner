@@ -7,7 +7,7 @@ import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { Modal } from "@/components/modal";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
-import { HighlightedText } from "@/components/highlighted-text";
+import { TaggedText } from "@/components/tagged-text";
 import { DiamondSelector } from "@/components/diamond-selector";
 import { StatBonusList } from "@/components/stat-bonus-list";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
@@ -85,13 +85,11 @@ function ConstellationIcons({
   element,
   constellations,
   constellation,
-  talentNames,
   onChange,
 }: {
   element: Element;
   constellations: CharacterProgressionData["constellations"];
   constellation: number;
-  talentNames: string[];
   onChange: (value: number) => void;
 }) {
   const litClasses = elementGlowClasses(element);
@@ -108,7 +106,7 @@ function ConstellationIcons({
                   C{c.number} · {c.name}
                 </p>
                 <p className="mt-1.5 whitespace-pre-line text-gray-300">
-                  <HighlightedText text={c.description} talentNames={talentNames} />
+                  <TaggedText text={c.description} />
                 </p>
                 <StatBonusList statBonuses={c.statBonuses} />
               </>
@@ -180,13 +178,11 @@ function CombatTalentRow({
   talent,
   level,
   bounds,
-  talentNames,
   onChange,
 }: {
   talent: CharacterProgressionData["talents"][number];
   level: number;
   bounds: TalentLevelBounds;
-  talentNames: string[];
   onChange: (level: number) => void;
 }) {
   return (
@@ -198,7 +194,7 @@ function CombatTalentRow({
           <>
             <p className="text-base font-semibold text-yellow-100">{talent.name}</p>
             <p className="mt-1.5 whitespace-pre-line text-gray-300">
-              <HighlightedText text={talent.description} talentNames={talentNames} />
+              <TaggedText text={talent.description} />
             </p>
             {talent.attributes.length > 0 && (
               <>
@@ -223,7 +219,7 @@ function CombatTalentRow({
         onChange={(event) => onChange(Number(event.target.value))}
         className="w-32"
       />
-      <span className="w-8 text-gray-400">{level}</span>
+      <span className="w-8">{level}</span>
     </div>
   );
 }
@@ -231,7 +227,7 @@ function CombatTalentRow({
 // Passives have no level to invest in -- just an icon with a hover tooltip
 // (description, plus its stat bonus if it has one; most don't, see
 // TalentStatBonus's schema comment).
-function PassiveTalentIcon({ talent, talentNames }: { talent: CharacterProgressionData["talents"][number]; talentNames: string[] }) {
+function PassiveTalentIcon({ talent }: { talent: CharacterProgressionData["talents"][number] }) {
   return (
     <TooltipIcon
       iconUrl={talent.iconUrl}
@@ -240,7 +236,7 @@ function PassiveTalentIcon({ talent, talentNames }: { talent: CharacterProgressi
         <>
           <p className="text-base font-semibold text-yellow-100">{talent.name}</p>
           <p className="mt-1.5 whitespace-pre-line text-gray-300">
-            <HighlightedText text={talent.description} talentNames={talentNames} />
+            <TaggedText text={talent.description} />
           </p>
           <StatBonusList statBonuses={talent.statBonuses} />
         </>
@@ -274,11 +270,6 @@ function TalentsSection({
   const bounds = computeTalentLevelBounds(constellation, data.constellations);
   const talentBySlot = new Map(data.talents.map((t) => [t.slot, t]));
   const passives = data.talents.filter((t) => !COMBAT_TALENT_SLOTS.has(t.slot));
-  // Every one of the character's own talent names, not just the current
-  // talent's -- a description commonly references another talent by name,
-  // not always wrapped in genshin-db's own ** markers (see HighlightedText's
-  // own comment).
-  const talentNames = data.talents.map((t) => t.name);
 
   return (
     <div className="space-y-2">
@@ -287,7 +278,6 @@ function TalentsSection({
           talent={talentBySlot.get(TalentSlot.NormalAttack)!}
           level={normalAttackLevel}
           bounds={bounds.normalAttackLevel}
-          talentNames={talentNames}
           onChange={onChangeNormalAttackLevel}
         />
       )}
@@ -296,7 +286,6 @@ function TalentsSection({
           talent={talentBySlot.get(TalentSlot.Skill)!}
           level={skillLevel}
           bounds={bounds.skillLevel}
-          talentNames={talentNames}
           onChange={onChangeSkillLevel}
         />
       )}
@@ -305,14 +294,13 @@ function TalentsSection({
           talent={talentBySlot.get(TalentSlot.Burst)!}
           level={burstLevel}
           bounds={bounds.burstLevel}
-          talentNames={talentNames}
           onChange={onChangeBurstLevel}
         />
       )}
       {passives.length > 0 && (
         <div className="flex items-center gap-2.5 pt-1">
           {passives.map((t) => (
-            <PassiveTalentIcon key={t.id} talent={t} talentNames={talentNames} />
+            <PassiveTalentIcon key={t.id} talent={t} />
           ))}
         </div>
       )}
@@ -416,7 +404,7 @@ function BaseStatsSection({
     // width still comes from StatLine's invisible ghost text below (this
     // character's own worst-case values, not whatever's currently
     // displayed), so it still never resizes mid-interaction.
-    <div className="-mr-9 rounded border p-3 text-sm">
+    <div className="-mr-9 rounded border bg-black p-3 text-sm">
       {/* max-content columns, not 1fr/1fr -- sizes each column to exactly
           what its own longest line needs. Combined with StatLine's ghost
           text above, each column is sized once, for this character's own
@@ -447,7 +435,7 @@ function BaseStatsSection({
           justify-around needs to distribute. An explicit empty cell next
           to it reserves column 2 for the header row without "Stats"
           influencing that column's sizing at all. */}
-      <ul className="grid w-full grid-cols-[max-content_max-content] justify-around gap-y-0.5 whitespace-nowrap text-gray-500 dark:text-gray-300">
+      <ul className="grid w-full grid-cols-[max-content_max-content] justify-around gap-y-0.5 whitespace-nowrap">
         <li className="font-medium text-foreground">Stats</li>
         <li aria-hidden="true" />
         <StatLine current={`Base HP: ${roundHalfUp(hp, 0)}`} ghost={`Base HP: ${roundHalfUp(maxHp, 0)}`} />
@@ -657,12 +645,15 @@ function CharacterProgressionEditor({
     // pinned to the top, since the image column is frequently taller than
     // the form actually needs -- centering spreads that slack above and
     // below instead of leaving it all as dead space underneath.
-    <div className={`relative -m-5 flex flex-col overflow-hidden rounded-lg text-white sm:flex-row ${elementBackgroundClass(selectedElement)}`}>
+    <div className="relative -m-5 flex flex-col overflow-hidden rounded-lg text-white sm:flex-row">
       {/* Name/element/weapon live inside the splash-art column specifically
           (stacked above the art itself), not spanning the whole panel --
           this reserves space only within that column, leaving the form
-          column's own top untouched. */}
-      <div className="relative flex h-64 w-full shrink-0 flex-col sm:h-auto sm:w-96">
+          column's own top untouched. Element tint lives on this column
+          alone now, not the whole panel -- the form column is plain black
+          instead, a deliberate design choice separate from the element
+          colors themselves. */}
+      <div className={`relative flex h-64 w-full shrink-0 flex-col sm:h-auto sm:w-96 ${elementBackgroundClass(selectedElement)}`}>
         <div className="px-3 pt-3">
           <p className="pl-2 text-2xl font-medium">{travelerDisplayName(selectedName)}</p>
           <div className="mt-1 flex items-center gap-2 pl-2">
@@ -670,8 +661,8 @@ function CharacterProgressionEditor({
               src={ELEMENT_ICON_URL[selectedElement]}
               alt={selectedElement}
               title={selectedElement}
-              width={32}
-              height={32}
+              width={26}
+              height={26}
             />
             <Image
               src={WEAPON_TYPE_ICON_URL[character.weaponType]}
@@ -732,7 +723,7 @@ function CharacterProgressionEditor({
           )}
         </div>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-5 pr-14">
+      <div className="flex min-w-0 flex-1 flex-col justify-center bg-primary-page p-5 pr-14">
       {/* w-fit here (not on the outer p-5 div) -- shrinks this block to
           whichever row is actually widest (the stats box or the level-100
           button, depending on the character), so the Save button's row
@@ -782,7 +773,7 @@ function CharacterProgressionEditor({
             "90/100" immediately, implying 95/100 were already reached. At
             95 or 100 there's nowhere further to go within that same level,
             so the cap just mirrors the level itself (95/95, 100/100). */}
-        <span className="w-14 text-gray-400">
+        <span className="w-14">
           {level}/{level > MAX_LEVEL ? level : MAX_LEVEL}
         </span>
         {/* Always rendered (reserving the row's width/height) rather than
@@ -807,7 +798,10 @@ function CharacterProgressionEditor({
               // get their own hover feedback (the selected one a touch
               // brighter, not just the unselected one) so hovering an
               // already-active button still visibly reacts, same
-              // expectation as any other button here.
+              // expectation as any other button here. Selection is
+              // conveyed by the border/fill alone now -- the digit itself
+              // stays the same plain text color as everything else in the
+              // editor, not its own amber/gray.
               //
               // -mt-1 nudges the whole button box up to line up with the
               // level counter span beside it -- box position confirmed
@@ -817,8 +811,8 @@ function CharacterProgressionEditor({
               // high, not the box itself.
               className={`-mt-1 cursor-pointer rounded border px-1.5 py-0.5 text-xs transition-colors ${
                 level === extraLevel
-                  ? "border-amber-400 bg-amber-400/20 text-amber-400 hover:bg-amber-400/35"
-                  : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
+                  ? "border-amber-400 bg-amber-400/20 hover:bg-amber-400/35"
+                  : "border-gray-600 hover:border-gray-400"
               }`}
             >
               {/* relative + top-px shifts only the painted glyph down a
@@ -859,7 +853,6 @@ function CharacterProgressionEditor({
             element={selectedElement}
             constellations={data.constellations}
             constellation={constellation}
-            talentNames={data.talents.map((t) => t.name)}
             onChange={handleConstellationChange}
           />
         )}

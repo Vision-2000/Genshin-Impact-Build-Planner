@@ -6,7 +6,7 @@ import { WeaponType } from "@/generated/prisma/enums";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { DiamondSelector } from "@/components/diamond-selector";
-import { HighlightedText } from "@/components/highlighted-text";
+import { BoldHighlightedText } from "@/components/bold-highlighted-text";
 import {
   MIN_LEVEL,
   MAX_LEVEL,
@@ -80,7 +80,7 @@ function PassiveSection({ data, refinement }: { data: WeaponProgressionData; ref
     <div className="rounded border p-3 text-sm">
       <p className="font-medium text-yellow-100">{data.passiveName}</p>
       <p className="mt-1 whitespace-pre-line text-gray-300">
-        <HighlightedText text={description} talentNames={[data.passiveName]} />
+        <BoldHighlightedText text={description} />
       </p>
     </div>
   );

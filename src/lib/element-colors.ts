@@ -23,19 +23,35 @@ const ELEMENT_GLOW_BACKGROUND: Record<Element, string> = {
   [Element.Dendro]: "bg-green-950",
 };
 
-// Tuned separately from the glow background above -- the progression
-// editor's panel background is a much larger, more prominent surface,
-// where exact hue/brightness matters more than it does for a small icon
-// accent. Most run one shade brighter (900) than the glow badge's 950;
-// Dendro is kept at 950 -- a brighter green read wrong.
+// The splash-art column's own background in the character progression
+// editor -- hand-tuned by hex (easier to nudge directly than hopping
+// between named Tailwind shades), one per element. Started from this
+// project's actual Tailwind v4 red-900/blue-900/etc. (converted from
+// their OKLCH definitions in node_modules/tailwindcss/theme.css) before
+// being adjusted further by eye.
 const ELEMENT_PANEL_BACKGROUND: Record<Element, string> = {
-  [Element.Pyro]: "bg-red-900",
-  [Element.Hydro]: "bg-blue-900",
-  [Element.Electro]: "bg-purple-900",
-  [Element.Cryo]: "bg-cyan-900",
-  [Element.Anemo]: "bg-teal-900",
-  [Element.Geo]: "bg-yellow-900",
-  [Element.Dendro]: "bg-green-950",
+  [Element.Pyro]: "bg-[#751907]", 
+  [Element.Hydro]: "bg-[#09438D]", 
+  [Element.Electro]: "bg-[#31005B]", 
+  [Element.Cryo]: "bg-[#005175]",
+  [Element.Anemo]: "bg-[#006163]", 
+  [Element.Geo]: "bg-[#773F00]", 
+  [Element.Dendro]: "bg-[#126B30]", 
+};
+
+// Plain text color for an element's own name/DMG/RES mentions (TaggedText's
+// <pyro>/<hydro>/etc. tags). A shade lighter (300) than ELEMENT_BORDER's
+// 400 for Cryo/Anemo/Geo specifically. Tried Lunaris's own hex here
+// directly instead -- reverted, preferred this version on a direct
+// side-by-side check.
+const ELEMENT_TEXT: Record<Element, string> = {
+  [Element.Pyro]: "text-red-400",
+  [Element.Hydro]: "text-blue-400",
+  [Element.Electro]: "text-purple-400",
+  [Element.Cryo]: "text-cyan-300",
+  [Element.Anemo]: "text-teal-300",
+  [Element.Geo]: "text-amber-300",
+  [Element.Dendro]: "text-green-400",
 };
 
 // Border/background pair used for an element's "activated" state -- e.g. a
@@ -44,8 +60,12 @@ export function elementGlowClasses(element: Element): string {
   return `${ELEMENT_BORDER[element]} ${ELEMENT_GLOW_BACKGROUND[element]}`;
 }
 
-// The progression editor's overall panel background, tuned per
+// The progression editor's splash-art column background, tuned per
 // ELEMENT_PANEL_BACKGROUND above rather than reusing the glow background.
 export function elementBackgroundClass(element: Element): string {
   return ELEMENT_PANEL_BACKGROUND[element];
+}
+
+export function elementTextClass(element: Element): string {
+  return `font-medium ${ELEMENT_TEXT[element]}`;
 }
