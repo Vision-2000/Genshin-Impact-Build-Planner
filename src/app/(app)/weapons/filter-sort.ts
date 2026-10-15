@@ -48,10 +48,31 @@ export type OwnedWeaponItem = {
 export type CatalogSortKey = "name" | "rarity";
 export type OwnedSortKey = "name" | "rarity" | "refinement";
 
+// The full set of secondary stats any seeded weapon can roll (see
+// data-source/weapons.json) -- fixed/slow-changing game data, same
+// "hardcode the known values" treatment RARITIES gets in both manager
+// components, not derived from whatever happens to be in the current
+// catalog/owned list (which would make the filter row's own contents
+// shift depending on what's currently filtered/owned).
+export const WEAPON_SECONDARY_STAT_NAMES = [
+  "ATK%",
+  "Crit DMG%",
+  "Crit Rate%",
+  "DEF%",
+  "Elemental Mastery",
+  "Energy Recharge%",
+  "HP%",
+  "Physical DMG Bonus%",
+] as const;
+
 export type CatalogFilters = {
   search: string;
   weaponTypeFilter: ReadonlySet<WeaponType>;
   rarityFilter: ReadonlySet<number>;
+  // "" means no filter -- a single exact-match dropdown (like Artifacts'
+  // own main-stat filter), not a multi-select set, since a weapon only
+  // ever has one secondary stat.
+  secondaryStatFilter: string;
   sortKey: CatalogSortKey;
   sortDirection: SortDirection;
 };
@@ -60,15 +81,19 @@ export type OwnedFilters = {
   search: string;
   weaponTypeFilter: ReadonlySet<WeaponType>;
   rarityFilter: ReadonlySet<number>;
+  secondaryStatFilter: string;
   sortKey: OwnedSortKey;
   sortDirection: SortDirection;
 };
 
-function matchesSearchTypeAndRarity<T extends { name: string; weaponType: WeaponType; rarity: number }>(
+function matchesSearchTypeRarityAndSecondaryStat<
+  T extends { name: string; weaponType: WeaponType; rarity: number; secondaryStatName: string | null },
+>(
   items: T[],
   search: string,
   weaponTypeFilter: ReadonlySet<WeaponType>,
-  rarityFilter: ReadonlySet<number>
+  rarityFilter: ReadonlySet<number>,
+  secondaryStatFilter: string
 ): T[] {
   let result = items;
 
@@ -82,15 +107,24 @@ function matchesSearchTypeAndRarity<T extends { name: string; weaponType: Weapon
   if (rarityFilter.size > 0) {
     result = result.filter((item) => rarityFilter.has(item.rarity));
   }
+  if (secondaryStatFilter) {
+    result = result.filter((item) => item.secondaryStatName === secondaryStatFilter);
+  }
 
   return result;
 }
 
 export function filterAndSortWeaponCatalog(
   weapons: WeaponCatalogItem[],
-  { search, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: CatalogFilters
+  { search, weaponTypeFilter, rarityFilter, secondaryStatFilter, sortKey, sortDirection }: CatalogFilters
 ): WeaponCatalogItem[] {
-  const result = matchesSearchTypeAndRarity(weapons, search, weaponTypeFilter, rarityFilter);
+  const result = matchesSearchTypeRarityAndSecondaryStat(
+    weapons,
+    search,
+    weaponTypeFilter,
+    rarityFilter,
+    secondaryStatFilter
+  );
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
@@ -103,9 +137,15 @@ export function filterAndSortWeaponCatalog(
 
 export function filterAndSortOwnedWeapons(
   weapons: OwnedWeaponItem[],
-  { search, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: OwnedFilters
+  { search, weaponTypeFilter, rarityFilter, secondaryStatFilter, sortKey, sortDirection }: OwnedFilters
 ): OwnedWeaponItem[] {
-  const result = matchesSearchTypeAndRarity(weapons, search, weaponTypeFilter, rarityFilter);
+  const result = matchesSearchTypeRarityAndSecondaryStat(
+    weapons,
+    search,
+    weaponTypeFilter,
+    rarityFilter,
+    secondaryStatFilter
+  );
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {

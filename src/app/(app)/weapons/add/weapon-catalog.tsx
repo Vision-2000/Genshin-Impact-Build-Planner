@@ -13,7 +13,12 @@ import { WeaponCard } from "../weapon-card";
 import { addWeapon } from "../actions";
 import { WeaponProgressionForm } from "../weapon-progression-form";
 import type { UpdateWeaponProgressionInput } from "../schemas";
-import { filterAndSortWeaponCatalog, type WeaponCatalogItem, type CatalogSortKey } from "../filter-sort";
+import {
+  filterAndSortWeaponCatalog,
+  WEAPON_SECONDARY_STAT_NAMES,
+  type WeaponCatalogItem,
+  type CatalogSortKey,
+} from "../filter-sort";
 
 // Weapons are seeded from 3-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4, 3];
@@ -40,6 +45,7 @@ export function WeaponCatalog({
     () => new Set(initialWeaponType ? [initialWeaponType] : [])
   );
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
+  const [secondaryStatFilter, setSecondaryStatFilter] = useState("");
   const [sortKey, setSortKey] = useState<CatalogSortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   // The catalog card clicked to open the "customize before adding" modal --
@@ -51,6 +57,7 @@ export function WeaponCatalog({
     search,
     weaponTypeFilter,
     rarityFilter,
+    secondaryStatFilter,
     sortKey,
     sortDirection,
   });
@@ -108,6 +115,18 @@ export function WeaponCatalog({
           <option value="rarity">Sort: Rarity</option>
         </select>
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+        <select
+          value={secondaryStatFilter}
+          onChange={(event) => setSecondaryStatFilter(event.target.value)}
+          className="rounded border bg-white px-3 py-2 text-sm text-black"
+        >
+          <option value="">Weapon stat: Any</option>
+          {WEAPON_SECONDARY_STAT_NAMES.map((name) => (
+            <option key={name} value={name}>
+              Weapon stat: {name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <WeaponTypeFilterRow

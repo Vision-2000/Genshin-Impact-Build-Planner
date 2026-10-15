@@ -41,6 +41,7 @@ const catalogBaseFilters = {
   search: "",
   weaponTypeFilter: new Set<WeaponType>(),
   rarityFilter: new Set<number>(),
+  secondaryStatFilter: "",
   sortKey: "name" as const,
   sortDirection: "asc" as const,
 };
@@ -49,16 +50,17 @@ const ownedBaseFilters = {
   search: "",
   weaponTypeFilter: new Set<WeaponType>(),
   rarityFilter: new Set<number>(),
+  secondaryStatFilter: "",
   sortKey: "name" as const,
   sortDirection: "asc" as const,
 };
 
 describe("filterAndSortWeaponCatalog", () => {
   const catalog: WeaponCatalogItem[] = [
-    catalogItem({ id: 1, name: "Aquila Favonia", weaponType: WeaponType.Sword, rarity: 5 }),
-    catalogItem({ id: 2, name: "Widsith", weaponType: WeaponType.Catalyst, rarity: 4 }),
-    catalogItem({ id: 3, name: "Amos' Bow", weaponType: WeaponType.Bow, rarity: 5 }),
-    catalogItem({ id: 4, name: "Favonius Sword", weaponType: WeaponType.Sword, rarity: 4 }),
+    catalogItem({ id: 1, name: "Aquila Favonia", weaponType: WeaponType.Sword, rarity: 5, secondaryStatName: "Physical DMG Bonus%" }),
+    catalogItem({ id: 2, name: "Widsith", weaponType: WeaponType.Catalyst, rarity: 4, secondaryStatName: "Elemental Mastery" }),
+    catalogItem({ id: 3, name: "Amos' Bow", weaponType: WeaponType.Bow, rarity: 5, secondaryStatName: "Crit DMG%" }),
+    catalogItem({ id: 4, name: "Favonius Sword", weaponType: WeaponType.Sword, rarity: 4, secondaryStatName: "Energy Recharge%" }),
   ];
 
   it("returns everything sorted by name with no filters applied", () => {
@@ -93,6 +95,14 @@ describe("filterAndSortWeaponCatalog", () => {
     expect(result.map((w) => w.name)).toEqual(["Amos' Bow", "Aquila Favonia"]);
   });
 
+  it("filters by exact secondary stat", () => {
+    const result = filterAndSortWeaponCatalog(catalog, {
+      ...catalogBaseFilters,
+      secondaryStatFilter: "Elemental Mastery",
+    });
+    expect(result.map((w) => w.name)).toEqual(["Widsith"]);
+  });
+
   it("sorts by rarity ascending, breaking ties by name", () => {
     const result = filterAndSortWeaponCatalog(catalog, { ...catalogBaseFilters, sortKey: "rarity" });
     expect(result.map((w) => w.name)).toEqual(["Favonius Sword", "Widsith", "Amos' Bow", "Aquila Favonia"]);
@@ -120,9 +130,30 @@ describe("filterAndSortWeaponCatalog", () => {
 
 describe("filterAndSortOwnedWeapons", () => {
   const owned: OwnedWeaponItem[] = [
-    ownedItem({ id: 1, name: "Aquila Favonia", weaponType: WeaponType.Sword, rarity: 5, refinement: 1 }),
-    ownedItem({ id: 2, name: "Widsith", weaponType: WeaponType.Catalyst, rarity: 4, refinement: 5 }),
-    ownedItem({ id: 3, name: "Favonius Sword", weaponType: WeaponType.Sword, rarity: 4, refinement: 3 }),
+    ownedItem({
+      id: 1,
+      name: "Aquila Favonia",
+      weaponType: WeaponType.Sword,
+      rarity: 5,
+      refinement: 1,
+      secondaryStatName: "Physical DMG Bonus%",
+    }),
+    ownedItem({
+      id: 2,
+      name: "Widsith",
+      weaponType: WeaponType.Catalyst,
+      rarity: 4,
+      refinement: 5,
+      secondaryStatName: "Elemental Mastery",
+    }),
+    ownedItem({
+      id: 3,
+      name: "Favonius Sword",
+      weaponType: WeaponType.Sword,
+      rarity: 4,
+      refinement: 3,
+      secondaryStatName: "Energy Recharge%",
+    }),
   ];
 
   it("returns everything sorted by name with no filters applied", () => {
@@ -146,6 +177,14 @@ describe("filterAndSortOwnedWeapons", () => {
   it("filters by rarity, matching any rarity in the set", () => {
     const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, rarityFilter: new Set([5]) });
     expect(result.map((w) => w.name)).toEqual(["Aquila Favonia"]);
+  });
+
+  it("filters by exact secondary stat", () => {
+    const result = filterAndSortOwnedWeapons(owned, {
+      ...ownedBaseFilters,
+      secondaryStatFilter: "Elemental Mastery",
+    });
+    expect(result.map((w) => w.name)).toEqual(["Widsith"]);
   });
 
   it("sorts by rarity ascending, breaking ties by name", () => {

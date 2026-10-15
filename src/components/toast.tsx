@@ -39,9 +39,14 @@ export function Toast({ message, visible }: { message: ReactNode; visible: boole
   if (!message) return null;
 
   return (
-    <div className="fixed left-48 right-0 top-4 z-50 flex justify-center">
+    // pointer-events-none on the wrapper, re-enabled on just the pill --
+    // the wrapper spans the full page-content width to center the pill in
+    // it, but that invisible full-width strip sat in front of (z-50) and
+    // blocked clicks on whatever page content shares that same vertical
+    // band (e.g. the add-weapon page's own "Back to my weapons" link).
+    <div className="pointer-events-none fixed left-48 right-0 top-4 z-50 flex justify-center">
       <div
-        className={`rounded-full border-2 border-emerald-300 bg-emerald-600 px-4 py-2 text-sm text-white shadow-lg transition-all duration-300 ${
+        className={`pointer-events-auto rounded-full border-2 border-emerald-300 bg-emerald-600 px-4 py-2 text-sm text-white shadow-lg transition-all duration-300 ${
           visible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
         }`}
       >

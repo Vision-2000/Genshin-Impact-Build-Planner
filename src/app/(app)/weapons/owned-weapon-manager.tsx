@@ -13,7 +13,12 @@ import { WeaponCard } from "./weapon-card";
 import { removeWeapon, updateWeaponProgression } from "./actions";
 import type { UpdateWeaponProgressionInput } from "./schemas";
 import { WeaponProgressionForm } from "./weapon-progression-form";
-import { filterAndSortOwnedWeapons, type OwnedWeaponItem, type OwnedSortKey } from "./filter-sort";
+import {
+  filterAndSortOwnedWeapons,
+  WEAPON_SECONDARY_STAT_NAMES,
+  type OwnedWeaponItem,
+  type OwnedSortKey,
+} from "./filter-sort";
 
 // Weapons are seeded from 3-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4, 3];
@@ -47,6 +52,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   const [search, setSearch] = useState("");
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
+  const [secondaryStatFilter, setSecondaryStatFilter] = useState("");
   const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -55,6 +61,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
     search,
     weaponTypeFilter,
     rarityFilter,
+    secondaryStatFilter,
     sortKey,
     sortDirection,
   });
@@ -105,6 +112,18 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           <option value="refinement">Sort: Refinement</option>
         </select>
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+        <select
+          value={secondaryStatFilter}
+          onChange={(event) => setSecondaryStatFilter(event.target.value)}
+          className="rounded border bg-white px-3 py-2 text-sm text-black"
+        >
+          <option value="">Weapon stat: Any</option>
+          {WEAPON_SECONDARY_STAT_NAMES.map((name) => (
+            <option key={name} value={name}>
+              Weapon stat: {name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <WeaponTypeFilterRow

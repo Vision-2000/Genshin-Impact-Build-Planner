@@ -109,7 +109,15 @@ export function WeaponCard({
           : undefined
       }
       className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 border-gray-600 shadow ${
-        onSelect ? "cursor-pointer hover:opacity-90" : ""
+        // The Add button lives inside this same div (absolutely positioned
+        // overlay, not a sibling like ArtifactCard's edit/delete buttons),
+        // so a plain hover:opacity-90 would also dim the whole card while
+        // hovering the button -- CSS :hover bubbles to ancestors for any
+        // hovered descendant. :not(:has(button:hover)) opts the card's own
+        // dim-on-hover out specifically while a button inside it is what's
+        // being hovered, leaving the button's own hover style the only
+        // thing that changes.
+        onSelect ? "cursor-pointer [&:hover:not(:has(button:hover))]:opacity-90" : ""
       } ${rarityGradientClasses(rarity)}`}
     >
       {iconUrl && (
@@ -168,7 +176,7 @@ export function WeaponCard({
                   onAction();
                 }}
                 className={`flex h-6 items-center justify-center rounded px-2 text-xs font-semibold leading-none text-white ${
-                  danger ? "bg-red-600" : "border border-white/70 hover:bg-white/10"
+                  danger ? "bg-red-600" : "border border-white/70 hover:bg-white/25"
                 }`}
               >
                 {actionLabel}
