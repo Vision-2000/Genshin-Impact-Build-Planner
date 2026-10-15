@@ -343,6 +343,11 @@ model Weapon {
   // Certification"). Null for low-rarity weapons with no passive.
   passiveName     String?    @map("passive_name")
   iconUrl         String?    @map("icon_url")
+  // Gacha-art portrait (512x1024, consistent aspect across all weapons --
+  // unlike Character.splashUrl, no per-weapon objectFit exception is
+  // needed). Shown in WeaponProgressionForm's own splash-art column;
+  // iconUrl stays what every card/grid/picker shows.
+  splashUrl       String?    @map("splash_url")
   // Which of the small shared set of rarity-scoped "tiers" ATK's base
   // value (level 1) uses -- base ATK turns out to be shared by (rarity,
   // tier), not unique per weapon (verified: multiple weapons share

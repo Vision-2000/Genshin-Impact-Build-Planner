@@ -168,6 +168,7 @@ type WeaponJson = {
   rarity: number;
   passiveName: string | null;
   iconUrl: string | null;
+  splashUrl: string | null;
   attackTier: number | null;
   baseSecondaryStatValue: number | null;
   attackCurveRarity: number | null;
@@ -353,6 +354,7 @@ async function seedWeapon(weapon: WeaponJson, statTypeIdByName: Map<string, numb
     secondaryStatId,
     passiveName: weapon.passiveName,
     iconUrl: weapon.iconUrl,
+    splashUrl: weapon.splashUrl,
     attackTier: weapon.attackTier,
     baseSecondaryStatValue: weapon.baseSecondaryStatValue,
     attackCurveRarity: weapon.attackCurveRarity,
