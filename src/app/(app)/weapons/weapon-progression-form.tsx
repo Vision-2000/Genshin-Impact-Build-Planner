@@ -5,6 +5,7 @@ import Image from "next/image";
 import { WeaponType } from "@/generated/prisma/enums";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
+import { SplashImage } from "@/components/splash-image";
 import { DiamondSelector } from "@/components/diamond-selector";
 import { BoldHighlightedText } from "@/components/bold-highlighted-text";
 import {
@@ -21,6 +22,15 @@ import { computeWeaponAttack, computeWeaponSecondaryStat, isExaiphanesBlade, EXA
 import { renderWeaponPassiveDescription, type WeaponRefinementCurveType } from "@/lib/weapon-refinement-scaling";
 import { getWeaponProgressionData, type WeaponProgressionData } from "./actions";
 import { MIN_REFINEMENT, MAX_REFINEMENT, type UpdateWeaponProgressionInput } from "./schemas";
+
+// One fixed width for both boxes below, regardless of passive length --
+// tried a two-tier "widen past some estimated line count" mechanism first
+// (see git history), but a flat character-count estimate can't reliably
+// predict real proportional-font line wrapping, and it's not needed
+// anyway: the form column is simply allowed to grow taller than the
+// splash column when a passive needs more room (see this column's own
+// comment below), so there's nothing to widen for in the first place.
+const PASSIVE_WIDTH_CLASS = "w-[28rem]";
 
 function BaseStatsSection({
   data,
@@ -42,9 +52,13 @@ function BaseStatsSection({
       : null;
 
   return (
-    <div className="rounded border p-3 text-sm">
+    // -mr-9 -- same alignment trick as CharacterProgressionEditor's own
+    // stats box (identical p-5/pr-14 geometry on the form column around
+    // this), extending this box 36px further right so its edge lines up
+    // with the close button instead of stopping at the pr-14 gap.
+    <div className={`-mr-9 rounded border bg-black p-3 text-sm ${PASSIVE_WIDTH_CLASS}`}>
       <p className="font-medium">Stats</p>
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-300">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5">
         <li>Base ATK: {roundHalfUp(attack, 0)}</li>
         {secondaryStatName && secondaryStatValue !== null && (
           <li>
@@ -77,7 +91,8 @@ function PassiveSection({ data, refinement }: { data: WeaponProgressionData; ref
   if (!description) return null;
 
   return (
-    <div className="rounded border p-3 text-sm">
+    // -mr-9 -- same reasoning as BaseStatsSection's own comment above.
+    <div className={`-mr-9 rounded border bg-black p-3 text-sm ${PASSIVE_WIDTH_CLASS}`}>
       <p className="font-medium text-yellow-100">{data.passiveName}</p>
       <p className="mt-1 whitespace-pre-line text-gray-300">
         <BoldHighlightedText text={description} />
@@ -100,8 +115,9 @@ function PassiveSection({ data, refinement }: { data: WeaponProgressionData; ref
 //
 // Laid out as a two-column, rarity-tinted panel -- the same splash-art/
 // form-column split CharacterProgressionEditor uses (see
-// owned-character-manager.tsx), just with the weapon's own icon standing in
-// for a character's splash art (weapons have no portrait art to show) and
+// owned-character-manager.tsx), with the weapon's own gacha-art splashUrl
+// (see Weapon.splashUrl) now standing in for a character's own splash art,
+// rendered via the same shared SplashImage both editors use, and
 // rarityGradientClasses standing in for element-tinted background (weapons
 // have no element either).
 export function WeaponProgressionForm({
@@ -109,25 +125,33 @@ export function WeaponProgressionForm({
   name,
   weaponType,
   rarity,
-  iconUrl,
+  splashUrl,
   secondaryStatName,
   initialLevel,
   initialAscensionPhase,
   initialRefinement,
   submitLabel,
   onSubmit,
+  formBackgroundClassName,
 }: {
   weaponId: number;
   name: string;
   weaponType: WeaponType;
   rarity: number;
-  iconUrl: string | null;
+  splashUrl: string | null;
   secondaryStatName: string | null;
   initialLevel: number;
   initialAscensionPhase: number;
   initialRefinement: number;
   submitLabel: string;
   onSubmit: (input: UpdateWeaponProgressionInput) => void;
+  // Unlike CharacterProgressionEditor (one page, always bg-primary-page),
+  // this form is shared by two pages with two different page backgrounds
+  // (/weapons is bg-primary-page, /weapons/add is bg-secondary-page) -- the
+  // caller passes whichever one it's actually opened on, so the form
+  // column matches the page behind the modal instead of picking one
+  // fixed background regardless of context.
+  formBackgroundClassName: string;
 }) {
   const [level, setLevel] = useState(initialLevel);
   const [ascensionPhase, setAscensionPhase] = useState(initialAscensionPhase);
@@ -189,9 +213,27 @@ export function WeaponProgressionForm({
     // whole rounded panel, same as CharacterProgressionEditor. text-white
     // is forced site-wide for the same reason as there: most labels here
     // rely on the default (theme-dependent) foreground color, which isn't
-    // reliably legible over a dark rarity-tinted panel.
-    <div className={`relative -m-5 flex flex-col overflow-hidden rounded-lg text-white sm:flex-row ${rarityGradientClasses(rarity)}`}>
-      <div className="relative flex h-56 w-full shrink-0 flex-col sm:h-auto sm:w-72">
+    // reliably legible over a dark rarity-tinted panel. Rarity tint lives
+    // on the splash column alone (not this outer wrapper) and the form
+    // column gets its own flat background -- same split as
+    // CharacterProgressionEditor's element-tint-on-splash-column-only /
+    // bg-primary-page-on-form-column treatment.
+    <div className="relative -m-5 flex flex-col overflow-hidden rounded-lg text-white sm:flex-row">
+      {/* sm:h-auto (not a fixed sm:h-<n>) -- this column's total height is
+          now just the sum of its two children: the header (name/icon/
+          rarity row) takes whatever height ITS content needs, and the
+          image box below is pinned to a fixed size independently (see
+          its own aspect-[1/2] comment) -- so a 2-line weapon name grows
+          the header without shrinking the art to compensate, unlike
+          giving aspect-ratio to this whole column (the earlier approach),
+          which forced a fixed TOTAL that the header and image then had to
+          divide between them, so a taller header silently stole space
+          the image would otherwise have used. sm:w-72 (not Character's
+          own sm:w-96) is still just this column's own width -- picked
+          smaller than Character's because that width's own 1:2-derived
+          image size left a lot of empty space below an average-length
+          passive's content. */}
+      <div className={`relative flex h-64 w-full shrink-0 flex-col sm:h-auto sm:w-72 ${rarityGradientClasses(rarity)}`}>
         <div className="px-3 pt-3">
           <p className="pl-2 text-2xl font-medium">{name}</p>
           <div className="mt-1 flex items-center gap-2 pl-2">
@@ -205,25 +247,86 @@ export function WeaponProgressionForm({
             </div>
           </div>
         </div>
-        <div className="relative min-h-0 flex-1 p-6">{iconUrl && <Image src={iconUrl} alt="" fill className="object-contain" />}</div>
+        {/* object-contain (not cover) since every weapon's gacha art
+            shares the same 512x1024 portrait aspect ratio (unlike
+            Characters, no per-weapon exception is needed here -- see
+            data-source/weapons.json's splashUrl). The inner box pins its
+            own height from its real width (stretched to the column's
+            fixed sm:w-72 by this outer flex-col's own default cross-axis
+            stretch) and the art's own fixed 512x1024 ratio, independent
+            of the header above it -- a flex item's own aspect-ratio takes
+            precedence over align-items: stretch once, like here, one
+            axis is already definite. sm:flex-none on the inner box
+            removes any competing flex-grow that would otherwise try to
+            consume leftover space on the main axis instead -- that
+            leftover space (whenever the form column next to this one
+            ends up taller, since this column no longer grows to match
+            it) belongs to the OUTER box's own sm:justify-center instead,
+            splitting it evenly above and below the art rather than the
+            art sitting flush under the header with all of it left
+            beneath. Mobile (no sm: layout applies) keeps the plain
+            flex-1-fills-available-space behavior this always had, no
+            centering -- there's nothing for it to center against there,
+            since the mobile column's own total height is just its own
+            fixed h-64. */}
+        <div className="relative min-h-0 flex-1 sm:flex sm:flex-col sm:justify-center">
+          <div className="relative h-full w-full sm:h-auto sm:aspect-[1/2] sm:flex-none">
+            {splashUrl && <SplashImage key={splashUrl} src={splashUrl} objectFit="contain" />}
+          </div>
+        </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-5 pr-14">
-        <div className="w-fit space-y-4">
+      <div className={`flex min-w-0 flex-1 flex-col justify-start p-5 pr-14 ${formBackgroundClassName}`}>
+        {/* Used to cap this column's height and wrap overflow into a
+            second column instead of growing taller than the splash art --
+            abandoned: an unusually long passive (Disaster and Remorse's,
+            by far the longest of any weapon) could still exceed that cap
+            on its own, pushing just the trailing Save/Add button into an
+            awkward, too-narrow second column that overlapped the close
+            button. h-full + flex-col + mt-auto on the button row below is
+            simpler and has no failure mode like that: this column is
+            always exactly as tall as its own content needs (growing past
+            the splash art's height when a passive genuinely needs more
+            room, same as any normal block layout), and the button row
+            gets pushed to the bottom of whatever that ends up being via
+            mt-auto -- flush against it when content is short enough to
+            leave room, immediately after the content when it isn't. */}
+        <div className="flex h-full w-fit flex-col gap-4">
           {isExaiphanesBlade(name) ? (
-            <div className="space-y-1">
-              <p className="text-sm">Statues Unlocked</p>
-              <DiamondSelector
-                count={EXAIPHANES_BLADE_STATES.length - 1}
-                value={statuesUnlocked}
-                onChange={handleStatuesUnlockedChange}
-                litClassName="border-amber-400 bg-amber-400"
-                ariaLabel={(n) => `${n} statues unlocked`}
-              />
-              <p className="text-xs text-gray-300">
-                Level {level}, Ascension {ascensionPhase}, Refinement R{refinement}
-              </p>
-            </div>
+            // Same three rows, in the same order, as every other weapon
+            // below -- just with Level and Refinement as plain read-only
+            // values (no slider) instead of their own independent
+            // controls, since neither is actually settable on its own for
+            // this weapon. Statues Unlocked takes Ascension's own slot
+            // and styling (same space-y-1/label/DiamondSelector, even the
+            // same 6-diamond count) since it's the one real control here,
+            // driving level/ascension/refinement together (see
+            // EXAIPHANES_BLADE_STATES) -- clicking it updates the Level
+            // and Refinement rows' own displayed values along with it.
+            <>
+              <div className="flex items-center gap-2 text-sm">
+                Level
+                <span className="w-14">
+                  {level}/{maxLevelForAscensionPhase(ascensionPhase)}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-sm">Statues Unlocked</p>
+                <DiamondSelector
+                  count={EXAIPHANES_BLADE_STATES.length - 1}
+                  value={statuesUnlocked}
+                  onChange={handleStatuesUnlockedChange}
+                  litClassName="border-amber-400 bg-amber-400"
+                  ariaLabel={(n) => `${n} statues unlocked`}
+                />
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                Refinement
+                <span className="w-8">R{refinement}</span>
+              </div>
+            </>
           ) : (
             <>
               <label className="flex items-center gap-2 text-sm">
@@ -236,7 +339,7 @@ export function WeaponProgressionForm({
                   onChange={(event) => handleLevelChange(Number(event.target.value))}
                   className="-mt-1 w-32"
                 />
-                <span className="w-14 text-gray-300">
+                <span className="w-14">
                   {level}/{maxLevelForAscensionPhase(ascensionPhase)}
                 </span>
               </label>
@@ -262,13 +365,13 @@ export function WeaponProgressionForm({
                   onChange={(event) => setRefinement(Number(event.target.value))}
                   className="w-32"
                 />
-                <span className="w-8 text-gray-300">R{refinement}</span>
+                <span className="w-8">R{refinement}</span>
               </label>
             </>
           )}
 
           {!data ? (
-            <p className="text-sm text-gray-300">Loading...</p>
+            <p className="text-sm text-gray-500">Loading...</p>
           ) : (
             <>
               <BaseStatsSection data={data} level={level} ascensionPhase={ascensionPhase} secondaryStatName={secondaryStatName} />
@@ -276,7 +379,14 @@ export function WeaponProgressionForm({
             </>
           )}
 
-          <div className="flex justify-end border-t pt-3">
+          {/* -mr-9 -- same alignment trick as BaseStatsSection/
+              PassiveSection above, and as CharacterProgressionEditor's own
+              button row, so the Save/Add button lands flush with the
+              close button instead of stopping short at the pr-14 gap.
+              mt-auto pushes this row to the bottom of the column (see the
+              wrapper's own comment above) instead of sitting wherever it
+              happens to land right after the content. */}
+          <div className="-mr-9 mt-auto flex justify-end border-t pt-3">
             <button
               type="button"
               onClick={() => onSubmit({ level, ascensionPhase, refinement })}

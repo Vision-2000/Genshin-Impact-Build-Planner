@@ -164,7 +164,10 @@ export function WeaponCatalog({
       <Modal
         open={customizingWeapon !== null}
         onClose={() => setCustomizingId(null)}
-        maxWidthClassName="max-w-3xl"
+        // max-w-4xl -- see owned-weapon-manager.tsx's own Modal usage for
+        // why (Disaster and Remorse's passive text needing more room to
+        // wrap into before hitting the ceiling).
+        maxWidthClassName="max-w-4xl"
         fitContent
         closeButtonClassName="text-white hover:bg-white/10"
       >
@@ -175,11 +178,12 @@ export function WeaponCatalog({
             name={customizingWeapon.name}
             weaponType={customizingWeapon.weaponType}
             rarity={customizingWeapon.rarity}
-            iconUrl={customizingWeapon.iconUrl}
+            splashUrl={customizingWeapon.splashUrl}
             secondaryStatName={customizingWeapon.secondaryStatName}
             initialLevel={customizingDefaults.level}
             initialAscensionPhase={customizingDefaults.ascensionPhase}
             initialRefinement={customizingDefaults.refinement}
+            formBackgroundClassName="bg-secondary-page"
             submitLabel="Add"
             onSubmit={(input) => handleCustomAdd(customizingWeapon, input)}
           />

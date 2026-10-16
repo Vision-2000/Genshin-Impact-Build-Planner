@@ -164,7 +164,14 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
       <Modal
         open={editingWeapon !== null}
         onClose={() => setEditingId(null)}
-        maxWidthClassName="max-w-3xl"
+        // max-w-4xl (not -3xl) -- fitContent means this is only a
+        // ceiling, never a floor, but Disaster and Remorse's passive (by
+        // far the longest of any weapon) needed more width than -3xl left
+        // to wrap at before the modal ran out of room to actually honor
+        // "expand horizontally to fit the content" at all. Every other
+        // weapon's own content stays its own, narrower natural width
+        // regardless of this ceiling being higher.
+        maxWidthClassName="max-w-4xl"
         fitContent
         closeButtonClassName="text-white hover:bg-white/10"
       >
@@ -175,11 +182,12 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
             name={editingWeapon.name}
             weaponType={editingWeapon.weaponType}
             rarity={editingWeapon.rarity}
-            iconUrl={editingWeapon.iconUrl}
+            splashUrl={editingWeapon.splashUrl}
             secondaryStatName={editingWeapon.secondaryStatName}
             initialLevel={editingWeapon.level}
             initialAscensionPhase={editingWeapon.ascensionPhase}
             initialRefinement={editingWeapon.refinement}
+            formBackgroundClassName="bg-primary-page"
             submitLabel="Save"
             onSubmit={(input) => handleUpdateProgression(editingWeapon.id, input)}
           />

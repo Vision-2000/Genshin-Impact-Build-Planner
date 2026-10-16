@@ -89,6 +89,7 @@ export default async function AddWeaponPage({
     rarity: weapon.rarity,
     secondaryStatName: weapon.secondaryStat?.name ?? null,
     iconUrl: weapon.iconUrl,
+    splashUrl: weapon.splashUrl,
     maxRefinement: weapon.maxRefinement,
     hoverDetail: computeHoverDetail({
       name: weapon.name,

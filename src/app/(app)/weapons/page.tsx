@@ -29,6 +29,7 @@ export default async function WeaponsPage() {
     rarity: ownedWeapon.weapon.rarity,
     secondaryStatName: ownedWeapon.weapon.secondaryStat?.name ?? null,
     iconUrl: ownedWeapon.weapon.iconUrl,
+    splashUrl: ownedWeapon.weapon.splashUrl,
     refinement: ownedWeapon.refinement,
     level: ownedWeapon.level,
     ascensionPhase: ownedWeapon.ascensionPhase,

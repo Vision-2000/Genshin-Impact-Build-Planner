@@ -45,6 +45,7 @@ export async function addWeapon(
       rarity: created.weapon.rarity,
       secondaryStatName: created.weapon.secondaryStat?.name ?? null,
       iconUrl: created.weapon.iconUrl,
+      splashUrl: created.weapon.splashUrl,
       refinement: created.refinement,
       level: created.level,
       ascensionPhase: created.ascensionPhase,

@@ -25,6 +25,11 @@ export type WeaponCatalogItem = {
   rarity: number;
   secondaryStatName: string | null;
   iconUrl: string | null;
+  // Gacha-art portrait, shown in WeaponProgressionForm's own splash-art
+  // column (the "customize before adding" modal) -- included here, not
+  // lazily fetched, so that column shows up immediately the same way
+  // Character.splashUrl does for the character editor.
+  splashUrl: string | null;
   // A documented few weapons cap below 5 (see Weapon.maxRefinement) --
   // caps the refinement slider in the add-catalog card's own "customize
   // before adding" modal.
@@ -40,6 +45,7 @@ export type OwnedWeaponItem = {
   rarity: number;
   secondaryStatName: string | null;
   iconUrl: string | null;
+  splashUrl: string | null;
   refinement: number;
   level: number;
   ascensionPhase: number;
