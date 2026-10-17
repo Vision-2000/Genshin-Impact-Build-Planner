@@ -24,6 +24,8 @@ function ownedItem(overrides: Partial<OwnedArtifactItem>): OwnedArtifactItem {
     mainStatId: 1,
     mainStatName: "HP",
     iconUrl: null,
+    twoPieceEffect: "2pc effect",
+    fourPieceEffect: "4pc effect",
     substats: [],
     ...overrides,
   };

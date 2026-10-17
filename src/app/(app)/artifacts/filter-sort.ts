@@ -44,6 +44,11 @@ export type OwnedArtifactItem = {
   mainStatId: number;
   mainStatName: string;
   iconUrl: string | null;
+  // Shown below the piece image in the edit modal's own splash column
+  // (see ArtifactProgressionForm) -- same set-level text the add-catalog's
+  // own hover tooltip already shows.
+  twoPieceEffect: string;
+  fourPieceEffect: string | null;
   substats: OwnedArtifactSubstatItem[];
 };
 
@@ -80,6 +85,8 @@ type OwnedArtifactRow = {
   artifactSet: {
     name: string;
     rarity: number;
+    twoPieceEffect: string;
+    fourPieceEffect: string | null;
     flowerIconUrl: string | null;
     featherIconUrl: string | null;
     sandsIconUrl: string | null;
@@ -102,6 +109,8 @@ export function toOwnedArtifactItem(row: OwnedArtifactRow): OwnedArtifactItem {
     mainStatId: row.mainStatId,
     mainStatName: row.mainStat.name,
     iconUrl: slotIconUrl(row.artifactSet, row.slot),
+    twoPieceEffect: row.artifactSet.twoPieceEffect,
+    fourPieceEffect: row.artifactSet.fourPieceEffect,
     substats: row.substats.map((s) => ({
       id: s.id,
       statTypeId: s.statTypeId,

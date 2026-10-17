@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 // Confirms an action (e.g. "added X") on a page that has no local list to
 // show the result in -- the create flow lives on its own route, separate
@@ -36,9 +37,24 @@ export function useToast() {
 // content area rather than the full viewport (which would skew it off-center
 // behind the sidebar).
 export function Toast({ message, visible }: { message: ReactNode; visible: boolean }) {
+  // Portal to document.body rather than rendering in place -- this is
+  // only ever mounted alongside an open Modal on the artifact-add page
+  // (every other call site closes its own modal, if any, before a toast
+  // can appear), and that's exactly the combination that visibly shifted
+  // the Modal's own fixed backdrop upward by a sliver the instant this
+  // mounted: both are position:fixed, but this one previously rendered as
+  // a descendant of <main>'s own scrollable, non-zero-scrollTop subtree
+  // (see (app)/layout.tsx), which browsers can inconsistently use as the
+  // fixed-positioning reference instead of the true viewport. Mounting
+  // directly on body sidesteps that regardless of which ancestor's scroll
+  // state happens to be at fault. No mount-check needed for the
+  // document.body reference below despite this being SSR'd -- `message`
+  // itself only ever becomes non-null from a client-side showToast() call
+  // (never during the initial server render), so by the time this branch
+  // runs at all, the component has already hydrated on the client.
   if (!message) return null;
 
-  return (
+  return createPortal(
     // pointer-events-none on the wrapper, re-enabled on just the pill --
     // the wrapper spans the full page-content width to center the pill in
     // it, but that invisible full-width strip sat in front of (z-50) and
@@ -52,6 +68,7 @@ export function Toast({ message, visible }: { message: ReactNode; visible: boole
       >
         {message}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

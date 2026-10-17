@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { paginate } from "@/lib/paginate";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
-import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { formatStatValue } from "@/lib/stat-format";
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
@@ -16,18 +14,8 @@ import { PaginationControls } from "../pagination-controls";
 import { removeArtifact, updateArtifact } from "./actions";
 import { ArtifactCard } from "./artifact-card";
 import { ArtifactSlotFilterRow } from "./artifact-slot-filter-row";
-import {
-  ARTIFACT_RARITIES,
-  MAIN_STAT_NAMES,
-  MIN_LEVEL,
-  MAX_SUBSTATS,
-  SLOT_MAIN_STATS,
-  SUBSTAT_TYPE_NAMES,
-  maxLevelForRarity,
-  substatValidValues,
-  nearestValidValue,
-  type SubstatTypeName,
-} from "./artifact-rules";
+import { ArtifactProgressionForm } from "./artifact-progression-form";
+import { ARTIFACT_RARITIES, MAIN_STAT_NAMES, SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
 import {
   filterAndSortOwnedArtifacts,
   type OwnedArtifactItem,
@@ -42,213 +30,6 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   if (next.has(value)) next.delete(value);
   else next.add(value);
   return next;
-}
-
-type DraftSubstat = { statTypeId: number | null; value: number };
-
-// Modal body for editing one piece. Mirrors the add-artifact form: a level
-// slider and up to MAX_SUBSTATS substat rows, each a stat-type dropdown ("None"
-// to leave it empty) plus a slider that steps through only the values that
-// stat can actually roll at this rarity and level. Changes are drafted locally
-// and committed in one call on Save, same as the add flow.
-function OwnedArtifactEditor({
-  artifact,
-  statTypes,
-  onSave,
-  onDelete,
-}: {
-  artifact: OwnedArtifactItem;
-  statTypes: StatTypeOption[];
-  onSave: (level: number, mainStatId: number, substats: { statTypeId: number; value: number }[]) => void;
-  onDelete: () => void;
-}) {
-  const statTypeByName = new Map(statTypes.map((s) => [s.name, s]));
-  const statTypeById = new Map(statTypes.map((s) => [s.id, s]));
-  const rarity = artifact.rarity;
-  const maxLevel = maxLevelForRarity(rarity);
-  const mainStatNames = SLOT_MAIN_STATS[artifact.slot];
-
-  const [level, setLevel] = useState(artifact.level);
-  const [mainStatId, setMainStatId] = useState(artifact.mainStatId);
-  const [substats, setSubstats] = useState<DraftSubstat[]>(() => {
-    const rows: DraftSubstat[] = artifact.substats.map((s) => ({ statTypeId: s.statTypeId, value: s.value }));
-    while (rows.length < MAX_SUBSTATS) rows.push({ statTypeId: null, value: 0 });
-    return rows;
-  });
-
-  function substatOptionsExcluding(excludeIndex: number): StatTypeOption[] {
-    const used = new Set(
-      substats
-        .filter((_, i) => i !== excludeIndex)
-        .map((s) => s.statTypeId)
-        .filter((id): id is number => id !== null)
-    );
-    used.add(mainStatId);
-    return SUBSTAT_TYPE_NAMES.map((name) => statTypeByName.get(name)).filter(
-      (s): s is StatTypeOption => !!s && !used.has(s.id)
-    );
-  }
-
-  // A stat can't be both the main stat and a substat -- clear any row that
-  // collides with the newly picked main stat.
-  function handleMainStatChange(nextMainStatId: number) {
-    setMainStatId(nextMainStatId);
-    setSubstats((prev) =>
-      prev.map((s) => (s.statTypeId === nextMainStatId ? { statTypeId: null, value: 0 } : s))
-    );
-  }
-
-  function updateSubstatRow(index: number, changes: Partial<DraftSubstat>) {
-    setSubstats((prev) => prev.map((s, i) => (i === index ? { ...s, ...changes } : s)));
-  }
-
-  // Selecting "None" clears the row; picking a stat defaults to its lowest
-  // achievable value (the slider's leftmost position).
-  function handleSubstatTypeChange(index: number, statTypeId: number | null) {
-    if (statTypeId === null) {
-      updateSubstatRow(index, { statTypeId: null, value: 0 });
-      return;
-    }
-    const name = statTypeById.get(statTypeId)?.name as SubstatTypeName | undefined;
-    const values = name ? substatValidValues(name, rarity, level) : [0];
-    updateSubstatRow(index, { statTypeId, value: values[0] });
-  }
-
-  // Changing level shifts which values each substat can hold, so snap every
-  // set substat to the closest value still valid at the new level.
-  function handleLevelChange(newLevel: number) {
-    setLevel(newLevel);
-    setSubstats((prev) =>
-      prev.map((s) => {
-        if (s.statTypeId === null) return s;
-        const name = statTypeById.get(s.statTypeId)?.name as SubstatTypeName | undefined;
-        if (!name) return s;
-        const values = substatValidValues(name, rarity, newLevel);
-        return { ...s, value: nearestValidValue(values, s.value) };
-      })
-    );
-  }
-
-  function handleSave() {
-    const payload = substats
-      .filter((s): s is { statTypeId: number; value: number } => s.statTypeId !== null)
-      .map((s) => ({ statTypeId: s.statTypeId, value: s.value }));
-    onSave(level, mainStatId, payload);
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg p-1.5 ${rarityGradientClasses(rarity)}`}
-        >
-          {artifact.iconUrl && <Image src={artifact.iconUrl} alt="" width={56} height={56} />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-lg font-medium">{artifact.setName}</p>
-        </div>
-      </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        Level
-        <input
-          type="range"
-          min={MIN_LEVEL}
-          max={maxLevel}
-          value={level}
-          onChange={(event) => handleLevelChange(Number(event.target.value))}
-          className="-mt-1 w-32"
-        />
-        <span className="w-8 text-gray-400">+{level}</span>
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        Main stat:
-        <select
-          value={mainStatId}
-          onChange={(event) => handleMainStatChange(Number(event.target.value))}
-          disabled={mainStatNames.length === 1}
-          className="w-[11.5rem] rounded border bg-white h-8 px-2 text-sm text-black disabled:bg-gray-100 disabled:text-gray-500"
-        >
-          {mainStatNames.map((name) => {
-            const option = statTypeByName.get(name);
-            return option ? (
-              <option key={option.id} value={option.id}>
-                {name}
-              </option>
-            ) : null;
-          })}
-        </select>
-      </label>
-
-      <div className="space-y-1">
-        <p className="text-sm font-medium">Substats</p>
-        {substats.map((substat, index) => {
-          const statName = statTypeById.get(substat.statTypeId ?? -1)?.name as SubstatTypeName | undefined;
-          const values = statName ? substatValidValues(statName, rarity, level) : [0];
-          const currentIndex = values.indexOf(nearestValidValue(values, substat.value));
-
-          return (
-            <div key={index} className="flex flex-wrap items-center gap-2">
-              <select
-                value={substat.statTypeId ?? ""}
-                onChange={(event) =>
-                  handleSubstatTypeChange(index, event.target.value === "" ? null : Number(event.target.value))
-                }
-                className="w-44 shrink-0 rounded border bg-white h-8 px-2 text-sm text-black"
-              >
-                <option value="">None</option>
-                {substatOptionsExcluding(index).map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-                {!substatOptionsExcluding(index).some((o) => o.id === substat.statTypeId) &&
-                  statTypeById.get(substat.statTypeId ?? -1) && (
-                    <option value={substat.statTypeId ?? ""}>
-                      {statTypeById.get(substat.statTypeId ?? -1)?.name}
-                    </option>
-                  )}
-              </select>
-              {substat.statTypeId !== null && (
-                <>
-                  <input
-                    type="range"
-                    min={0}
-                    max={values.length - 1}
-                    step={1}
-                    value={currentIndex}
-                    onChange={(event) => updateSubstatRow(index, { value: values[Number(event.target.value)] })}
-                    className="w-28"
-                  />
-                  <span className="w-14 text-sm text-gray-400">
-                    {formatStatValue(statName ?? "", values[currentIndex])}
-                  </span>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center justify-end gap-2 border-t pt-3">
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
-        >
-          Delete artifact
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  );
 }
 
 export function OwnedArtifactManager({
@@ -477,15 +258,32 @@ export function OwnedArtifactManager({
 
       <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
 
-      <Modal open={editingArtifact !== null} onClose={() => setEditingId(null)}>
+      <Modal
+        open={editingArtifact !== null}
+        onClose={() => setEditingId(null)}
+        maxWidthClassName="max-w-4xl"
+        fitContent
+        closeButtonClassName="text-white hover:bg-white/10"
+      >
         {editingArtifact && (
-          <OwnedArtifactEditor
+          <ArtifactProgressionForm
             key={editingArtifact.id}
-            artifact={editingArtifact}
+            set={{
+              name: editingArtifact.setName,
+              rarity: editingArtifact.rarity,
+              twoPieceEffect: editingArtifact.twoPieceEffect,
+              fourPieceEffect: editingArtifact.fourPieceEffect,
+            }}
+            getSlotImageUrl={() => editingArtifact.iconUrl}
             statTypes={statTypes}
-            onSave={(level, mainStatId, substats) =>
-              handleSaveArtifact(editingArtifact.id, level, mainStatId, substats)
-            }
+            initialSlot={editingArtifact.slot}
+            slotFixed
+            initialLevel={editingArtifact.level}
+            initialMainStatId={editingArtifact.mainStatId}
+            initialSubstats={editingArtifact.substats.map((s) => ({ statTypeId: s.statTypeId, value: s.value }))}
+            formBackgroundClassName="bg-primary-page"
+            submitLabel="Save"
+            onSubmit={(input) => handleSaveArtifact(editingArtifact.id, input.level, input.mainStatId, input.substats)}
             onDelete={() => handleRemoveArtifact(editingArtifact.id)}
           />
         )}
