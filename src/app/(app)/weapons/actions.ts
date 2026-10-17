@@ -59,6 +59,7 @@ export async function addWeapon(
       level: created.level,
       ascensionPhase: created.ascensionPhase,
       hoverDetail: computeWeaponHoverDetail(created.weapon, created.level, created.ascensionPhase, created.refinement),
+      createdAt: created.createdAt.getTime(),
     },
   };
 }
@@ -126,7 +127,13 @@ export async function getWeaponProgressionData(weaponId: number): Promise<Weapon
   };
 }
 
-export type UpdateWeaponProgressionResult = { ok: true } | { errors: UpdateWeaponProgressionErrors };
+// Returns the updated OwnedWeaponItem (mirroring addWeapon) rather than a
+// bare { ok: true } -- the owned-weapons list's optimistic update only had
+// level/ascensionPhase/refinement to merge in, which left hoverDetail (that
+// copy's own stats/passive, computed from the full weapon record) stuck at
+// its pre-edit values until the next full page load. Returning the freshly
+// recomputed item lets the client replace the whole thing in one go.
+export type UpdateWeaponProgressionResult = { weapon: OwnedWeaponItem } | { errors: UpdateWeaponProgressionErrors };
 
 export async function updateWeaponProgression(
   ownedWeaponId: number,
@@ -143,21 +150,51 @@ export async function updateWeaponProgression(
   // lower (see Weapon.maxRefinement), so that needs its own check here
   // rather than folding into the static Zod schema, which has no way to
   // know which weapon it's validating for.
-  const ownedWeapon = await prisma.ownedWeapon.findFirst({
+  const existing = await prisma.ownedWeapon.findFirst({
     where: { id: ownedWeaponId, gameProfileId: profile.id },
     select: { weapon: { select: { maxRefinement: true } } },
   });
-  if (ownedWeapon && validated.data.refinement > ownedWeapon.weapon.maxRefinement) {
+  // Shouldn't happen via the UI (the editor only ever opens on a real
+  // owned weapon) -- defense-in-depth only, same empty-errors fallback the
+  // client already treats as "something went wrong, revert."
+  if (!existing) return { errors: {} };
+  if (validated.data.refinement > existing.weapon.maxRefinement) {
     return {
-      errors: { refinement: [`This weapon can only be refined up to R${ownedWeapon.weapon.maxRefinement}.`] },
+      errors: { refinement: [`This weapon can only be refined up to R${existing.weapon.maxRefinement}.`] },
     };
   }
 
-  await prisma.ownedWeapon.updateMany({
-    where: { id: ownedWeaponId, gameProfileId: profile.id },
+  const updated = await prisma.ownedWeapon.update({
+    where: { id: ownedWeaponId },
     data: validated.data,
+    include: {
+      weapon: {
+        include: {
+          secondaryStat: true,
+          refinementEffects: { orderBy: { refinement: "asc" } },
+          refinementValues: { orderBy: { slotIndex: "asc" } },
+        },
+      },
+    },
   });
-  return { ok: true };
+
+  return {
+    weapon: {
+      id: updated.id,
+      weaponId: updated.weaponId,
+      name: updated.weapon.name,
+      weaponType: updated.weapon.weaponType,
+      rarity: updated.weapon.rarity,
+      secondaryStatName: updated.weapon.secondaryStat?.name ?? null,
+      iconUrl: updated.weapon.iconUrl,
+      splashUrl: updated.weapon.splashUrl,
+      refinement: updated.refinement,
+      level: updated.level,
+      ascensionPhase: updated.ascensionPhase,
+      hoverDetail: computeWeaponHoverDetail(updated.weapon, updated.level, updated.ascensionPhase, updated.refinement),
+      createdAt: updated.createdAt.getTime(),
+    },
+  };
 }
 
 export async function removeWeapon(ownedWeaponId: number) {

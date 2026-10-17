@@ -11,6 +11,7 @@ import { TaggedText } from "@/components/tagged-text";
 import { SplashImage } from "@/components/splash-image";
 import { DiamondSelector } from "@/components/diamond-selector";
 import { StatBonusList } from "@/components/stat-bonus-list";
+import { StatLine } from "@/components/stat-line";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import {
   MIN_LEVEL,
@@ -306,22 +307,6 @@ function TalentsSection({
         </div>
       )}
     </div>
-  );
-}
-
-// A grid cell that never resizes as `current` changes: `ghost` (normal
-// flow, invisible) is what actually determines the cell's max-content
-// width, while `current` (absolutely positioned over it) is what's
-// actually seen. Pass the worst-case text this cell could ever show as
-// `ghost` and the column is pre-sized for it from the start -- no reflow
-// as the user drags a slider, since the space was already reserved for
-// something at least as wide as any value that could land there.
-function StatLine({ current, ghost }: { current: string; ghost: string }) {
-  return (
-    <li className="relative">
-      <span className="invisible">{ghost}</span>
-      <span className="absolute inset-0">{current}</span>
-    </li>
   );
 }
 

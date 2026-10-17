@@ -53,7 +53,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [secondaryStatFilter, setSecondaryStatFilter] = useState("");
-  const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
+  const [sortKey, setSortKey] = useState<OwnedSortKey>("obtained");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -69,12 +69,21 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
 
   function handleUpdateProgression(ownedWeaponId: number, input: UpdateWeaponProgressionInput) {
     const previous = owned;
+    // Optimistic merge only covers level/ascensionPhase/refinement -- the
+    // server response below replaces the whole item once it lands, which
+    // is what actually refreshes hoverDetail (that copy's own stats/
+    // passive) to match the new state instead of leaving it stuck at
+    // whatever it was computed at on the last full page load.
     setOwned((prev) => prev.map((weapon) => (weapon.id === ownedWeaponId ? { ...weapon, ...input } : weapon)));
     setEditingId(null);
 
     startTransition(async () => {
       const result = await updateWeaponProgression(ownedWeaponId, input).catch(() => ({ errors: {} }) as const);
-      if ("errors" in result) setOwned(previous);
+      if ("errors" in result) {
+        setOwned(previous);
+        return;
+      }
+      setOwned((prev) => prev.map((weapon) => (weapon.id === ownedWeaponId ? result.weapon : weapon)));
     });
   }
 
@@ -107,6 +116,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           onChange={(event) => setSortKey(event.target.value as OwnedSortKey)}
           className="rounded border bg-white px-3 py-2 text-sm text-black"
         >
+          <option value="obtained">Sort: Obtained</option>
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
           <option value="refinement">Sort: Refinement</option>

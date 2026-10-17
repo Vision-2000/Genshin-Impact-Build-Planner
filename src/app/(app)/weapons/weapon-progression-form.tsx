@@ -7,7 +7,7 @@ import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { SplashImage } from "@/components/splash-image";
 import { DiamondSelector } from "@/components/diamond-selector";
-import { BoldHighlightedText } from "@/components/bold-highlighted-text";
+import { StatLine } from "@/components/stat-line";
 import {
   MIN_LEVEL,
   MAX_LEVEL,
@@ -19,7 +19,7 @@ import {
 import { formatStatValue } from "@/lib/stat-format";
 import { roundHalfUp } from "@/lib/round";
 import { computeWeaponAttack, computeWeaponSecondaryStat, isExaiphanesBlade, EXAIPHANES_BLADE_STATES } from "@/lib/weapon-scaling";
-import { renderWeaponPassiveDescription, type WeaponRefinementCurveType } from "@/lib/weapon-refinement-scaling";
+import { tokenizeWeaponPassiveDescription, type WeaponRefinementCurveType } from "@/lib/weapon-refinement-scaling";
 import { getWeaponProgressionData, type WeaponProgressionData } from "./actions";
 import { MIN_REFINEMENT, MAX_REFINEMENT, type UpdateWeaponProgressionInput } from "./schemas";
 
@@ -51,6 +51,19 @@ function BaseStatsSection({
       ? computeWeaponSecondaryStat(data.baseSecondaryStatValue, level)
       : null;
 
+  // Worst-case equivalents (max level, max ascension phase) for StatLine's
+  // own ghost text -- computeWeaponAttack/computeWeaponSecondaryStat are
+  // both monotonically increasing in level/ascensionPhase (same curve
+  // shape as character-scaling.ts's own stats, just one fewer input), so
+  // this combination is always this weapon's single largest possible
+  // reading for both values below, regardless of what level/phase they're
+  // actually sitting at. See StatLine's own comment for why this matters.
+  const maxAttack = computeWeaponAttack(data.attackTier, data.rarity, MAX_LEVEL, MAX_ASCENSION_PHASE, data.attackCurveRarity ?? undefined);
+  const maxSecondaryStatValue =
+    secondaryStatName && data.baseSecondaryStatValue !== null
+      ? computeWeaponSecondaryStat(data.baseSecondaryStatValue, MAX_LEVEL)
+      : null;
+
   return (
     // -mr-9 -- same alignment trick as CharacterProgressionEditor's own
     // stats box (identical p-5/pr-14 geometry on the form column around
@@ -59,44 +72,101 @@ function BaseStatsSection({
     <div className={`-mr-9 rounded border bg-black p-3 text-sm ${PASSIVE_WIDTH_CLASS}`}>
       <p className="font-medium">Stats</p>
       <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-        <li>Base ATK: {roundHalfUp(attack, 0)}</li>
-        {secondaryStatName && secondaryStatValue !== null && (
-          <li>
-            {secondaryStatName}: {formatStatValue(secondaryStatName, secondaryStatValue)}
-          </li>
+        <StatLine current={`Base ATK: ${roundHalfUp(attack, 0)}`} ghost={`Base ATK: ${roundHalfUp(maxAttack, 0)}`} />
+        {secondaryStatName && secondaryStatValue !== null && maxSecondaryStatValue !== null && (
+          <StatLine
+            current={`${secondaryStatName}: ${formatStatValue(secondaryStatName, secondaryStatValue)}`}
+            ghost={`${secondaryStatName}: ${formatStatValue(secondaryStatName, maxSecondaryStatValue)}`}
+          />
         )}
       </ul>
     </div>
   );
 }
 
+// Renders one scaling value inline, pinned to its own worst-case width
+// (see tokenizeWeaponPassiveDescription's own comment) -- the invisible
+// `widest` span (normal flow) sets this span's box size, while `current`
+// (absolutely positioned over it) is what's actually seen. Unlike
+// StatLine's block-level version, this needs inline-block: it has to sit
+// mid-sentence, between ordinary text nodes, as a single unbreakable unit
+// the line-wrapping algorithm treats like one word.
+function InlinePassiveValue({ current, widest }: { current: string; widest: string }) {
+  return (
+    <span className="relative inline-block">
+      <span className="invisible">{widest}</span>
+      {/* text-center -- when `current` is shorter than `widest` (the
+          common case), the leftover space inside this pinned-width box
+          would otherwise sit entirely on the right (default left-aligned
+          text), reading as an odd gap before the next word. Centering
+          splits it evenly on both sides instead. */}
+      <span className="absolute inset-0 text-center font-medium text-sky-400">{current}</span>
+    </span>
+  );
+}
+
 // The weapon's passive (if it has one -- low-rarity weapons don't), shown
 // with the current refinement's text. The common case renders
 // passiveDescriptionTemplate's {0}/{1}/... placeholders via
-// @/lib/weapon-refinement-scaling; the one weapon whose refinement text is
-// structurally different between tiers (not just reworded numbers) has no
-// template at all and falls back to its raw per-refinement row instead --
-// see WeaponProgressionData's own comment. Deliberately no stat-bonus
-// restatement below the text -- the passive's own description already
-// says it, same reasoning the add-catalog hover tooltip already applies.
+// tokenizeWeaponPassiveDescription, each one pinned to its own worst-case
+// width inline (InlinePassiveValue above) -- necessary because a
+// paragraph-level ghost (an earlier version of this: re-render the whole
+// description once more with every value at its own widest, overlaid
+// invisibly just to reserve height) only keeps the BOX from resizing; the
+// real paragraph still re-wraps using its own actual content, so a word
+// well after a scaling number could still visibly jump to the next line
+// whenever that number's own width changed between refinements (confirmed
+// on Beyond the Chrysalis's "Winds of Plenty" passive: "equipping" wraps
+// to the next line at R2/R4 but not R1/R3/R5, purely because of that
+// refinement's own Elemental Mastery value being wider). Pinning each
+// value's own width independently keeps every wrap point identical no
+// matter which refinement is showing, since the literal text between
+// placeholders never changes and now neither does anything in between.
+//
+// The one weapon whose refinement text is structurally different between
+// tiers (not just reworded numbers) has no template at all and falls back
+// to its raw per-refinement row instead -- see WeaponProgressionData's own
+// comment. It has no placeholders to pin individually (and its own tiers
+// differ by a whole added clause, not a reworded number), so it keeps the
+// coarser whole-paragraph ghost, sized to the longest literal string
+// among its own known refinements. Deliberately no stat-bonus restatement
+// below the text -- the passive's own description already says it, same
+// reasoning the add-catalog hover tooltip already applies.
 function PassiveSection({ data, refinement }: { data: WeaponProgressionData; refinement: number }) {
   if (!data.passiveName) return null;
-  const description = data.passiveDescriptionTemplate
-    ? renderWeaponPassiveDescription(
-        data.passiveDescriptionTemplate,
-        data.refinementValues.map((v) => ({ ...v, curveType: v.curveType as WeaponRefinementCurveType })),
-        refinement
-      )
-    : data.refinementEffects.find((e) => e.refinement === refinement)?.description;
+
+  if (data.passiveDescriptionTemplate) {
+    const slots = data.refinementValues.map((v) => ({ ...v, curveType: v.curveType as WeaponRefinementCurveType }));
+    const tokens = tokenizeWeaponPassiveDescription(data.passiveDescriptionTemplate, slots, refinement, data.maxRefinement);
+
+    return (
+      // -mr-9 -- same reasoning as BaseStatsSection's own comment above.
+      <div className={`-mr-9 rounded border bg-black p-3 text-sm ${PASSIVE_WIDTH_CLASS}`}>
+        <p className="font-medium text-yellow-100">{data.passiveName}</p>
+        <p className="mt-1 whitespace-pre-line text-gray-300">
+          {tokens.map((token, i) =>
+            token.kind === "text" ? token.text : <InlinePassiveValue key={i} current={token.current} widest={token.widest} />
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  const description = data.refinementEffects.find((e) => e.refinement === refinement)?.description;
   if (!description) return null;
+  const ghostDescription = data.refinementEffects.reduce(
+    (longest, e) => (e.description.length > longest.length ? e.description : longest),
+    description
+  );
 
   return (
     // -mr-9 -- same reasoning as BaseStatsSection's own comment above.
     <div className={`-mr-9 rounded border bg-black p-3 text-sm ${PASSIVE_WIDTH_CLASS}`}>
       <p className="font-medium text-yellow-100">{data.passiveName}</p>
-      <p className="mt-1 whitespace-pre-line text-gray-300">
-        <BoldHighlightedText text={description} />
-      </p>
+      <div className="relative mt-1">
+        <p className="invisible whitespace-pre-line">{ghostDescription}</p>
+        <p className="absolute inset-0 whitespace-pre-line text-gray-300">{description}</p>
+      </div>
     </div>
   );
 }

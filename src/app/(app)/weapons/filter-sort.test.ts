@@ -36,6 +36,7 @@ function ownedItem(overrides: Partial<OwnedWeaponItem>): OwnedWeaponItem {
     level: 1,
     ascensionPhase: 0,
     hoverDetail: { attack: 0, secondaryStatValue: null, passiveName: null, passiveDescription: null },
+    createdAt: 0,
     ...overrides,
   };
 }
@@ -141,6 +142,7 @@ describe("filterAndSortOwnedWeapons", () => {
       refinement: 1,
       level: 40,
       secondaryStatName: "Physical DMG Bonus%",
+      createdAt: 100,
     }),
     ownedItem({
       id: 2,
@@ -150,6 +152,7 @@ describe("filterAndSortOwnedWeapons", () => {
       refinement: 5,
       level: 90,
       secondaryStatName: "Elemental Mastery",
+      createdAt: 300,
     }),
     ownedItem({
       id: 3,
@@ -159,6 +162,7 @@ describe("filterAndSortOwnedWeapons", () => {
       refinement: 3,
       level: 70,
       secondaryStatName: "Energy Recharge%",
+      createdAt: 200,
     }),
   ];
 
@@ -238,6 +242,20 @@ describe("filterAndSortOwnedWeapons", () => {
   it("sorts by name descending", () => {
     const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortDirection: "desc" });
     expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
+  });
+
+  it("sorts by obtained forward (newest createdAt first), breaking ties by name", () => {
+    const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "obtained" });
+    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
+  });
+
+  it("sorts by obtained reversed (oldest createdAt first), breaking ties by name", () => {
+    const result = filterAndSortOwnedWeapons(owned, {
+      ...ownedBaseFilters,
+      sortKey: "obtained",
+      sortDirection: "desc",
+    });
+    expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword", "Widsith"]);
   });
 
   it("returns an empty array when nothing matches", () => {

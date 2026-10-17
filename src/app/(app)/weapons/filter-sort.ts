@@ -46,10 +46,19 @@ export type OwnedWeaponItem = {
   // default state), this varies per owned copy, so it's recomputed from
   // that copy's own fields rather than defaultWeaponProgression().
   hoverDetail: WeaponHoverDetail;
+  // Epoch ms, not a Date -- this crosses the server/client boundary as a
+  // prop, and a plain number sidesteps any Date-serialization surprises.
+  // Backs the "obtained" sortKey below.
+  createdAt: number;
 };
 
 export type CatalogSortKey = "name" | "rarity";
-export type OwnedSortKey = "name" | "rarity" | "refinement" | "level";
+// "obtained" sorts by createdAt and is the default (see
+// OwnedWeaponManager) -- its forward direction is newest-first rather
+// than oldest-first (more intuitive for browsing what you just picked up),
+// same "flip the shared direction multiplier" treatment Artifacts' own
+// "release" sortKey uses (see artifacts/filter-sort.ts).
+export type OwnedSortKey = "name" | "rarity" | "refinement" | "level" | "obtained";
 
 // The full set of secondary stats any seeded weapon can roll (see
 // data-source/weapons.json) -- fixed/slow-changing game data, same
@@ -160,6 +169,9 @@ export function filterAndSortOwnedWeapons(
     }
     if (sortKey === "level") {
       return direction * (a.level - b.level) || a.name.localeCompare(b.name);
+    }
+    if (sortKey === "obtained") {
+      return -direction * (a.createdAt - b.createdAt) || a.name.localeCompare(b.name);
     }
     return direction * a.name.localeCompare(b.name);
   });

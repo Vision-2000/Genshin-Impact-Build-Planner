@@ -50,6 +50,7 @@ export default async function WeaponsPage() {
       ownedWeapon.ascensionPhase,
       ownedWeapon.refinement
     ),
+    createdAt: ownedWeapon.createdAt.getTime(),
   }));
 
   return (
