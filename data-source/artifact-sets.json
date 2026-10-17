@@ -1,6 +1,6 @@
 [
   {
-    "id": 1,
+    "id": 52,
     "name": "A Day Carved From Rising Winds",
     "rarity": 5,
     "twoPieceEffect": "ATK +18%.",
@@ -13,495 +13,7 @@
     "statBonuses": [
       {
         "id": 767,
-        "artifactSetId": 1,
-        "piece": "Two",
-        "statTypeId": 5,
-        "value": 18,
-        "statType": {
-          "id": 5,
-          "name": "ATK%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 2,
-    "name": "Archaic Petra",
-    "rarity": 5,
-    "twoPieceEffect": "Gain a 15% Geo DMG Bonus.",
-    "fourPieceEffect": "Upon obtaining an Elemental Shard created through Crystallize or triggering a Lunar-Crystallize reaction, all party members gain a 35% DMG Bonus for that particular element for 10s. Only one form of Elemental DMG Bonus can be gained in this manner at any one time.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_3.png",
-    "statBonuses": [
-      {
-        "id": 768,
-        "artifactSetId": 2,
-        "piece": "Two",
-        "statTypeId": 18,
-        "value": 15,
-        "statType": {
-          "id": 18,
-          "name": "Geo DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 3,
-    "name": "Aubade of Morningstar and Moon",
-    "rarity": 5,
-    "twoPieceEffect": "Increases Elemental Mastery by 80.",
-    "fourPieceEffect": "When the equipping character is off-field, Lunar Reaction DMG is increased by 20%. When the party's Moonsign Level is at least Ascendant Gleam, Lunar Reaction DMG will be further increased by 40%. This effect will disappear after the equipping character is active for 3s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_3.png",
-    "statBonuses": [
-      {
-        "id": 769,
-        "artifactSetId": 3,
-        "piece": "Two",
-        "statTypeId": 7,
-        "value": 80,
-        "statType": {
-          "id": 7,
-          "name": "Elemental Mastery"
-        }
-      }
-    ]
-  },
-  {
-    "id": 4,
-    "name": "Berserker",
-    "rarity": 4,
-    "twoPieceEffect": "CRIT Rate +12%",
-    "fourPieceEffect": "When HP is below 70%, CRIT Rate increases by an additional 24%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_3.png",
-    "statBonuses": [
-      {
-        "id": 770,
-        "artifactSetId": 4,
-        "piece": "Two",
-        "statTypeId": 9,
-        "value": 12,
-        "statType": {
-          "id": 9,
-          "name": "Crit Rate%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 5,
-    "name": "Blizzard Strayer",
-    "rarity": 5,
-    "twoPieceEffect": "Cryo DMG Bonus +15%",
-    "fourPieceEffect": "When a character attacks an opponent affected by Cryo, their CRIT Rate is increased by 20%. If the opponent is Frozen, CRIT Rate is increased by an additional 20%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_3.png",
-    "statBonuses": [
-      {
-        "id": 771,
-        "artifactSetId": 5,
-        "piece": "Two",
-        "statTypeId": 16,
-        "value": 15,
-        "statType": {
-          "id": 16,
-          "name": "Cryo DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 6,
-    "name": "Bloodstained Chivalry",
-    "rarity": 5,
-    "twoPieceEffect": "Physical DMG +25%",
-    "fourPieceEffect": "After defeating an opponent, increases Charged Attack DMG by 50%, and reduces its Stamina cost to 0 for 10s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_3.png",
-    "statBonuses": [
-      {
-        "id": 772,
-        "artifactSetId": 6,
-        "piece": "Two",
-        "statTypeId": 12,
-        "value": 25,
-        "statType": {
-          "id": 12,
-          "name": "Physical DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 7,
-    "name": "Brave Heart",
-    "rarity": 4,
-    "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "Increases DMG by 30% against opponents with more than 50% HP.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_3.png",
-    "statBonuses": [
-      {
-        "id": 773,
-        "artifactSetId": 7,
-        "piece": "Two",
-        "statTypeId": 5,
-        "value": 18,
-        "statType": {
-          "id": 5,
-          "name": "ATK%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 8,
-    "name": "Celestial Gift",
-    "rarity": 5,
-    "twoPieceEffect": "Energy Recharge +20%.",
-    "fourPieceEffect": "If the equipping character has completed Witch's Homework, after they use an Elemental Skill, they gain \"Light's Guidance\" for 20s: All nearby party members gain a 20% Elemental DMG Bonus corresponding to the equipping character's Elemental Type. The equipping character can trigger this effect while off-field. DMG Bonuses provided by Artifact Sets with the same name do not stack.\n· When your party has the Hexerei: Secret Rite effect, Light's Guidance is upgraded to \"Mortal Hymn\": All nearby party members gain a 40% Elemental DMG Bonus corresponding to both the equipping character and the current active party member's Elemental Type instead. If both characters have the same Elemental Type, these bonuses will not stack.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_3.png",
-    "statBonuses": [
-      {
-        "id": 774,
-        "artifactSetId": 8,
-        "piece": "Two",
-        "statTypeId": 8,
-        "value": 20,
-        "statType": {
-          "id": 8,
-          "name": "Energy Recharge%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 9,
-    "name": "Crimson Witch of Flames",
-    "rarity": 5,
-    "twoPieceEffect": "Pyro DMG Bonus +15%",
-    "fourPieceEffect": "Increases Overloaded, Burning, and Burgeon DMG by 40%. Increases Vaporize and Melt DMG by 15%. Using Elemental Skill increases the 2-Piece Set Bonus by 50% of its starting value for 10s. Max 3 stacks.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_3.png",
-    "statBonuses": [
-      {
-        "id": 775,
-        "artifactSetId": 9,
-        "piece": "Two",
-        "statTypeId": 13,
-        "value": 15,
-        "statType": {
-          "id": 13,
-          "name": "Pyro DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 10,
-    "name": "Deepwood Memories",
-    "rarity": 5,
-    "twoPieceEffect": "Dendro DMG Bonus +15%.",
-    "fourPieceEffect": "After Elemental Skills or Bursts hit opponents, the targets' Dendro RES will be decreased by 30% for 8s. This effect can be triggered even if the equipping character is not on the field.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_3.png",
-    "statBonuses": [
-      {
-        "id": 776,
-        "artifactSetId": 10,
-        "piece": "Two",
-        "statTypeId": 19,
-        "value": 15,
-        "statType": {
-          "id": 19,
-          "name": "Dendro DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 11,
-    "name": "Defender's Will",
-    "rarity": 4,
-    "twoPieceEffect": "DEF +30%",
-    "fourPieceEffect": "For each different element present in your own party, the wearer's Elemental RES to that corresponding element is increased by 30%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_3.png",
-    "statBonuses": [
-      {
-        "id": 777,
-        "artifactSetId": 11,
-        "piece": "Two",
-        "statTypeId": 6,
-        "value": 30,
-        "statType": {
-          "id": 6,
-          "name": "DEF%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 12,
-    "name": "Desert Pavilion Chronicle",
-    "rarity": 5,
-    "twoPieceEffect": "Anemo DMG Bonus +15%",
-    "fourPieceEffect": "When Charged Attacks hit opponents, the equipping character's Normal Attack SPD will increase by 10% while Normal, Charged, and Plunging Attack DMG will increase by 40% for 15s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_3.png",
-    "statBonuses": [
-      {
-        "id": 778,
-        "artifactSetId": 12,
-        "piece": "Two",
-        "statTypeId": 17,
-        "value": 15,
-        "statType": {
-          "id": 17,
-          "name": "Anemo DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 13,
-    "name": "Disenchantment in Deep Shadow",
-    "rarity": 5,
-    "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "Increases Superconduct Reaction DMG by 80% and Stellar-Conduct Reaction DMG by 40%. When the wielder attacks opponents affected by Superconduct or Stellar-Conduct, this attack's CRIT Rate is increased by 16%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_3.png",
-    "statBonuses": [
-      {
-        "id": 779,
-        "artifactSetId": 13,
-        "piece": "Two",
-        "statTypeId": 5,
-        "value": 18,
-        "statType": {
-          "id": 5,
-          "name": "ATK%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 14,
-    "name": "Echoes of an Offering",
-    "rarity": 5,
-    "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "When Normal Attacks hit opponents, there is a 36% chance that it will trigger Valley Rite, which will increase Normal Attack DMG by 70% of ATK. This effect will be dispelled 0.05s after a Normal Attack deals DMG. If a Normal Attack fails to trigger Valley Rite, the odds of it triggering the next time will increase by 20%. This trigger can occur once every 0.2s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_3.png",
-    "statBonuses": [
-      {
-        "id": 780,
-        "artifactSetId": 14,
-        "piece": "Two",
-        "statTypeId": 5,
-        "value": 18,
-        "statType": {
-          "id": 5,
-          "name": "ATK%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 15,
-    "name": "Emblem of Severed Fate",
-    "rarity": 5,
-    "twoPieceEffect": "Energy Recharge +20%",
-    "fourPieceEffect": "Increases Elemental Burst DMG by 25% of Energy Recharge. A maximum of 75% bonus DMG can be obtained in this way.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_3.png",
-    "statBonuses": [
-      {
-        "id": 781,
-        "artifactSetId": 15,
-        "piece": "Two",
-        "statTypeId": 8,
-        "value": 20,
-        "statType": {
-          "id": 8,
-          "name": "Energy Recharge%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 16,
-    "name": "Finale of the Deep Galleries",
-    "rarity": 5,
-    "twoPieceEffect": "Cryo DMG Bonus +15%",
-    "fourPieceEffect": "When the equipping character has 0 Elemental Energy, Normal Attack DMG is increased by 60% and Elemental Burst DMG is increased by 60%. After the equipping character deals Normal Attack DMG, the aforementioned Elemental Burst effect will stop applying for 6s. After the equipping character deals Elemental Burst DMG, the aforementioned Normal Attack effect will stop applying for 6s. This effect can trigger even if the equipping character is off the field.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_3.png",
-    "statBonuses": [
-      {
-        "id": 782,
-        "artifactSetId": 16,
-        "piece": "Two",
-        "statTypeId": 16,
-        "value": 15,
-        "statType": {
-          "id": 16,
-          "name": "Cryo DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 17,
-    "name": "Flower of Paradise Lost",
-    "rarity": 5,
-    "twoPieceEffect": "Increases Elemental Mastery by 80.",
-    "fourPieceEffect": "The equipping character's Bloom, Hyperbloom, and Burgeon reaction DMG are increased by 40%, and their Lunar-Bloom reaction DMG is increased by 10%. Additionally, after the equipping character triggers Bloom, Hyperbloom, Lunar-Bloom, or Burgeon, they will gain another 25% bonus to the effects mentioned prior. Each stack of this lasts 10s. Max 4 stacks simultaneously. This effect can only be triggered once per second. The character who equips this can still trigger its effects when not on the field.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_3.png",
-    "statBonuses": [
-      {
-        "id": 783,
-        "artifactSetId": 17,
-        "piece": "Two",
-        "statTypeId": 7,
-        "value": 80,
-        "statType": {
-          "id": 7,
-          "name": "Elemental Mastery"
-        }
-      }
-    ]
-  },
-  {
-    "id": 18,
-    "name": "Fragment of Harmonic Whimsy",
-    "rarity": 5,
-    "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "When the value of a Bond of Life increases or decreases, this character deals 18% increased DMG for 6s. Max 3 stacks.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_3.png",
-    "statBonuses": [
-      {
-        "id": 784,
-        "artifactSetId": 18,
-        "piece": "Two",
-        "statTypeId": 5,
-        "value": 18,
-        "statType": {
-          "id": 5,
-          "name": "ATK%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 19,
-    "name": "Gambler",
-    "rarity": 4,
-    "twoPieceEffect": "Increases Elemental Skill DMG by 20%.",
-    "fourPieceEffect": "Defeating an opponent has a 100% chance to remove Elemental Skill CD. Can only occur once every 15s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_3.png",
-    "statBonuses": []
-  },
-  {
-    "id": 20,
-    "name": "Gilded Dreams",
-    "rarity": 5,
-    "twoPieceEffect": "Increases Elemental Mastery by 80.",
-    "fourPieceEffect": "Within 8s of triggering an Elemental Reaction, the character equipping this will obtain buffs based on the Elemental Type of the other party members. ATK is increased by 14% for each party member whose Elemental Type is the same as the equipping character, and Elemental Mastery is increased by 50 for every party member with a different Elemental Type. Each of the aforementioned buffs will count up to 3 characters. This effect can be triggered once every 8s. The character who equips this can still trigger its effects when not on the field.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_3.png",
-    "statBonuses": [
-      {
-        "id": 785,
-        "artifactSetId": 20,
-        "piece": "Two",
-        "statTypeId": 7,
-        "value": 80,
-        "statType": {
-          "id": 7,
-          "name": "Elemental Mastery"
-        }
-      }
-    ]
-  },
-  {
-    "id": 21,
-    "name": "Gladiator's Finale",
-    "rarity": 5,
-    "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "If the wielder of this artifact set uses a Sword, Claymore or Polearm, increases their Normal Attack DMG by 35%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_3.png",
-    "statBonuses": [
-      {
-        "id": 786,
-        "artifactSetId": 21,
+        "artifactSetId": 52,
         "piece": "Two",
         "statTypeId": 5,
         "value": 18,
@@ -514,57 +26,144 @@
   },
   {
     "id": 22,
-    "name": "Golden Troupe",
+    "name": "Archaic Petra",
     "rarity": 5,
-    "twoPieceEffect": "Increases Elemental Skill DMG by 20%.",
-    "fourPieceEffect": "Increases Elemental Skill DMG by 25%. Additionally, when not on the field, Elemental Skill DMG will be further increased by 25%. This effect will be cleared 2s after taking the field.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_3.png",
-    "statBonuses": []
-  },
-  {
-    "id": 23,
-    "name": "Heart of Depth",
-    "rarity": 5,
-    "twoPieceEffect": "Hydro DMG Bonus +15%",
-    "fourPieceEffect": "After using Elemental Skill, increases Normal Attack and Charged Attack DMG by 30% for 15s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_3.png",
+    "twoPieceEffect": "Gain a 15% Geo DMG Bonus.",
+    "fourPieceEffect": "Upon obtaining an Elemental Shard created through Crystallize or triggering a Lunar-Crystallize reaction, all party members gain a 35% DMG Bonus for that particular element for 10s. Only one form of Elemental DMG Bonus can be gained in this manner at any one time.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15014_3.png",
     "statBonuses": [
       {
-        "id": 787,
-        "artifactSetId": 23,
+        "id": 768,
+        "artifactSetId": 22,
         "piece": "Two",
-        "statTypeId": 14,
+        "statTypeId": 18,
         "value": 15,
         "statType": {
-          "id": 14,
-          "name": "Hydro DMG Bonus%"
+          "id": 18,
+          "name": "Geo DMG Bonus%"
         }
       }
     ]
   },
   {
-    "id": 240,
-    "name": "Heart of the Furnace",
+    "id": 51,
+    "name": "Aubade of Morningstar and Moon",
     "rarity": 5,
-    "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "Increases the equipping character's ATK by 12% for 12s when they trigger a Stellar Glimmer reaction or deal Stellar Glimmer reaction DMG. Also increases Stellar Glimmer reaction DMG dealt by all nearby party members by 50%. The above effects can trigger even when the equipping character is not on the field, and the DMG bonus from multiple Artifact Sets with the same name do not stack.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_3.png",
+    "twoPieceEffect": "Increases Elemental Mastery by 80.",
+    "fourPieceEffect": "When the equipping character is off-field, Lunar Reaction DMG is increased by 20%. When the party's Moonsign Level is at least Ascendant Gleam, Lunar Reaction DMG will be further increased by 40%. This effect will disappear after the equipping character is active for 3s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15043_3.png",
     "statBonuses": [
       {
-        "id": 788,
-        "artifactSetId": 240,
+        "id": 769,
+        "artifactSetId": 51,
+        "piece": "Two",
+        "statTypeId": 7,
+        "value": 80,
+        "statType": {
+          "id": 7,
+          "name": "Elemental Mastery"
+        }
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Berserker",
+    "rarity": 4,
+    "twoPieceEffect": "CRIT Rate +12%",
+    "fourPieceEffect": "When HP is below 70%, CRIT Rate increases by an additional 24%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10005_3.png",
+    "statBonuses": [
+      {
+        "id": 770,
+        "artifactSetId": 5,
+        "piece": "Two",
+        "statTypeId": 9,
+        "value": 12,
+        "statType": {
+          "id": 9,
+          "name": "Crit Rate%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "name": "Blizzard Strayer",
+    "rarity": 5,
+    "twoPieceEffect": "Cryo DMG Bonus +15%",
+    "fourPieceEffect": "When a character attacks an opponent affected by Cryo, their CRIT Rate is increased by 20%. If the opponent is Frozen, CRIT Rate is increased by an additional 20%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_14001_3.png",
+    "statBonuses": [
+      {
+        "id": 771,
+        "artifactSetId": 11,
+        "piece": "Two",
+        "statTypeId": 16,
+        "value": 15,
+        "statType": {
+          "id": 16,
+          "name": "Cryo DMG Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "name": "Bloodstained Chivalry",
+    "rarity": 5,
+    "twoPieceEffect": "Physical DMG +25%",
+    "fourPieceEffect": "After defeating an opponent, increases Charged Attack DMG by 50%, and reduces its Stamina cost to 0 for 10s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15008_3.png",
+    "statBonuses": [
+      {
+        "id": 772,
+        "artifactSetId": 21,
+        "piece": "Two",
+        "statTypeId": 12,
+        "value": 25,
+        "statType": {
+          "id": 12,
+          "name": "Physical DMG Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Brave Heart",
+    "rarity": 4,
+    "twoPieceEffect": "ATK +18%.",
+    "fourPieceEffect": "Increases DMG by 30% against opponents with more than 50% HP.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10002_3.png",
+    "statBonuses": [
+      {
+        "id": 773,
+        "artifactSetId": 2,
         "piece": "Two",
         "statTypeId": 5,
         "value": 18,
@@ -576,20 +175,95 @@
     ]
   },
   {
-    "id": 24,
-    "name": "Husk of Opulent Dreams",
+    "id": 53,
+    "name": "Celestial Gift",
     "rarity": 5,
-    "twoPieceEffect": "DEF +30%",
-    "fourPieceEffect": "A character equipped with this Artifact set will obtain the Curiosity effect in the following conditions: When on the field, the character gains 1 stack after hitting an opponent with a Geo attack, triggering a maximum of once every 0.3s. When off the field, the character gains 1 stack every 3s. Curiosity can stack up to 4 times, each providing 6% DEF and a 6% Geo DMG Bonus. When 6 seconds pass without gaining a Curiosity stack, 1 stack is lost.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_3.png",
+    "twoPieceEffect": "Energy Recharge +20%.",
+    "fourPieceEffect": "If the equipping character has completed Witch's Homework, after they use an Elemental Skill, they gain \"Light's Guidance\" for 20s: All nearby party members gain a 20% Elemental DMG Bonus corresponding to the equipping character's Elemental Type. The equipping character can trigger this effect while off-field. DMG Bonuses provided by Artifact Sets with the same name do not stack.\n· When your party has the Hexerei: Secret Rite effect, Light's Guidance is upgraded to \"Mortal Hymn\": All nearby party members gain a 40% Elemental DMG Bonus corresponding to both the equipping character and the current active party member's Elemental Type instead. If both characters have the same Elemental Type, these bonuses will not stack.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15045_3.png",
     "statBonuses": [
       {
-        "id": 789,
-        "artifactSetId": 24,
+        "id": 774,
+        "artifactSetId": 53,
+        "piece": "Two",
+        "statTypeId": 8,
+        "value": 20,
+        "statType": {
+          "id": 8,
+          "name": "Energy Recharge%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "name": "Crimson Witch of Flames",
+    "rarity": 5,
+    "twoPieceEffect": "Pyro DMG Bonus +15%",
+    "fourPieceEffect": "Increases Overloaded, Burning, and Burgeon DMG by 40%. Increases Vaporize and Melt DMG by 15%. Using Elemental Skill increases the 2-Piece Set Bonus by 50% of its starting value for 10s. Max 3 stacks.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15006_3.png",
+    "statBonuses": [
+      {
+        "id": 775,
+        "artifactSetId": 19,
+        "piece": "Two",
+        "statTypeId": 13,
+        "value": 15,
+        "statType": {
+          "id": 13,
+          "name": "Pyro DMG Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "name": "Deepwood Memories",
+    "rarity": 5,
+    "twoPieceEffect": "Dendro DMG Bonus +15%.",
+    "fourPieceEffect": "After Elemental Skills or Bursts hit opponents, the targets' Dendro RES will be decreased by 30% for 8s. This effect can be triggered even if the equipping character is not on the field.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15025_3.png",
+    "statBonuses": [
+      {
+        "id": 776,
+        "artifactSetId": 33,
+        "piece": "Two",
+        "statTypeId": 19,
+        "value": 15,
+        "statType": {
+          "id": 19,
+          "name": "Dendro DMG Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Defender's Will",
+    "rarity": 4,
+    "twoPieceEffect": "DEF +30%",
+    "fourPieceEffect": "For each different element present in your own party, the wearer's Elemental RES to that corresponding element is increased by 30%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10003_3.png",
+    "statBonuses": [
+      {
+        "id": 777,
+        "artifactSetId": 3,
         "piece": "Two",
         "statTypeId": 6,
         "value": 30,
@@ -601,158 +275,69 @@
     ]
   },
   {
-    "id": 25,
-    "name": "Instructor",
-    "rarity": 4,
-    "twoPieceEffect": "Increases Elemental Mastery by 80.",
-    "fourPieceEffect": "Upon triggering an Elemental Reaction, increases all party members' Elemental Mastery by 120 for 8s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_3.png",
+    "id": 35,
+    "name": "Desert Pavilion Chronicle",
+    "rarity": 5,
+    "twoPieceEffect": "Anemo DMG Bonus +15%",
+    "fourPieceEffect": "When Charged Attacks hit opponents, the equipping character's Normal Attack SPD will increase by 10% while Normal, Charged, and Plunging Attack DMG will increase by 40% for 15s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15027_3.png",
     "statBonuses": [
       {
-        "id": 790,
-        "artifactSetId": 25,
+        "id": 778,
+        "artifactSetId": 35,
         "piece": "Two",
-        "statTypeId": 7,
-        "value": 80,
-        "statType": {
-          "id": 7,
-          "name": "Elemental Mastery"
-        }
-      }
-    ]
-  },
-  {
-    "id": 26,
-    "name": "Lavawalker",
-    "rarity": 5,
-    "twoPieceEffect": "Pyro RES increased by 40%.",
-    "fourPieceEffect": "Increases DMG against opponents affected by Pyro by 35%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_3.png",
-    "statBonuses": [
-      {
-        "id": 791,
-        "artifactSetId": 26,
-        "piece": "Two",
-        "statTypeId": 24,
-        "value": 40,
-        "statType": {
-          "id": 24,
-          "name": "Pyro RES%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 27,
-    "name": "Long Night's Oath",
-    "rarity": 5,
-    "twoPieceEffect": "Plunging Attack DMG increased by 25%.",
-    "fourPieceEffect": "After the equipping character's Plunging Attack/Charged Attack/Elemental Skill hits an opponent, they will gain 1/2/2 stack(s) of \"Radiance Everlasting.\" Plunging Attacks, Charged Attacks, or Elemental Skills can each trigger this effect once every 1s. Radiance Everlasting: Plunging Attacks deal 15% increased DMG for 6s. Max 5 stacks. Each stack's duration is counted independently.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_3.png",
-    "statBonuses": []
-  },
-  {
-    "id": 28,
-    "name": "Maiden Beloved",
-    "rarity": 5,
-    "twoPieceEffect": "Character Healing Effectiveness +15%",
-    "fourPieceEffect": "Using an Elemental Skill or Burst increases healing received by all party members by 20% for 10s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_3.png",
-    "statBonuses": [
-      {
-        "id": 792,
-        "artifactSetId": 28,
-        "piece": "Two",
-        "statTypeId": 11,
+        "statTypeId": 17,
         "value": 15,
         "statType": {
-          "id": 11,
-          "name": "Healing Bonus%"
+          "id": 17,
+          "name": "Anemo DMG Bonus%"
         }
       }
     ]
   },
   {
-    "id": 29,
-    "name": "Marechaussee Hunter",
+    "id": 54,
+    "name": "Disenchantment in Deep Shadow",
     "rarity": 5,
-    "twoPieceEffect": "Normal and Charged Attack DMG +15%",
-    "fourPieceEffect": "When current HP increases or decreases, CRIT Rate will be increased by 12% for 5s. Max 3 stacks.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_3.png",
-    "statBonuses": []
-  },
-  {
-    "id": 30,
-    "name": "Martial Artist",
-    "rarity": 4,
-    "twoPieceEffect": "Normal and Charged Attack DMG +15%",
-    "fourPieceEffect": "After using Elemental Skill, increases Normal Attack and Charged Attack DMG by 25% for 8s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_3.png",
-    "statBonuses": []
-  },
-  {
-    "id": 31,
-    "name": "Night of the Sky's Unveiling",
-    "rarity": 5,
-    "twoPieceEffect": "Increases Elemental Mastery by 80.",
-    "fourPieceEffect": "When nearby party members trigger Lunar Reactions, if the equipping character is on the field, gain the Gleaming Moon: Intent effect for 4s: Increases CRIT Rate by 15%/30% when the party's Moonsign is Nascent Gleam/Ascendant Gleam. All party members' Lunar Reaction DMG is increased by 10% for each different Gleaming Moon effect that party members have. Effects from Gleaming Moon cannot stack.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_3.png",
+    "twoPieceEffect": "ATK +18%.",
+    "fourPieceEffect": "Increases Superconduct Reaction DMG by 80% and Stellar-Conduct Reaction DMG by 40%. When the wielder attacks opponents affected by Superconduct or Stellar-Conduct, this attack's CRIT Rate is increased by 16%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15046_3.png",
     "statBonuses": [
       {
-        "id": 793,
-        "artifactSetId": 31,
+        "id": 779,
+        "artifactSetId": 54,
         "piece": "Two",
-        "statTypeId": 7,
-        "value": 80,
+        "statTypeId": 5,
+        "value": 18,
         "statType": {
-          "id": 7,
-          "name": "Elemental Mastery"
+          "id": 5,
+          "name": "ATK%"
         }
       }
     ]
   },
   {
     "id": 32,
-    "name": "Nighttime Whispers in the Echoing Woods",
+    "name": "Echoes of an Offering",
     "rarity": 5,
     "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "After using an Elemental Skill, gain a 20% Geo DMG Bonus for 10s. When under a shield granted by the Crystallize reaction, or when Moondrifts formed by Lunar-Crystallize reactions are nearby, the above effect is increased by 150%. When these conditions are no longer met, this additional increase disappears after 1s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_3.png",
+    "fourPieceEffect": "When Normal Attacks hit opponents, there is a 36% chance that it will trigger Valley Rite, which will increase Normal Attack DMG by 70% of ATK. This effect will be dispelled 0.05s after a Normal Attack deals DMG. If a Normal Attack fails to trigger Valley Rite, the odds of it triggering the next time will increase by 20%. This trigger can occur once every 0.2s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15024_3.png",
     "statBonuses": [
       {
-        "id": 794,
+        "id": 780,
         "artifactSetId": 32,
         "piece": "Two",
         "statTypeId": 5,
@@ -765,121 +350,95 @@
     ]
   },
   {
-    "id": 33,
-    "name": "Noblesse Oblige",
+    "id": 28,
+    "name": "Emblem of Severed Fate",
     "rarity": 5,
-    "twoPieceEffect": "Elemental Burst DMG +20%",
-    "fourPieceEffect": "Using an Elemental Burst increases all party members' ATK by 20% for 12s. This effect cannot stack.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_3.png",
-    "statBonuses": []
-  },
-  {
-    "id": 34,
-    "name": "Nymph's Dream",
-    "rarity": 5,
-    "twoPieceEffect": "Hydro DMG Bonus +15%",
-    "fourPieceEffect": "After Normal, Charged, and Plunging Attacks, Elemental Skills, and Elemental Bursts hit opponents, 1 stack of Mirrored Nymph will be triggered, lasting 8s. When under the effect of 1, 2, or 3 or more Mirrored Nymph stacks, ATK will be increased by 7%/16%/25%, and Hydro DMG Bonus will be increased by 4%/9%/15%. Mirrored Nymph stacks created by Normal, Charged, and Plunging Attacks, Elemental Skills, and Elemental Bursts exist independently.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_3.png",
+    "twoPieceEffect": "Energy Recharge +20%",
+    "fourPieceEffect": "Increases Elemental Burst DMG by 25% of Energy Recharge. A maximum of 75% bonus DMG can be obtained in this way.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15020_3.png",
     "statBonuses": [
       {
-        "id": 795,
-        "artifactSetId": 34,
+        "id": 781,
+        "artifactSetId": 28,
         "piece": "Two",
-        "statTypeId": 14,
-        "value": 15,
+        "statTypeId": 8,
+        "value": 20,
         "statType": {
-          "id": 14,
-          "name": "Hydro DMG Bonus%"
+          "id": 8,
+          "name": "Energy Recharge%"
         }
       }
     ]
   },
   {
-    "id": 35,
-    "name": "Obsidian Codex",
+    "id": 48,
+    "name": "Finale of the Deep Galleries",
     "rarity": 5,
-    "twoPieceEffect": "While the equipping character is in Nightsoul's Blessing and is on the field, their DMG dealt is increased by 15%.",
-    "fourPieceEffect": "After the equipping character consumes 1 Nightsoul point while on the field, CRIT Rate increases by 40% for 6s. This effect can trigger once every second.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_3.png",
-    "statBonuses": []
+    "twoPieceEffect": "Cryo DMG Bonus +15%",
+    "fourPieceEffect": "When the equipping character has 0 Elemental Energy, Normal Attack DMG is increased by 60% and Elemental Burst DMG is increased by 60%. After the equipping character deals Normal Attack DMG, the aforementioned Elemental Burst effect will stop applying for 6s. After the equipping character deals Elemental Burst DMG, the aforementioned Normal Attack effect will stop applying for 6s. This effect can trigger even if the equipping character is off the field.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15040_3.png",
+    "statBonuses": [
+      {
+        "id": 782,
+        "artifactSetId": 48,
+        "piece": "Two",
+        "statTypeId": 16,
+        "value": 15,
+        "statType": {
+          "id": 16,
+          "name": "Cryo DMG Bonus%"
+        }
+      }
+    ]
   },
   {
     "id": 36,
-    "name": "Ocean-Hued Clam",
+    "name": "Flower of Paradise Lost",
     "rarity": 5,
-    "twoPieceEffect": "Healing Bonus +15%.",
-    "fourPieceEffect": "When the character equipping this artifact set heals a character in the party, a Sea-Dyed Foam will appear for 3 seconds, accumulating the amount of HP recovered from healing (including overflow healing). At the end of the duration, the Sea-Dyed Foam will explode, dealing DMG to nearby opponents based on 90% of the accumulated healing. (This DMG is calculated similarly to Reactions such as Electro-Charged, and Superconduct, but is not affected by Elemental Mastery, Character Levels, or Reaction DMG Bonuses). Only one Sea-Dyed Foam can be produced every 3.5 seconds. Each Sea-Dyed Foam can accumulate up to 30,000 HP (including overflow healing). There can be no more than one Sea-Dyed Foam active at any given time. This effect can still be triggered even when the character who is using this artifact set is not on the field.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_3.png",
+    "twoPieceEffect": "Increases Elemental Mastery by 80.",
+    "fourPieceEffect": "The equipping character's Bloom, Hyperbloom, and Burgeon reaction DMG are increased by 40%, and their Lunar-Bloom reaction DMG is increased by 10%. Additionally, after the equipping character triggers Bloom, Hyperbloom, Lunar-Bloom, or Burgeon, they will gain another 25% bonus to the effects mentioned prior. Each stack of this lasts 10s. Max 4 stacks simultaneously. This effect can only be triggered once per second. The character who equips this can still trigger its effects when not on the field.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15028_3.png",
     "statBonuses": [
       {
-        "id": 796,
+        "id": 783,
         "artifactSetId": 36,
         "piece": "Two",
-        "statTypeId": 11,
-        "value": 15,
+        "statTypeId": 7,
+        "value": 80,
         "statType": {
-          "id": 11,
-          "name": "Healing Bonus%"
+          "id": 7,
+          "name": "Elemental Mastery"
         }
       }
     ]
   },
   {
-    "id": 37,
-    "name": "Pale Flame",
+    "id": 43,
+    "name": "Fragment of Harmonic Whimsy",
     "rarity": 5,
-    "twoPieceEffect": "Physical DMG is increased by 25%.",
-    "fourPieceEffect": "When an Elemental Skill hits an opponent, ATK is increased by 9% for 7s. This effect stacks up to 2 times and can be triggered once every 0.3s. Once 2 stacks are reached, the 2-set effect is increased by 100%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_3.png",
-    "statBonuses": [
-      {
-        "id": 797,
-        "artifactSetId": 37,
-        "piece": "Two",
-        "statTypeId": 12,
-        "value": 25,
-        "statType": {
-          "id": 12,
-          "name": "Physical DMG Bonus%"
-        }
-      }
-    ]
-  },
-  {
-    "id": 38,
-    "name": "Resolution of Sojourner",
-    "rarity": 4,
     "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "Increases Charged Attack CRIT Rate by 30%.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_3.png",
+    "fourPieceEffect": "When the value of a Bond of Life increases or decreases, this character deals 18% increased DMG for 6s. Max 3 stacks.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15035_3.png",
     "statBonuses": [
       {
-        "id": 798,
-        "artifactSetId": 38,
+        "id": 784,
+        "artifactSetId": 43,
         "piece": "Two",
         "statTypeId": 5,
         "value": 18,
@@ -891,45 +450,58 @@
     ]
   },
   {
-    "id": 39,
-    "name": "Retracing Bolide",
+    "id": 8,
+    "name": "Gambler",
+    "rarity": 4,
+    "twoPieceEffect": "Increases Elemental Skill DMG by 20%.",
+    "fourPieceEffect": "Defeating an opponent has a 100% chance to remove Elemental Skill CD. Can only occur once every 15s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10008_3.png",
+    "statBonuses": []
+  },
+  {
+    "id": 34,
+    "name": "Gilded Dreams",
     "rarity": 5,
-    "twoPieceEffect": "Increases Shield Strength by 35%.",
-    "fourPieceEffect": "While protected by a shield, gain an additional 40% Normal and Charged Attack DMG.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_3.png",
+    "twoPieceEffect": "Increases Elemental Mastery by 80.",
+    "fourPieceEffect": "Within 8s of triggering an Elemental Reaction, the character equipping this will obtain buffs based on the Elemental Type of the other party members. ATK is increased by 14% for each party member whose Elemental Type is the same as the equipping character, and Elemental Mastery is increased by 50 for every party member with a different Elemental Type. Each of the aforementioned buffs will count up to 3 characters. This effect can be triggered once every 8s. The character who equips this can still trigger its effects when not on the field.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15026_3.png",
     "statBonuses": [
       {
-        "id": 799,
-        "artifactSetId": 39,
+        "id": 785,
+        "artifactSetId": 34,
         "piece": "Two",
-        "statTypeId": 22,
-        "value": 35,
+        "statTypeId": 7,
+        "value": 80,
         "statType": {
-          "id": 22,
-          "name": "Shield Strength%"
+          "id": 7,
+          "name": "Elemental Mastery"
         }
       }
     ]
   },
   {
-    "id": 257,
-    "name": "Scarlet Proof",
+    "id": 15,
+    "name": "Gladiator's Finale",
     "rarity": 5,
     "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "Increases the equipping character's CRIT Rate by 16%, and their Stellar Swirl reaction DMG dealt by 40%, for 10s after they trigger a Stellar Swirl reaction.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_3.png",
+    "fourPieceEffect": "If the wielder of this artifact set uses a Sword, Claymore or Polearm, increases their Normal Attack DMG by 35%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15001_3.png",
     "statBonuses": [
       {
-        "id": 800,
-        "artifactSetId": 257,
+        "id": 786,
+        "artifactSetId": 15,
         "piece": "Two",
         "statTypeId": 5,
         "value": 18,
@@ -942,56 +514,245 @@
   },
   {
     "id": 40,
-    "name": "Scholar",
-    "rarity": 4,
-    "twoPieceEffect": "Energy Recharge +20%",
-    "fourPieceEffect": "Gaining Elemental Particles or Orbs gives 3 Energy to all party members who have a bow or a catalyst equipped. Can only occur once every 3s.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_3.png",
+    "name": "Golden Troupe",
+    "rarity": 5,
+    "twoPieceEffect": "Increases Elemental Skill DMG by 20%.",
+    "fourPieceEffect": "Increases Elemental Skill DMG by 25%. Additionally, when not on the field, Elemental Skill DMG will be further increased by 25%. This effect will be cleared 2s after taking the field.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15032_3.png",
+    "statBonuses": []
+  },
+  {
+    "id": 24,
+    "name": "Heart of Depth",
+    "rarity": 5,
+    "twoPieceEffect": "Hydro DMG Bonus +15%",
+    "fourPieceEffect": "After using Elemental Skill, increases Normal Attack and Charged Attack DMG by 30% for 15s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15016_3.png",
     "statBonuses": [
       {
-        "id": 801,
-        "artifactSetId": 40,
+        "id": 787,
+        "artifactSetId": 24,
         "piece": "Two",
-        "statTypeId": 8,
-        "value": 20,
+        "statTypeId": 14,
+        "value": 15,
         "statType": {
-          "id": 8,
-          "name": "Energy Recharge%"
+          "id": 14,
+          "name": "Hydro DMG Bonus%"
         }
       }
     ]
   },
   {
-    "id": 41,
-    "name": "Scroll of the Hero of Cinder City",
+    "id": 56,
+    "name": "Heart of the Furnace",
     "rarity": 5,
-    "twoPieceEffect": "When a nearby party member triggers a Nightsoul Burst, the equipping character regenerates 6 Elemental Energy.",
-    "fourPieceEffect": "After the equipping character triggers a reaction related to their Elemental Type, all nearby party members gain a 12% Elemental DMG Bonus for the Elemental Types involved in the elemental reaction for 15s. If the equipping character is in the Nightsoul's Blessing state when triggering this effect, all nearby party members gain an additional 28% Elemental DMG Bonus for the Elemental Types involved in the elemental reaction for 20s. The equipping character can trigger this effect while off-field, and the DMG bonus from Artifact Sets with the same name do not stack.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_3.png",
+    "twoPieceEffect": "ATK +18%.",
+    "fourPieceEffect": "Increases the equipping character's ATK by 12% for 12s when they trigger a Stellar Glimmer reaction or deal Stellar Glimmer reaction DMG. Also increases Stellar Glimmer reaction DMG dealt by all nearby party members by 50%. The above effects can trigger even when the equipping character is not on the field, and the DMG bonus from multiple Artifact Sets with the same name do not stack.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15048_3.png",
+    "statBonuses": [
+      {
+        "id": 788,
+        "artifactSetId": 56,
+        "piece": "Two",
+        "statTypeId": 5,
+        "value": 18,
+        "statType": {
+          "id": 5,
+          "name": "ATK%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "name": "Husk of Opulent Dreams",
+    "rarity": 5,
+    "twoPieceEffect": "DEF +30%",
+    "fourPieceEffect": "A character equipped with this Artifact set will obtain the Curiosity effect in the following conditions: When on the field, the character gains 1 stack after hitting an opponent with a Geo attack, triggering a maximum of once every 0.3s. When off the field, the character gains 1 stack every 3s. Curiosity can stack up to 4 times, each providing 6% DEF and a 6% Geo DMG Bonus. When 6 seconds pass without gaining a Curiosity stack, 1 stack is lost.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15021_3.png",
+    "statBonuses": [
+      {
+        "id": 789,
+        "artifactSetId": 29,
+        "piece": "Two",
+        "statTypeId": 6,
+        "value": 30,
+        "statType": {
+          "id": 6,
+          "name": "DEF%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "Instructor",
+    "rarity": 4,
+    "twoPieceEffect": "Increases Elemental Mastery by 80.",
+    "fourPieceEffect": "Upon triggering an Elemental Reaction, increases all party members' Elemental Mastery by 120 for 8s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10007_3.png",
+    "statBonuses": [
+      {
+        "id": 790,
+        "artifactSetId": 7,
+        "piece": "Two",
+        "statTypeId": 7,
+        "value": 80,
+        "statType": {
+          "id": 7,
+          "name": "Elemental Mastery"
+        }
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "name": "Lavawalker",
+    "rarity": 5,
+    "twoPieceEffect": "Pyro RES increased by 40%.",
+    "fourPieceEffect": "Increases DMG against opponents affected by Pyro by 35%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_14003_3.png",
+    "statBonuses": [
+      {
+        "id": 791,
+        "artifactSetId": 13,
+        "piece": "Two",
+        "statTypeId": 24,
+        "value": 40,
+        "statType": {
+          "id": 24,
+          "name": "Pyro RES%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 47,
+    "name": "Long Night's Oath",
+    "rarity": 5,
+    "twoPieceEffect": "Plunging Attack DMG increased by 25%.",
+    "fourPieceEffect": "After the equipping character's Plunging Attack/Charged Attack/Elemental Skill hits an opponent, they will gain 1/2/2 stack(s) of \"Radiance Everlasting.\" Plunging Attacks, Charged Attacks, or Elemental Skills can each trigger this effect once every 1s. Radiance Everlasting: Plunging Attacks deal 15% increased DMG for 6s. Max 5 stacks. Each stack's duration is counted independently.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15039_3.png",
     "statBonuses": []
   },
   {
-    "id": 42,
-    "name": "Shimenawa's Reminiscence",
+    "id": 14,
+    "name": "Maiden Beloved",
     "rarity": 5,
-    "twoPieceEffect": "ATK +18%.",
-    "fourPieceEffect": "When casting an Elemental Skill, if the character has 15 or more Energy, they lose 15 Energy and Normal/Charged/Plunging Attack DMG is increased by 50% for 10s. This effect will not trigger again during that duration.",
-    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_4.png",
-    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_2.png",
-    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_5.png",
-    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_1.png",
-    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_3.png",
+    "twoPieceEffect": "Character Healing Effectiveness +15%",
+    "fourPieceEffect": "Using an Elemental Skill or Burst increases healing received by all party members by 20% for 10s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_14004_3.png",
     "statBonuses": [
       {
-        "id": 802,
+        "id": 792,
+        "artifactSetId": 14,
+        "piece": "Two",
+        "statTypeId": 11,
+        "value": 15,
+        "statType": {
+          "id": 11,
+          "name": "Healing Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "name": "Marechaussee Hunter",
+    "rarity": 5,
+    "twoPieceEffect": "Normal and Charged Attack DMG +15%",
+    "fourPieceEffect": "When current HP increases or decreases, CRIT Rate will be increased by 12% for 5s. Max 3 stacks.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15031_3.png",
+    "statBonuses": []
+  },
+  {
+    "id": 6,
+    "name": "Martial Artist",
+    "rarity": 4,
+    "twoPieceEffect": "Normal and Charged Attack DMG +15%",
+    "fourPieceEffect": "After using Elemental Skill, increases Normal Attack and Charged Attack DMG by 25% for 8s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10006_3.png",
+    "statBonuses": []
+  },
+  {
+    "id": 49,
+    "name": "Night of the Sky's Unveiling",
+    "rarity": 5,
+    "twoPieceEffect": "Increases Elemental Mastery by 80.",
+    "fourPieceEffect": "When nearby party members trigger Lunar Reactions, if the equipping character is on the field, gain the Gleaming Moon: Intent effect for 4s: Increases CRIT Rate by 15%/30% when the party's Moonsign is Nascent Gleam/Ascendant Gleam. All party members' Lunar Reaction DMG is increased by 10% for each different Gleaming Moon effect that party members have. Effects from Gleaming Moon cannot stack.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15041_3.png",
+    "statBonuses": [
+      {
+        "id": 793,
+        "artifactSetId": 49,
+        "piece": "Two",
+        "statTypeId": 7,
+        "value": 80,
+        "statType": {
+          "id": 7,
+          "name": "Elemental Mastery"
+        }
+      }
+    ]
+  },
+  {
+    "id": 42,
+    "name": "Nighttime Whispers in the Echoing Woods",
+    "rarity": 5,
+    "twoPieceEffect": "ATK +18%.",
+    "fourPieceEffect": "After using an Elemental Skill, gain a 20% Geo DMG Bonus for 10s. When under a shield granted by the Crystallize reaction, or when Moondrifts formed by Lunar-Crystallize reactions are nearby, the above effect is increased by 150%. When these conditions are no longer met, this additional increase disappears after 1s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15034_3.png",
+    "statBonuses": [
+      {
+        "id": 794,
         "artifactSetId": 42,
         "piece": "Two",
         "statTypeId": 5,
@@ -1004,7 +765,246 @@
     ]
   },
   {
-    "id": 43,
+    "id": 20,
+    "name": "Noblesse Oblige",
+    "rarity": 5,
+    "twoPieceEffect": "Elemental Burst DMG +20%",
+    "fourPieceEffect": "Using an Elemental Burst increases all party members' ATK by 20% for 12s. This effect cannot stack.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15007_3.png",
+    "statBonuses": []
+  },
+  {
+    "id": 37,
+    "name": "Nymph's Dream",
+    "rarity": 5,
+    "twoPieceEffect": "Hydro DMG Bonus +15%",
+    "fourPieceEffect": "After Normal, Charged, and Plunging Attacks, Elemental Skills, and Elemental Bursts hit opponents, 1 stack of Mirrored Nymph will be triggered, lasting 8s. When under the effect of 1, 2, or 3 or more Mirrored Nymph stacks, ATK will be increased by 7%/16%/25%, and Hydro DMG Bonus will be increased by 4%/9%/15%. Mirrored Nymph stacks created by Normal, Charged, and Plunging Attacks, Elemental Skills, and Elemental Bursts exist independently.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15029_3.png",
+    "statBonuses": [
+      {
+        "id": 795,
+        "artifactSetId": 37,
+        "piece": "Two",
+        "statTypeId": 14,
+        "value": 15,
+        "statType": {
+          "id": 14,
+          "name": "Hydro DMG Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 46,
+    "name": "Obsidian Codex",
+    "rarity": 5,
+    "twoPieceEffect": "While the equipping character is in Nightsoul's Blessing and is on the field, their DMG dealt is increased by 15%.",
+    "fourPieceEffect": "After the equipping character consumes 1 Nightsoul point while on the field, CRIT Rate increases by 40% for 6s. This effect can trigger once every second.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15038_3.png",
+    "statBonuses": []
+  },
+  {
+    "id": 30,
+    "name": "Ocean-Hued Clam",
+    "rarity": 5,
+    "twoPieceEffect": "Healing Bonus +15%.",
+    "fourPieceEffect": "When the character equipping this artifact set heals a character in the party, a Sea-Dyed Foam will appear for 3 seconds, accumulating the amount of HP recovered from healing (including overflow healing). At the end of the duration, the Sea-Dyed Foam will explode, dealing DMG to nearby opponents based on 90% of the accumulated healing. (This DMG is calculated similarly to Reactions such as Electro-Charged, and Superconduct, but is not affected by Elemental Mastery, Character Levels, or Reaction DMG Bonuses). Only one Sea-Dyed Foam can be produced every 3.5 seconds. Each Sea-Dyed Foam can accumulate up to 30,000 HP (including overflow healing). There can be no more than one Sea-Dyed Foam active at any given time. This effect can still be triggered even when the character who is using this artifact set is not on the field.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15022_3.png",
+    "statBonuses": [
+      {
+        "id": 796,
+        "artifactSetId": 30,
+        "piece": "Two",
+        "statTypeId": 11,
+        "value": 15,
+        "statType": {
+          "id": 11,
+          "name": "Healing Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "name": "Pale Flame",
+    "rarity": 5,
+    "twoPieceEffect": "Physical DMG is increased by 25%.",
+    "fourPieceEffect": "When an Elemental Skill hits an opponent, ATK is increased by 9% for 7s. This effect stacks up to 2 times and can be triggered once every 0.3s. Once 2 stacks are reached, the 2-set effect is increased by 100%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15018_3.png",
+    "statBonuses": [
+      {
+        "id": 797,
+        "artifactSetId": 26,
+        "piece": "Two",
+        "statTypeId": 12,
+        "value": 25,
+        "statType": {
+          "id": 12,
+          "name": "Physical DMG Bonus%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "name": "Resolution of Sojourner",
+    "rarity": 4,
+    "twoPieceEffect": "ATK +18%.",
+    "fourPieceEffect": "Increases Charged Attack CRIT Rate by 30%.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10001_3.png",
+    "statBonuses": [
+      {
+        "id": 798,
+        "artifactSetId": 1,
+        "piece": "Two",
+        "statTypeId": 5,
+        "value": 18,
+        "statType": {
+          "id": 5,
+          "name": "ATK%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "name": "Retracing Bolide",
+    "rarity": 5,
+    "twoPieceEffect": "Increases Shield Strength by 35%.",
+    "fourPieceEffect": "While protected by a shield, gain an additional 40% Normal and Charged Attack DMG.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15015_3.png",
+    "statBonuses": [
+      {
+        "id": 799,
+        "artifactSetId": 23,
+        "piece": "Two",
+        "statTypeId": 22,
+        "value": 35,
+        "statType": {
+          "id": 22,
+          "name": "Shield Strength%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 55,
+    "name": "Scarlet Proof",
+    "rarity": 5,
+    "twoPieceEffect": "ATK +18%.",
+    "fourPieceEffect": "Increases the equipping character's CRIT Rate by 16%, and their Stellar Swirl reaction DMG dealt by 40%, for 10s after they trigger a Stellar Swirl reaction.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15047_3.png",
+    "statBonuses": [
+      {
+        "id": 800,
+        "artifactSetId": 55,
+        "piece": "Two",
+        "statTypeId": 5,
+        "value": 18,
+        "statType": {
+          "id": 5,
+          "name": "ATK%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "name": "Scholar",
+    "rarity": 4,
+    "twoPieceEffect": "Energy Recharge +20%",
+    "fourPieceEffect": "Gaining Elemental Particles or Orbs gives 3 Energy to all party members who have a bow or a catalyst equipped. Can only occur once every 3s.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_10012_3.png",
+    "statBonuses": [
+      {
+        "id": 801,
+        "artifactSetId": 10,
+        "piece": "Two",
+        "statTypeId": 8,
+        "value": 20,
+        "statType": {
+          "id": 8,
+          "name": "Energy Recharge%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "name": "Scroll of the Hero of Cinder City",
+    "rarity": 5,
+    "twoPieceEffect": "When a nearby party member triggers a Nightsoul Burst, the equipping character regenerates 6 Elemental Energy.",
+    "fourPieceEffect": "After the equipping character triggers a reaction related to their Elemental Type, all nearby party members gain a 12% Elemental DMG Bonus for the Elemental Types involved in the elemental reaction for 15s. If the equipping character is in the Nightsoul's Blessing state when triggering this effect, all nearby party members gain an additional 28% Elemental DMG Bonus for the Elemental Types involved in the elemental reaction for 20s. The equipping character can trigger this effect while off-field, and the DMG bonus from Artifact Sets with the same name do not stack.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15037_3.png",
+    "statBonuses": []
+  },
+  {
+    "id": 27,
+    "name": "Shimenawa's Reminiscence",
+    "rarity": 5,
+    "twoPieceEffect": "ATK +18%.",
+    "fourPieceEffect": "When casting an Elemental Skill, if the character has 15 or more Energy, they lose 15 Energy and Normal/Charged/Plunging Attack DMG is increased by 50% for 10s. This effect will not trigger again during that duration.",
+    "flowerIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_4.png",
+    "featherIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_2.png",
+    "sandsIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_5.png",
+    "gobletIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_1.png",
+    "circletIconUrl": "https://enka.network/ui/UI_RelicIcon_15019_3.png",
+    "statBonuses": [
+      {
+        "id": 802,
+        "artifactSetId": 27,
+        "piece": "Two",
+        "statTypeId": 5,
+        "value": 18,
+        "statType": {
+          "id": 5,
+          "name": "ATK%"
+        }
+      }
+    ]
+  },
+  {
+    "id": 50,
     "name": "Silken Moon's Serenade",
     "rarity": 5,
     "twoPieceEffect": "Energy Recharge +20%.",
@@ -1017,7 +1017,7 @@
     "statBonuses": [
       {
         "id": 803,
-        "artifactSetId": 43,
+        "artifactSetId": 50,
         "piece": "Two",
         "statTypeId": 8,
         "value": 20,
@@ -1029,7 +1029,7 @@
     ]
   },
   {
-    "id": 44,
+    "id": 41,
     "name": "Song of Days Past",
     "rarity": 5,
     "twoPieceEffect": "Healing Bonus +15%.",
@@ -1042,7 +1042,7 @@
     "statBonuses": [
       {
         "id": 804,
-        "artifactSetId": 44,
+        "artifactSetId": 41,
         "piece": "Two",
         "statTypeId": 11,
         "value": 15,
@@ -1054,7 +1054,7 @@
     ]
   },
   {
-    "id": 45,
+    "id": 25,
     "name": "Tenacity of the Millelith",
     "rarity": 5,
     "twoPieceEffect": "HP +20%",
@@ -1067,7 +1067,7 @@
     "statBonuses": [
       {
         "id": 805,
-        "artifactSetId": 45,
+        "artifactSetId": 25,
         "piece": "Two",
         "statTypeId": 4,
         "value": 20,
@@ -1079,7 +1079,7 @@
     ]
   },
   {
-    "id": 46,
+    "id": 9,
     "name": "The Exile",
     "rarity": 4,
     "twoPieceEffect": "Energy Recharge +20%",
@@ -1092,7 +1092,7 @@
     "statBonuses": [
       {
         "id": 806,
-        "artifactSetId": 46,
+        "artifactSetId": 9,
         "piece": "Two",
         "statTypeId": 8,
         "value": 20,
@@ -1104,7 +1104,7 @@
     ]
   },
   {
-    "id": 47,
+    "id": 18,
     "name": "Thundering Fury",
     "rarity": 5,
     "twoPieceEffect": "Electro DMG Bonus +15%",
@@ -1117,7 +1117,7 @@
     "statBonuses": [
       {
         "id": 807,
-        "artifactSetId": 47,
+        "artifactSetId": 18,
         "piece": "Two",
         "statTypeId": 15,
         "value": 15,
@@ -1129,7 +1129,7 @@
     ]
   },
   {
-    "id": 48,
+    "id": 12,
     "name": "Thundersoother",
     "rarity": 5,
     "twoPieceEffect": "Electro RES increased by 40%.",
@@ -1142,7 +1142,7 @@
     "statBonuses": [
       {
         "id": 808,
-        "artifactSetId": 48,
+        "artifactSetId": 12,
         "piece": "Two",
         "statTypeId": 26,
         "value": 40,
@@ -1154,7 +1154,7 @@
     ]
   },
   {
-    "id": 49,
+    "id": 4,
     "name": "Tiny Miracle",
     "rarity": 4,
     "twoPieceEffect": "All Elemental RES increased by 20%.",
@@ -1167,7 +1167,7 @@
     "statBonuses": [
       {
         "id": 809,
-        "artifactSetId": 49,
+        "artifactSetId": 4,
         "piece": "Two",
         "statTypeId": 24,
         "value": 20,
@@ -1178,7 +1178,7 @@
       },
       {
         "id": 810,
-        "artifactSetId": 49,
+        "artifactSetId": 4,
         "piece": "Two",
         "statTypeId": 25,
         "value": 20,
@@ -1189,7 +1189,7 @@
       },
       {
         "id": 811,
-        "artifactSetId": 49,
+        "artifactSetId": 4,
         "piece": "Two",
         "statTypeId": 26,
         "value": 20,
@@ -1200,7 +1200,7 @@
       },
       {
         "id": 812,
-        "artifactSetId": 49,
+        "artifactSetId": 4,
         "piece": "Two",
         "statTypeId": 27,
         "value": 20,
@@ -1211,7 +1211,7 @@
       },
       {
         "id": 813,
-        "artifactSetId": 49,
+        "artifactSetId": 4,
         "piece": "Two",
         "statTypeId": 28,
         "value": 20,
@@ -1222,7 +1222,7 @@
       },
       {
         "id": 814,
-        "artifactSetId": 49,
+        "artifactSetId": 4,
         "piece": "Two",
         "statTypeId": 29,
         "value": 20,
@@ -1233,7 +1233,7 @@
       },
       {
         "id": 815,
-        "artifactSetId": 49,
+        "artifactSetId": 4,
         "piece": "Two",
         "statTypeId": 30,
         "value": 20,
@@ -1245,7 +1245,7 @@
     ]
   },
   {
-    "id": 50,
+    "id": 44,
     "name": "Unfinished Reverie",
     "rarity": 5,
     "twoPieceEffect": "ATK +18%.",
@@ -1258,7 +1258,7 @@
     "statBonuses": [
       {
         "id": 816,
-        "artifactSetId": 50,
+        "artifactSetId": 44,
         "piece": "Two",
         "statTypeId": 5,
         "value": 18,
@@ -1270,7 +1270,7 @@
     ]
   },
   {
-    "id": 51,
+    "id": 31,
     "name": "Vermillion Hereafter",
     "rarity": 5,
     "twoPieceEffect": "ATK +18%.",
@@ -1283,7 +1283,7 @@
     "statBonuses": [
       {
         "id": 817,
-        "artifactSetId": 51,
+        "artifactSetId": 31,
         "piece": "Two",
         "statTypeId": 5,
         "value": 18,
@@ -1295,7 +1295,7 @@
     ]
   },
   {
-    "id": 52,
+    "id": 16,
     "name": "Viridescent Venerer",
     "rarity": 5,
     "twoPieceEffect": "Anemo DMG Bonus +15%",
@@ -1308,7 +1308,7 @@
     "statBonuses": [
       {
         "id": 818,
-        "artifactSetId": 52,
+        "artifactSetId": 16,
         "piece": "Two",
         "statTypeId": 17,
         "value": 15,
@@ -1320,7 +1320,7 @@
     ]
   },
   {
-    "id": 53,
+    "id": 38,
     "name": "Vourukasha's Glow",
     "rarity": 5,
     "twoPieceEffect": "HP +20%",
@@ -1333,7 +1333,7 @@
     "statBonuses": [
       {
         "id": 819,
-        "artifactSetId": 53,
+        "artifactSetId": 38,
         "piece": "Two",
         "statTypeId": 4,
         "value": 20,
@@ -1345,7 +1345,7 @@
     ]
   },
   {
-    "id": 54,
+    "id": 17,
     "name": "Wanderer's Troupe",
     "rarity": 5,
     "twoPieceEffect": "Increases Elemental Mastery by 80.",
@@ -1358,7 +1358,7 @@
     "statBonuses": [
       {
         "id": 820,
-        "artifactSetId": 54,
+        "artifactSetId": 17,
         "piece": "Two",
         "statTypeId": 7,
         "value": 80,
