@@ -180,7 +180,12 @@ describe("filterAndSortOwnedArtifacts", () => {
 });
 
 describe("filterArtifactSetCatalog", () => {
-  const catalogBaseFilters = { search: "", rarityFilter: new Set<number>() };
+  const catalogBaseFilters = {
+    search: "",
+    rarityFilter: new Set<number>(),
+    sortKey: "name" as const,
+    sortDirection: "asc" as const,
+  };
 
   const catalog: ArtifactSetCatalogItem[] = [
     catalogItem({ id: 1, name: "Viridescent Venerer", rarity: 5 }),
@@ -212,5 +217,63 @@ describe("filterArtifactSetCatalog", () => {
   it("returns an empty array when nothing matches", () => {
     const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, search: "nonexistent" });
     expect(result).toEqual([]);
+  });
+
+  it("sorts by release forward (newest id first), breaking ties by name", () => {
+    const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, sortKey: "release" });
+    expect(result.map((s) => s.name)).toEqual([
+      "Instructor",
+      "Emblem of Severed Fate",
+      "Crimson Witch of Flames",
+      "Viridescent Venerer",
+    ]);
+  });
+
+  it("sorts by release reversed (oldest id first), breaking ties by name", () => {
+    const result = filterArtifactSetCatalog(catalog, {
+      ...catalogBaseFilters,
+      sortKey: "release",
+      sortDirection: "desc",
+    });
+    expect(result.map((s) => s.name)).toEqual([
+      "Viridescent Venerer",
+      "Crimson Witch of Flames",
+      "Emblem of Severed Fate",
+      "Instructor",
+    ]);
+  });
+
+  it("sorts by rarity ascending, breaking ties by name", () => {
+    const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, sortKey: "rarity" });
+    expect(result.map((s) => s.name)).toEqual([
+      "Instructor",
+      "Crimson Witch of Flames",
+      "Emblem of Severed Fate",
+      "Viridescent Venerer",
+    ]);
+  });
+
+  it("sorts by rarity descending, breaking ties by name", () => {
+    const result = filterArtifactSetCatalog(catalog, {
+      ...catalogBaseFilters,
+      sortKey: "rarity",
+      sortDirection: "desc",
+    });
+    expect(result.map((s) => s.name)).toEqual([
+      "Crimson Witch of Flames",
+      "Emblem of Severed Fate",
+      "Viridescent Venerer",
+      "Instructor",
+    ]);
+  });
+
+  it("sorts by name descending", () => {
+    const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, sortDirection: "desc" });
+    expect(result.map((s) => s.name)).toEqual([
+      "Viridescent Venerer",
+      "Instructor",
+      "Emblem of Severed Fate",
+      "Crimson Witch of Flames",
+    ]);
   });
 });

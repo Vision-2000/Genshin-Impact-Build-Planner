@@ -6,8 +6,10 @@ import { ArtifactSlot } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
 import { Modal } from "@/components/modal";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { formatStatValue } from "@/lib/stat-format";
+import type { SortDirection } from "@/lib/sort";
 import { ArtifactCard } from "../artifact-card";
 import { addArtifact } from "../actions";
 import {
@@ -26,6 +28,7 @@ import {
   filterArtifactSetCatalog,
   slotIconUrl,
   type ArtifactSetCatalogItem,
+  type CatalogSortKey,
   type StatTypeOption,
 } from "../filter-sort";
 
@@ -55,7 +58,9 @@ export function ArtifactCatalog({
 
   const [search, setSearch] = useState("");
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
-  const filtered = filterArtifactSetCatalog(catalog, { search, rarityFilter });
+  const [sortKey, setSortKey] = useState<CatalogSortKey>("release");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const filtered = filterArtifactSetCatalog(catalog, { search, rarityFilter, sortKey, sortDirection });
 
   function toggleRarity(rarity: number) {
     setRarityFilter((prev) => {
@@ -190,13 +195,25 @@ export function ArtifactCatalog({
 
   return (
     <div className="space-y-4">
-      <input
-        type="text"
-        placeholder="Search by set name..."
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        className="rounded border bg-white px-3 py-2 text-sm text-black"
-      />
+      <div className="flex flex-wrap gap-3">
+        <input
+          type="text"
+          placeholder="Search by set name..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="rounded border bg-white px-3 py-2 text-sm text-black"
+        />
+        <select
+          value={sortKey}
+          onChange={(event) => setSortKey(event.target.value as CatalogSortKey)}
+          className="rounded border bg-white px-3 py-2 text-sm text-black"
+        >
+          <option value="release">Sort: Release</option>
+          <option value="name">Sort: Name</option>
+          <option value="rarity">Sort: Rarity</option>
+        </select>
+        <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+      </div>
 
       <RarityFilterRow rarities={ARTIFACT_RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 

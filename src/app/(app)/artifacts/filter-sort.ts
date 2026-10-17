@@ -167,14 +167,25 @@ export function filterAndSortOwnedArtifacts(
   });
 }
 
+// "release" sorts by ArtifactSet.id, which now matches each set's real
+// release order (see CLAUDE.md) -- the most intuitive default for browsing
+// the catalog, so it's the default sortKey below rather than "name". Its
+// forward direction is newest-first (id descending) rather than oldest-
+// first -- more intuitive for browsing new content first -- so its own
+// comparison below flips the shared direction multiplier rather than
+// using it as-is like every other sortKey.
+export type CatalogSortKey = "release" | "name" | "rarity";
+
 export type CatalogFilters = {
   search: string;
   rarityFilter: ReadonlySet<number>;
+  sortKey: CatalogSortKey;
+  sortDirection: SortDirection;
 };
 
 export function filterArtifactSetCatalog(
   sets: ArtifactSetCatalogItem[],
-  { search, rarityFilter }: CatalogFilters
+  { search, rarityFilter, sortKey, sortDirection }: CatalogFilters
 ): ArtifactSetCatalogItem[] {
   let result = sets;
 
@@ -186,5 +197,15 @@ export function filterArtifactSetCatalog(
     result = result.filter((set) => rarityFilter.has(set.rarity));
   }
 
-  return [...result].sort((a, b) => a.name.localeCompare(b.name));
+  const direction = sortDirection === "desc" ? -1 : 1;
+
+  return [...result].sort((a, b) => {
+    if (sortKey === "release") {
+      return -direction * (a.id - b.id) || a.name.localeCompare(b.name);
+    }
+    if (sortKey === "rarity") {
+      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+    }
+    return direction * a.name.localeCompare(b.name);
+  });
 }
