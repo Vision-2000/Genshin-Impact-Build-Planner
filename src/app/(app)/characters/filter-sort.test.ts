@@ -118,18 +118,18 @@ describe("filterAndSortCharacterRoster", () => {
     expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Xiangling"]);
   });
 
-  it("sorts by rarity ascending, breaking ties by name", () => {
+  it("sorts by rarity forward (highest first), breaking ties by name", () => {
     const result = filterAndSortCharacterRoster(roster, { ...rosterBaseFilters, sortKey: "rarity" });
-    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Xiangling", "Hu Tao"]);
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity reversed (lowest first), breaking ties by name", () => {
     const result = filterAndSortCharacterRoster(roster, {
       ...rosterBaseFilters,
       sortKey: "rarity",
       sortDirection: "desc",
     });
-    expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
+    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Xiangling", "Hu Tao"]);
   });
 
   it("sorts by name descending", () => {
@@ -244,22 +244,31 @@ describe("filterAndSortOwnedCharacters", () => {
     expect(result.map((c) => c.name)).toEqual(["Hu Tao"]);
   });
 
-  it("sorts by rarity ascending, breaking ties by name", () => {
+  it("sorts by rarity forward (highest first), breaking ties by name", () => {
     const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, sortKey: "rarity" });
-    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Xiangling", "Hu Tao"]);
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity reversed (lowest first), breaking ties by name", () => {
     const result = filterAndSortOwnedCharacters(owned, {
       ...ownedBaseFilters,
       sortKey: "rarity",
       sortDirection: "desc",
     });
-    expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Amber", "Kaeya", "Xiangling"]);
+    expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Xiangling", "Hu Tao"]);
   });
 
-  it("sorts by level ascending, breaking ties by name", () => {
+  it("sorts by level forward (highest first), breaking ties by name", () => {
     const result = filterAndSortOwnedCharacters(owned, { ...ownedBaseFilters, sortKey: "level" });
+    expect(result.map((c) => c.name)).toEqual(["Hu Tao", "Xiangling", "Kaeya", "Amber"]);
+  });
+
+  it("sorts by level reversed (lowest first), breaking ties by name", () => {
+    const result = filterAndSortOwnedCharacters(owned, {
+      ...ownedBaseFilters,
+      sortKey: "level",
+      sortDirection: "desc",
+    });
     expect(result.map((c) => c.name)).toEqual(["Amber", "Kaeya", "Hu Tao", "Xiangling"]);
   });
 

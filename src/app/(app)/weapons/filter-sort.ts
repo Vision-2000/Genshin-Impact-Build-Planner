@@ -140,11 +140,25 @@ export function filterAndSortWeaponCatalog(
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
+    // Flipped (-direction) -- forward is highest rarity first, same "flip
+    // the shared direction multiplier" treatment Artifacts' own "release"
+    // sortKey and this file's own "obtained" sortKey use.
     if (sortKey === "rarity") {
-      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+      return -direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
     }
     return direction * a.name.localeCompare(b.name);
   });
+}
+
+// Breaks a tie by createdAt, newest first -- fixed regardless of the
+// primary sort's own direction toggle, same "the tiebreaker always uses
+// its own default direction, independent of whatever the primary sort is
+// doing" convention the name tiebreaker used to follow elsewhere in this
+// file. Used as every sortKey's tiebreaker here (not just "obtained"'s
+// own), since two owned copies can never be created at the exact same
+// moment -- unlike name, which ties for two copies of the same weapon.
+function tiebreakByAdded(a: OwnedWeaponItem, b: OwnedWeaponItem): number {
+  return b.createdAt - a.createdAt;
 }
 
 export function filterAndSortOwnedWeapons(
@@ -161,18 +175,21 @@ export function filterAndSortOwnedWeapons(
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
+    // All three flipped (-direction) -- forward is highest rarity/
+    // refinement/level first, same reasoning as filterAndSortWeaponCatalog's
+    // own rarity sort above.
     if (sortKey === "rarity") {
-      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+      return -direction * (a.rarity - b.rarity) || tiebreakByAdded(a, b);
     }
     if (sortKey === "refinement") {
-      return direction * (a.refinement - b.refinement) || a.name.localeCompare(b.name);
+      return -direction * (a.refinement - b.refinement) || tiebreakByAdded(a, b);
     }
     if (sortKey === "level") {
-      return direction * (a.level - b.level) || a.name.localeCompare(b.name);
+      return -direction * (a.level - b.level) || tiebreakByAdded(a, b);
     }
     if (sortKey === "obtained") {
-      return -direction * (a.createdAt - b.createdAt) || a.name.localeCompare(b.name);
+      return -direction * (a.createdAt - b.createdAt);
     }
-    return direction * a.name.localeCompare(b.name);
+    return direction * a.name.localeCompare(b.name) || tiebreakByAdded(a, b);
   });
 }

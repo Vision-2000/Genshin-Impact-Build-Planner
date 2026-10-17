@@ -116,7 +116,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           onChange={(event) => setSortKey(event.target.value as OwnedSortKey)}
           className="rounded border bg-white px-3 py-2 text-sm text-black"
         >
-          <option value="obtained">Sort: Obtained</option>
+          <option value="obtained">Sort: Added</option>
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
           <option value="refinement">Sort: Refinement</option>

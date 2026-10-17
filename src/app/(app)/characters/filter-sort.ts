@@ -143,8 +143,12 @@ export function filterAndSortCharacterRoster(
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
+    // Flipped (-direction, not direction) -- forward is highest rarity
+    // first, the more intuitive default for browsing a roster, same
+    // "flip the shared direction multiplier" treatment Artifacts' own
+    // "release" sortKey and Weapons' own "obtained" sortKey use.
     if (sortKey === "rarity") {
-      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+      return -direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
     }
     return direction * a.name.localeCompare(b.name);
   });
@@ -183,11 +187,13 @@ export function filterAndSortOwnedCharacters(
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
+    // Both flipped (-direction) -- forward is highest rarity/level first,
+    // same reasoning as filterAndSortCharacterRoster's own rarity sort above.
     if (sortKey === "rarity") {
-      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+      return -direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
     }
     if (sortKey === "level") {
-      return direction * (a.level - b.level) || a.name.localeCompare(b.name);
+      return -direction * (a.level - b.level) || a.name.localeCompare(b.name);
     }
     return direction * a.name.localeCompare(b.name);
   });

@@ -107,18 +107,18 @@ describe("filterAndSortWeaponCatalog", () => {
     expect(result.map((w) => w.name)).toEqual(["Widsith"]);
   });
 
-  it("sorts by rarity ascending, breaking ties by name", () => {
+  it("sorts by rarity forward (highest first), breaking ties by name", () => {
     const result = filterAndSortWeaponCatalog(catalog, { ...catalogBaseFilters, sortKey: "rarity" });
-    expect(result.map((w) => w.name)).toEqual(["Favonius Sword", "Widsith", "Amos' Bow", "Aquila Favonia"]);
+    expect(result.map((w) => w.name)).toEqual(["Amos' Bow", "Aquila Favonia", "Favonius Sword", "Widsith"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity reversed (lowest first), breaking ties by name", () => {
     const result = filterAndSortWeaponCatalog(catalog, {
       ...catalogBaseFilters,
       sortKey: "rarity",
       sortDirection: "desc",
     });
-    expect(result.map((w) => w.name)).toEqual(["Amos' Bow", "Aquila Favonia", "Favonius Sword", "Widsith"]);
+    expect(result.map((w) => w.name)).toEqual(["Favonius Sword", "Widsith", "Amos' Bow", "Aquila Favonia"]);
   });
 
   it("sorts by name descending", () => {
@@ -197,46 +197,52 @@ describe("filterAndSortOwnedWeapons", () => {
     expect(result.map((w) => w.name)).toEqual(["Widsith"]);
   });
 
-  it("sorts by rarity ascending, breaking ties by name", () => {
+  it("sorts by rarity forward (highest first), breaking ties by added (newest first)", () => {
+    // Widsith and Favonius Sword tie at rarity 4 -- Widsith (createdAt 300)
+    // is more recently added than Favonius Sword (createdAt 200), so it
+    // sorts first despite "Favonius" coming first alphabetically.
     const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "rarity" });
-    expect(result.map((w) => w.name)).toEqual(["Favonius Sword", "Widsith", "Aquila Favonia"]);
+    expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Widsith", "Favonius Sword"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity reversed (lowest first), still breaking ties by added (newest first)", () => {
+    // The tiebreaker's own direction is fixed (always newest-first),
+    // independent of whether the primary rarity sort itself is forward or
+    // reversed.
     const result = filterAndSortOwnedWeapons(owned, {
       ...ownedBaseFilters,
       sortKey: "rarity",
       sortDirection: "desc",
     });
-    expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword", "Widsith"]);
+    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
   });
 
-  it("sorts by refinement ascending, breaking ties by name", () => {
+  it("sorts by refinement forward (highest first), breaking ties by name", () => {
     const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "refinement" });
-    expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword", "Widsith"]);
+    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
   });
 
-  it("sorts by refinement descending, breaking ties by name", () => {
+  it("sorts by refinement reversed (lowest first), breaking ties by name", () => {
     const result = filterAndSortOwnedWeapons(owned, {
       ...ownedBaseFilters,
       sortKey: "refinement",
       sortDirection: "desc",
     });
-    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
-  });
-
-  it("sorts by level ascending, breaking ties by name", () => {
-    const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "level" });
     expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword", "Widsith"]);
   });
 
-  it("sorts by level descending, breaking ties by name", () => {
+  it("sorts by level forward (highest first), breaking ties by name", () => {
+    const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "level" });
+    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
+  });
+
+  it("sorts by level reversed (lowest first), breaking ties by name", () => {
     const result = filterAndSortOwnedWeapons(owned, {
       ...ownedBaseFilters,
       sortKey: "level",
       sortDirection: "desc",
     });
-    expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
+    expect(result.map((w) => w.name)).toEqual(["Aquila Favonia", "Favonius Sword", "Widsith"]);
   });
 
   it("sorts by name descending", () => {
@@ -244,12 +250,21 @@ describe("filterAndSortOwnedWeapons", () => {
     expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
   });
 
-  it("sorts by obtained forward (newest createdAt first), breaking ties by name", () => {
+  it("breaks a name tie (two copies of the same weapon) by added, newest first", () => {
+    const duplicates: OwnedWeaponItem[] = [
+      ownedItem({ id: 10, name: "Widsith", createdAt: 400 }),
+      ownedItem({ id: 11, name: "Widsith", createdAt: 500 }),
+    ];
+    const result = filterAndSortOwnedWeapons(duplicates, ownedBaseFilters);
+    expect(result.map((w) => w.id)).toEqual([11, 10]);
+  });
+
+  it("sorts by obtained forward (newest createdAt first)", () => {
     const result = filterAndSortOwnedWeapons(owned, { ...ownedBaseFilters, sortKey: "obtained" });
     expect(result.map((w) => w.name)).toEqual(["Widsith", "Favonius Sword", "Aquila Favonia"]);
   });
 
-  it("sorts by obtained reversed (oldest createdAt first), breaking ties by name", () => {
+  it("sorts by obtained reversed (oldest createdAt first)", () => {
     const result = filterAndSortOwnedWeapons(owned, {
       ...ownedBaseFilters,
       sortKey: "obtained",
