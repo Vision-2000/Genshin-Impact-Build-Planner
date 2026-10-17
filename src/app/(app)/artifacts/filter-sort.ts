@@ -1,6 +1,6 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import type { SortDirection } from "@/lib/sort";
-import { SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
+import { OTHER_TWO_PIECE_BONUS, SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
 
 export type { SortDirection };
 
@@ -15,6 +15,11 @@ export type ArtifactSetCatalogItem = {
   rarity: number;
   twoPieceEffect: string;
   fourPieceEffect: string | null;
+  // The 2pc effect's own unconditional stat bonus (see
+  // TWO_PIECE_BONUS_STAT_NAMES in artifact-rules.ts), null for the sets
+  // whose 2pc effect is conditional/proc-based and stays text-only --
+  // backs the add-catalog's 2pc-effect filter.
+  twoPieceStatName: string | null;
   flowerIconUrl: string | null;
   featherIconUrl: string | null;
   sandsIconUrl: string | null;
@@ -179,13 +184,29 @@ export type CatalogSortKey = "release" | "name" | "rarity";
 export type CatalogFilters = {
   search: string;
   rarityFilter: ReadonlySet<number>;
+  // "" means no filter -- a single exact-match dropdown (like Weapons'
+  // own secondaryStatFilter), not a multi-select set, since a set's 2pc
+  // effect is at most one stat, never several at once. A set with a null
+  // twoPieceStatName (no unconditional 2pc stat bonus) matches only
+  // OTHER_TWO_PIECE_BONUS.
+  twoPieceStatFilter: string;
   sortKey: CatalogSortKey;
   sortDirection: SortDirection;
 };
 
+// Breaks a tie by release order (id), newest first -- fixed regardless of
+// the primary sort's own direction toggle, same "the tiebreaker always
+// uses its own default direction, independent of whatever the primary
+// sort is doing" convention Weapons' own "added" tiebreaker uses on its
+// owned list. id is unique per set (see CLAUDE.md's artifact-set id
+// renumbering), so this can never itself tie.
+function tiebreakByRelease(a: ArtifactSetCatalogItem, b: ArtifactSetCatalogItem): number {
+  return b.id - a.id;
+}
+
 export function filterArtifactSetCatalog(
   sets: ArtifactSetCatalogItem[],
-  { search, rarityFilter, sortKey, sortDirection }: CatalogFilters
+  { search, rarityFilter, twoPieceStatFilter, sortKey, sortDirection }: CatalogFilters
 ): ArtifactSetCatalogItem[] {
   let result = sets;
 
@@ -196,16 +217,22 @@ export function filterArtifactSetCatalog(
   if (rarityFilter.size > 0) {
     result = result.filter((set) => rarityFilter.has(set.rarity));
   }
+  if (twoPieceStatFilter) {
+    result = result.filter((set) => (set.twoPieceStatName ?? OTHER_TWO_PIECE_BONUS) === twoPieceStatFilter);
+  }
 
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
     if (sortKey === "release") {
-      return -direction * (a.id - b.id) || a.name.localeCompare(b.name);
+      return -direction * (a.id - b.id) || tiebreakByRelease(a, b);
     }
+    // Flipped (-direction) -- forward is highest rarity first, same "flip
+    // the shared direction multiplier" treatment this file's own
+    // "release" sortKey and Weapons' rarity/level/refinement sortKeys use.
     if (sortKey === "rarity") {
-      return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+      return -direction * (a.rarity - b.rarity) || tiebreakByRelease(a, b);
     }
-    return direction * a.name.localeCompare(b.name);
+    return direction * a.name.localeCompare(b.name) || tiebreakByRelease(a, b);
   });
 }

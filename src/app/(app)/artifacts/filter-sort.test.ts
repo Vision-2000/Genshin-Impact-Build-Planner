@@ -36,6 +36,7 @@ function catalogItem(overrides: Partial<ArtifactSetCatalogItem>): ArtifactSetCat
     rarity: 5,
     twoPieceEffect: "2pc effect",
     fourPieceEffect: "4pc effect",
+    twoPieceStatName: "ATK%",
     flowerIconUrl: null,
     featherIconUrl: null,
     sandsIconUrl: null,
@@ -183,15 +184,16 @@ describe("filterArtifactSetCatalog", () => {
   const catalogBaseFilters = {
     search: "",
     rarityFilter: new Set<number>(),
+    twoPieceStatFilter: "",
     sortKey: "name" as const,
     sortDirection: "asc" as const,
   };
 
   const catalog: ArtifactSetCatalogItem[] = [
-    catalogItem({ id: 1, name: "Viridescent Venerer", rarity: 5 }),
-    catalogItem({ id: 2, name: "Crimson Witch of Flames", rarity: 5 }),
-    catalogItem({ id: 3, name: "Emblem of Severed Fate", rarity: 5 }),
-    catalogItem({ id: 4, name: "Instructor", rarity: 4 }),
+    catalogItem({ id: 1, name: "Viridescent Venerer", rarity: 5, twoPieceStatName: "Anemo DMG Bonus%" }),
+    catalogItem({ id: 2, name: "Crimson Witch of Flames", rarity: 5, twoPieceStatName: "Pyro DMG Bonus%" }),
+    catalogItem({ id: 3, name: "Emblem of Severed Fate", rarity: 5, twoPieceStatName: "Energy Recharge%" }),
+    catalogItem({ id: 4, name: "Instructor", rarity: 4, twoPieceStatName: null }),
   ];
 
   it("returns everything sorted by name with no filters applied", () => {
@@ -214,12 +216,28 @@ describe("filterArtifactSetCatalog", () => {
     expect(result.map((s) => s.name)).toEqual(["Instructor"]);
   });
 
+  it("filters by exact 2pc stat", () => {
+    const result = filterArtifactSetCatalog(catalog, {
+      ...catalogBaseFilters,
+      twoPieceStatFilter: "Pyro DMG Bonus%",
+    });
+    expect(result.map((s) => s.name)).toEqual(["Crimson Witch of Flames"]);
+  });
+
+  it('groups sets with no 2pc stat bonus under "Others"', () => {
+    const result = filterArtifactSetCatalog(catalog, {
+      ...catalogBaseFilters,
+      twoPieceStatFilter: "Others",
+    });
+    expect(result.map((s) => s.name)).toEqual(["Instructor"]);
+  });
+
   it("returns an empty array when nothing matches", () => {
     const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, search: "nonexistent" });
     expect(result).toEqual([]);
   });
 
-  it("sorts by release forward (newest id first), breaking ties by name", () => {
+  it("sorts by release forward (newest id first)", () => {
     const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, sortKey: "release" });
     expect(result.map((s) => s.name)).toEqual([
       "Instructor",
@@ -229,7 +247,7 @@ describe("filterArtifactSetCatalog", () => {
     ]);
   });
 
-  it("sorts by release reversed (oldest id first), breaking ties by name", () => {
+  it("sorts by release reversed (oldest id first)", () => {
     const result = filterArtifactSetCatalog(catalog, {
       ...catalogBaseFilters,
       sortKey: "release",
@@ -243,27 +261,33 @@ describe("filterArtifactSetCatalog", () => {
     ]);
   });
 
-  it("sorts by rarity ascending, breaking ties by name", () => {
+  it("sorts by rarity forward (highest first), breaking ties by release (newest first)", () => {
+    // Viridescent Venerer (id 1), Crimson Witch of Flames (id 2), and
+    // Emblem of Severed Fate (id 3) all tie at rarity 5 -- the newest
+    // (highest id) of the three sorts first, not the alphabetically first.
     const result = filterArtifactSetCatalog(catalog, { ...catalogBaseFilters, sortKey: "rarity" });
     expect(result.map((s) => s.name)).toEqual([
-      "Instructor",
-      "Crimson Witch of Flames",
       "Emblem of Severed Fate",
+      "Crimson Witch of Flames",
       "Viridescent Venerer",
+      "Instructor",
     ]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity reversed (lowest first), still breaking ties by release (newest first)", () => {
+    // The tiebreaker's own direction is fixed (always newest-first),
+    // independent of whether the primary rarity sort itself is forward or
+    // reversed.
     const result = filterArtifactSetCatalog(catalog, {
       ...catalogBaseFilters,
       sortKey: "rarity",
       sortDirection: "desc",
     });
     expect(result.map((s) => s.name)).toEqual([
-      "Crimson Witch of Flames",
-      "Emblem of Severed Fate",
-      "Viridescent Venerer",
       "Instructor",
+      "Emblem of Severed Fate",
+      "Crimson Witch of Flames",
+      "Viridescent Venerer",
     ]);
   });
 

@@ -56,6 +56,47 @@ export const SUBSTAT_TYPE_NAMES = [
 
 export type SubstatTypeName = (typeof SUBSTAT_TYPE_NAMES)[number];
 
+// Every StatType name that currently appears as a 2-piece effect's
+// unconditional stat bonus (ArtifactSetStatBonus, piece: Two) across all
+// seeded sets -- backs the add-catalog's own 2pc-effect filter. Same
+// "hardcode the known values" treatment as MAIN_STAT_NAMES/
+// SUBSTAT_TYPE_NAMES above (fixed/slow-changing game data), not derived
+// from whatever happens to be in the current catalog. A handful of sets
+// (Obsidian Codex, Noblesse Oblige, Golden Troupe, ...) have no 2pc stat
+// bonus row at all -- their 2pc effect is conditional/proc-based and stays
+// text-only -- so the filter groups those under OTHER_TWO_PIECE_BONUS
+// instead of leaving them unfilterable.
+export const TWO_PIECE_BONUS_STAT_NAMES = [
+  "ATK%",
+  "DEF%",
+  "HP%",
+  "Crit Rate%",
+  "Energy Recharge%",
+  "Elemental Mastery",
+  "Healing Bonus%",
+  "Physical DMG Bonus%",
+  "Pyro DMG Bonus%",
+  "Hydro DMG Bonus%",
+  "Electro DMG Bonus%",
+  "Cryo DMG Bonus%",
+  "Anemo DMG Bonus%",
+  "Geo DMG Bonus%",
+  "Dendro DMG Bonus%",
+  "Pyro RES%",
+  "Electro RES%",
+  "Shield Strength%",
+] as const;
+
+export type TwoPieceBonusStatName = (typeof TWO_PIECE_BONUS_STAT_NAMES)[number];
+
+// Sentinel filter value for sets with no 2pc stat bonus row (see
+// TWO_PIECE_BONUS_STAT_NAMES's own comment) -- not a real StatType name,
+// so it's kept out of that list and checked for separately wherever a
+// set's own twoPieceStatName is null.
+export const OTHER_TWO_PIECE_BONUS = "Others";
+
+export type TwoPieceBonusFilterValue = TwoPieceBonusStatName | typeof OTHER_TWO_PIECE_BONUS;
+
 export const MAX_SUBSTATS = 4;
 export const MIN_LEVEL = 0;
 export const MAX_LEVEL = 20;

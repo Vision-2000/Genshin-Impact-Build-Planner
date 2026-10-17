@@ -17,8 +17,10 @@ import {
   MAX_SUBSTATS,
   MIN_LEVEL,
   MAX_LEVEL,
+  OTHER_TWO_PIECE_BONUS,
   SLOT_MAIN_STATS,
   SUBSTAT_TYPE_NAMES,
+  TWO_PIECE_BONUS_STAT_NAMES,
   maxLevelForRarity,
   substatValidValues,
   nearestValidValue,
@@ -33,6 +35,17 @@ import {
 } from "../filter-sort";
 
 const SLOTS = Object.values(ArtifactSlot);
+// Every 2pc-effect filter dropdown option, in order -- the real stat
+// names followed by the "Others" catch-all for sets with no 2pc stat
+// bonus row.
+const TWO_PIECE_FILTER_VALUES: readonly string[] = [...TWO_PIECE_BONUS_STAT_NAMES, OTHER_TWO_PIECE_BONUS];
+
+function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
+  const next = new Set(set);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
 
 // statTypeId is null for a row left on its default "None" option -- the row
 // still exists (there are always exactly MAX_SUBSTATS rows) but contributes
@@ -58,17 +71,19 @@ export function ArtifactCatalog({
 
   const [search, setSearch] = useState("");
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
+  const [twoPieceStatFilter, setTwoPieceStatFilter] = useState("");
   const [sortKey, setSortKey] = useState<CatalogSortKey>("release");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const filtered = filterArtifactSetCatalog(catalog, { search, rarityFilter, sortKey, sortDirection });
+  const filtered = filterArtifactSetCatalog(catalog, {
+    search,
+    rarityFilter,
+    twoPieceStatFilter,
+    sortKey,
+    sortDirection,
+  });
 
   function toggleRarity(rarity: number) {
-    setRarityFilter((prev) => {
-      const next = new Set(prev);
-      if (next.has(rarity)) next.delete(rarity);
-      else next.add(rarity);
-      return next;
-    });
+    setRarityFilter((prev) => toggleInSet(prev, rarity));
   }
 
   // The set currently open in the "add a piece" modal -- a plain id (not
@@ -213,6 +228,18 @@ export function ArtifactCatalog({
           <option value="rarity">Sort: Rarity</option>
         </select>
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+        <select
+          value={twoPieceStatFilter}
+          onChange={(event) => setTwoPieceStatFilter(event.target.value)}
+          className="rounded border bg-white px-3 py-2 text-sm text-black"
+        >
+          <option value="">2pc stat: Any</option>
+          {TWO_PIECE_FILTER_VALUES.map((name) => (
+            <option key={name} value={name}>
+              2pc stat: {name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <RarityFilterRow rarities={ARTIFACT_RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
