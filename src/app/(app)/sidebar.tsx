@@ -12,17 +12,55 @@ export function Sidebar() {
   return (
     <nav className="w-48 shrink-0 space-y-1 overflow-y-auto border-r p-4">
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        // A declared child page highlights itself instead (see below) --
+        // the parent only falls back to prefix-matching for an undeclared
+        // sub-route (none currently exist, but this keeps the old
+        // behavior for one rather than leaving it unhighlighted).
+        const onDeclaredChild = item.children?.some((child) => pathname === child.href) ?? false;
+        const isActive = !onDeclaredChild && (pathname === item.href || pathname.startsWith(`${item.href}/`));
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`block rounded px-3 py-2 text-sm ${
-              isActive ? "bg-foreground text-background" : "hover:bg-black/5"
-            }`}
-          >
-            {item.label}
-          </Link>
+          <div key={item.href}>
+            <Link
+              href={item.href}
+              className={`block rounded px-3 py-2 text-sm ${
+                isActive ? "bg-foreground text-background" : "hover:bg-black/5"
+              }`}
+            >
+              {item.label}
+            </Link>
+            {item.children && item.children.length > 0 && (
+              <div className="mt-0.5 space-y-0.5">
+                {item.children.map((child) => {
+                  const isChildActive = pathname === child.href;
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      // px-4 (not an extra pl-6 indent) -- the arrow glyph
+                      // itself is the first character, so its own left
+                      // edge lines up directly below the parent's first
+                      // word instead of sitting further right than it.
+                      className={`flex items-center gap-1.5 rounded px-4 py-1.5 text-sm ${
+                        isChildActive
+                          ? "bg-foreground text-background"
+                          : "text-gray-500 hover:bg-black/5 dark:text-gray-400"
+                      }`}
+                    >
+                      {/* relative -top-1 -- the glyph's own ink sits low
+                          in its character box, reading as if it trails
+                          below the label text next to it; nudging it up
+                          makes it look more like it's actually pointing
+                          down from the parent link above. */}
+                      <span aria-hidden="true" className="relative -top-1">
+                        ↳
+                      </span>
+                      {child.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         );
       })}
 
