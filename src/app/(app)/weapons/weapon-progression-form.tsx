@@ -132,6 +132,7 @@ export function WeaponProgressionForm({
   initialRefinement,
   submitLabel,
   onSubmit,
+  onDelete,
   formBackgroundClassName,
 }: {
   weaponId: number;
@@ -145,6 +146,14 @@ export function WeaponProgressionForm({
   initialRefinement: number;
   submitLabel: string;
   onSubmit: (input: UpdateWeaponProgressionInput) => void;
+  // Only the owned-weapons page's own edit modal provides this -- the
+  // add-catalog's "customize before adding" modal has nothing to delete
+  // yet (the weapon isn't owned until Submit is pressed). Sits directly
+  // left of the Save/Add button rather than ArtifactCard's own modal's
+  // justify-between-opposite-corner placement, styled like it (solid
+  // red fill, same shape as the card's own Remove button) rather than
+  // that modal's bordered/text-red treatment.
+  onDelete?: () => void;
   // Unlike CharacterProgressionEditor (one page, always bg-primary-page),
   // this form is shared by two pages with two different page backgrounds
   // (/weapons is bg-primary-page, /weapons/add is bg-secondary-page) -- the
@@ -386,7 +395,16 @@ export function WeaponProgressionForm({
               mt-auto pushes this row to the bottom of the column (see the
               wrapper's own comment above) instead of sitting wherever it
               happens to land right after the content. */}
-          <div className="-mr-9 mt-auto flex justify-end border-t pt-3">
+          <div className="-mr-9 mt-auto flex items-center justify-end gap-2 border-t pt-3">
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+              >
+                Delete weapon
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onSubmit({ level, ascensionPhase, refinement })}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { HelpButton } from "@/components/help-button";
+import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import { OwnedWeaponManager } from "./owned-weapon-manager";
 import type { OwnedWeaponItem } from "./filter-sort";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   title: "Weapons",
 };
 
-const HELP_TEXT = `This page shows the weapons you currently own. Change a weapon's refinement with its dropdown, edit its level and ascension via the pencil icon, or remove it entirely.`;
+const HELP_TEXT = `This page shows the weapons you currently own. Click a card to edit its level, ascension, and refinement, or use the Remove button on the card to delete it.`;
 
 export default async function WeaponsPage() {
   const profile = await requireActiveProfile();
@@ -18,7 +19,15 @@ export default async function WeaponsPage() {
   const ownedWeapons = await prisma.ownedWeapon.findMany({
     where: { gameProfileId: profile.id },
     orderBy: { createdAt: "asc" },
-    include: { weapon: { include: { secondaryStat: true } } },
+    include: {
+      weapon: {
+        include: {
+          secondaryStat: true,
+          refinementEffects: { orderBy: { refinement: "asc" } },
+          refinementValues: { orderBy: { slotIndex: "asc" } },
+        },
+      },
+    },
   });
 
   const owned: OwnedWeaponItem[] = ownedWeapons.map((ownedWeapon) => ({
@@ -33,6 +42,14 @@ export default async function WeaponsPage() {
     refinement: ownedWeapon.refinement,
     level: ownedWeapon.level,
     ascensionPhase: ownedWeapon.ascensionPhase,
+    // This copy's own current state, not defaultWeaponProgression() --
+    // see OwnedWeaponItem.hoverDetail's own comment.
+    hoverDetail: computeWeaponHoverDetail(
+      ownedWeapon.weapon,
+      ownedWeapon.level,
+      ownedWeapon.ascensionPhase,
+      ownedWeapon.refinement
+    ),
   }));
 
   return (

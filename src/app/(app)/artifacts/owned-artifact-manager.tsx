@@ -231,11 +231,11 @@ function OwnedArtifactEditor({
         })}
       </div>
 
-      <div className="flex items-center justify-between border-t pt-3">
+      <div className="flex items-center justify-end gap-2 border-t pt-3">
         <button
           type="button"
           onClick={onDelete}
-          className="rounded border border-red-600 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-600 hover:text-white"
+          className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
         >
           Delete artifact
         </button>
@@ -287,9 +287,6 @@ export function OwnedArtifactManager({
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
-  // Held for the lifetime of the delete confirm dialog so the card stays
-  // highlighted while the mouse is off it answering the prompt.
-  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const filtered = filterAndSortOwnedArtifacts(owned, {
     search,
@@ -302,7 +299,6 @@ export function OwnedArtifactManager({
   });
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
   const editingArtifact = editingId === null ? null : (owned.find((a) => a.id === editingId) ?? null);
-  const activeId = editingId ?? pendingDeleteId;
 
   function handleSaveArtifact(
     ownedArtifactId: number,
@@ -341,12 +337,10 @@ export function OwnedArtifactManager({
   }
 
   async function handleRemoveArtifact(ownedArtifactId: number) {
-    setPendingDeleteId(ownedArtifactId);
-    const confirmed = await confirm("Remove this artifact? This can't be undone.", {
-      confirmLabel: "Remove",
+    const confirmed = await confirm("Delete this artifact? This can't be undone.", {
+      confirmLabel: "Delete",
       danger: true,
     });
-    setPendingDeleteId(null);
     if (!confirmed) return;
     setEditingId((current) => (current === ownedArtifactId ? null : current));
     startTransition(() => {
@@ -440,7 +434,7 @@ export function OwnedArtifactManager({
         {filtered.length} artifact{filtered.length === 1 ? "" : "s"}
       </p>
 
-      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {pageItems.map((artifact) => (
           <ArtifactCard
             key={artifact.id}
@@ -448,12 +442,32 @@ export function OwnedArtifactManager({
             slot={artifact.slot}
             rarity={artifact.rarity}
             level={artifact.level}
-            mainStatName={artifact.mainStatName}
             iconUrl={artifact.iconUrl}
-            substats={artifact.substats}
-            isActive={artifact.id === activeId}
-            onEdit={() => setEditingId(artifact.id)}
-            onDelete={() => handleRemoveArtifact(artifact.id)}
+            actionLabel="Delete"
+            onAction={() => handleRemoveArtifact(artifact.id)}
+            danger
+            onSelect={() => setEditingId(artifact.id)}
+            tooltipContent={
+              <>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-base font-semibold text-yellow-100">{artifact.setName}</p>
+                  <p className="text-base font-semibold text-gray-400">+{artifact.level}</p>
+                </div>
+                <p className="mt-1 text-base font-semibold text-yellow-100">Main Stat: {artifact.mainStatName}</p>
+                {artifact.substats.length > 0 && (
+                  <>
+                    <hr className="mt-2 border-gray-700" />
+                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                      {artifact.substats.map((substat) => (
+                        <p key={substat.id} className="text-gray-300">
+                          {substat.statTypeName} +{formatStatValue(substat.statTypeName, substat.value)}
+                        </p>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            }
           />
         ))}
         {pageItems.length === 0 && (

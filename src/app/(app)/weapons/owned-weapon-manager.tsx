@@ -79,8 +79,8 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   }
 
   async function handleRemove(ownedWeaponId: number) {
-    const confirmed = await confirm("Remove this weapon? This can't be undone.", {
-      confirmLabel: "Remove",
+    const confirmed = await confirm("Delete this weapon? This can't be undone.", {
+      confirmLabel: "Delete",
       danger: true,
     });
     if (!confirmed) return;
@@ -110,6 +110,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
           <option value="refinement">Sort: Refinement</option>
+          <option value="level">Sort: Level</option>
         </select>
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
         <select
@@ -150,12 +151,12 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
             secondaryStatName={weapon.secondaryStatName}
             iconUrl={weapon.iconUrl}
             refinement={weapon.refinement}
-            actionLabel="Remove"
+            actionLabel="Delete"
             onAction={() => handleRemove(weapon.id)}
             danger
             level={weapon.level}
-            onEdit={() => setEditingId(weapon.id)}
-            isActive={weapon.id === editingId}
+            onSelect={() => setEditingId(weapon.id)}
+            hoverDetail={weapon.hoverDetail}
           />
         ))}
         {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
@@ -190,6 +191,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
             formBackgroundClassName="bg-primary-page"
             submitLabel="Save"
             onSubmit={(input) => handleUpdateProgression(editingWeapon.id, input)}
+            onDelete={() => handleRemove(editingWeapon.id)}
           />
         )}
       </Modal>

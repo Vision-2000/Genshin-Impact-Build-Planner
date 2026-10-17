@@ -1,22 +1,14 @@
 import { WeaponType } from "@/generated/prisma/enums";
 import type { SortDirection } from "@/lib/sort";
+import type { WeaponHoverDetail } from "@/lib/weapon-hover-detail";
 
 export type { SortDirection };
-
-// The add-catalog card's hover tooltip -- exact stats/passive at this
-// weapon's own defaultWeaponProgression() state (see @/lib/weapon-scaling),
-// computed once server-side in page.tsx rather than per-render client-side:
-// it's always the same fixed state regardless of what the user does with
-// the card, so there's no reason to ship the raw curve data down and
-// recompute it, the way the owned-weapon editor's live sliders need to.
-// Deliberately no statBonuses here -- the tooltip shows the passive's own
-// text only, not a separate restatement of the bonus it describes.
-export type WeaponHoverDetail = {
-  attack: number;
-  secondaryStatValue: number | null;
-  passiveName: string | null;
-  passiveDescription: string | null;
-};
+// Hover-tooltip shape/computation now lives in @/lib/weapon-hover-detail,
+// shared by the add-catalog's hover tooltip (always this weapon's own
+// defaultWeaponProgression() state) and the owned-weapons page's own
+// hover tooltip (always that physical copy's current state) -- re-exported
+// here since every call site already imports item types from this file.
+export type { WeaponHoverDetail };
 
 export type WeaponCatalogItem = {
   id: number;
@@ -49,10 +41,15 @@ export type OwnedWeaponItem = {
   refinement: number;
   level: number;
   ascensionPhase: number;
+  // This copy's own exact stats/passive at its current level/ascension/
+  // refinement -- unlike the catalog's hoverDetail (always the same fixed
+  // default state), this varies per owned copy, so it's recomputed from
+  // that copy's own fields rather than defaultWeaponProgression().
+  hoverDetail: WeaponHoverDetail;
 };
 
 export type CatalogSortKey = "name" | "rarity";
-export type OwnedSortKey = "name" | "rarity" | "refinement";
+export type OwnedSortKey = "name" | "rarity" | "refinement" | "level";
 
 // The full set of secondary stats any seeded weapon can roll (see
 // data-source/weapons.json) -- fixed/slow-changing game data, same
@@ -160,6 +157,9 @@ export function filterAndSortOwnedWeapons(
     }
     if (sortKey === "refinement") {
       return direction * (a.refinement - b.refinement) || a.name.localeCompare(b.name);
+    }
+    if (sortKey === "level") {
+      return direction * (a.level - b.level) || a.name.localeCompare(b.name);
     }
     return direction * a.name.localeCompare(b.name);
   });

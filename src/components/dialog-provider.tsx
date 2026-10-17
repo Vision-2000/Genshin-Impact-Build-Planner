@@ -91,7 +91,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => close(false)}
-                  className="rounded px-3 py-1.5 text-sm hover:bg-black/5"
+                  className="rounded px-3 py-1.5 text-sm transition-colors hover:bg-foreground/10"
                 >
                   {state.options.cancelLabel ?? "Cancel"}
                 </button>
@@ -100,7 +100,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                 type="button"
                 autoFocus
                 onClick={() => close(true)}
-                className={`rounded px-3 py-1.5 text-sm text-white ${
+                className={`rounded px-3 py-1.5 text-sm text-white transition-opacity hover:opacity-80 ${
                   state.kind === "confirm" && state.options.danger ? "bg-red-600" : "bg-black"
                 }`}
               >

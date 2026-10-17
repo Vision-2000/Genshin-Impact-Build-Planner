@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Add Artifact",
 };
 
-const HELP_TEXT = `Browse every artifact set in the game. Click a set to expand it and fill in the piece's slot, level, main stat, and up to 4 substats.`;
+const HELP_TEXT = `Browse every artifact set in the game. Hover a card to see its 2-piece/4-piece set effects, or click it to fill in a new piece's slot, level, main stat, and up to 4 substats.`;
 
 export default async function AddArtifactPage() {
   const profile = await requireActiveProfile();

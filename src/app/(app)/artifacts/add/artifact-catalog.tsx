@@ -4,9 +4,11 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
+import { Modal } from "@/components/modal";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { formatStatValue } from "@/lib/stat-format";
+import { ArtifactCard } from "../artifact-card";
 import { addArtifact } from "../actions";
 import {
   ARTIFACT_RARITIES,
@@ -64,11 +66,17 @@ export function ArtifactCatalog({
     });
   }
 
+  // The set currently open in the "add a piece" modal -- a plain id (not
+  // the row itself) so re-deriving addingSet below always reflects the
+  // latest catalog prop, same reasoning as every other editingId-style
+  // state in this codebase.
   const [addingSetId, setAddingSetId] = useState<number | null>(null);
   const [addSlot, setAddSlot] = useState<ArtifactSlot>(ArtifactSlot.Flower);
   const [addLevel, setAddLevel] = useState(MAX_LEVEL);
   const [addMainStatId, setAddMainStatId] = useState<number | null>(null);
   const [addSubstats, setAddSubstats] = useState<DraftSubstat[]>([]);
+
+  const addingSet = addingSetId === null ? null : catalog.find((s) => s.id === addingSetId) ?? null;
 
   function openAddForm(setId: number) {
     const set = catalog.find((s) => s.id === setId);
@@ -166,9 +174,9 @@ export function ArtifactCatalog({
     startTransition(async () => {
       try {
         await addArtifact(setId, slot, level, mainStatId, substats);
-        // Deliberately not calling closeAddForm() -- keeping the form's
-        // values in place lets the user save a duplicate/near-duplicate
-        // piece without re-entering everything.
+        // Deliberately not calling closeAddForm() -- keeping the modal
+        // open with the form's values in place lets the user save a
+        // duplicate/near-duplicate piece without re-entering everything.
         showToast(
           <>
             Added <span className="font-bold">{setName}</span> · {slot} · {rarity}★
@@ -196,181 +204,168 @@ export function ArtifactCatalog({
         {filtered.length} set{filtered.length === 1 ? "" : "s"}
       </p>
 
-      <ul className="space-y-2">
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {filtered.map((set) => {
-          const isAdding = addingSetId === set.id;
           const previewIcon = set.flowerIconUrl ?? set.featherIconUrl ?? set.circletIconUrl;
-
-          function toggleExpanded() {
-            if (isAdding) closeAddForm();
-            else openAddForm(set.id);
-          }
-
           return (
-            <li key={set.id} className="rounded border p-3">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={toggleExpanded}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" && event.key !== " ") return;
-                  event.preventDefault();
-                  toggleExpanded();
-                }}
-                className="flex cursor-pointer items-center gap-3"
-              >
-                <div
-                  className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg p-1.5 ${rarityGradientClasses(set.rarity)}`}
-                >
-                  {previewIcon && <Image src={previewIcon} alt="" width={56} height={56} />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-lg font-medium">{set.name}</p>
-                </div>
-                <span
-                  aria-hidden="true"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center text-2xl font-semibold"
-                >
-                  {isAdding ? "−" : "+"}
-                </span>
-              </div>
-
-              {isAdding && (
-                <div className="mt-3 max-w-2xl space-y-3 border-t pt-3">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Slot</p>
-                    <div className="flex flex-wrap gap-2">
-                      {SLOTS.map((slot) => {
-                        const icon = slotIconUrl(set, slot);
-                        const isSelected = addSlot === slot;
-                        return (
-                          <button
-                            key={slot}
-                            type="button"
-                            onClick={() => handleSlotChange(slot)}
-                            aria-pressed={isSelected}
-                            className={`flex w-24 flex-col items-center gap-1 rounded-lg border-4 p-2 ${
-                              isSelected ? "border-blue-500" : "border-transparent"
-                            } ${rarityGradientClasses(set.rarity)}`}
-                          >
-                            {icon && <Image src={icon} alt="" width={64} height={64} />}
-                            <span className="text-sm font-medium text-white">{slot}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <label className="flex items-center gap-2 text-sm">
-                      Level
-                      <input
-                        type="range"
-                        min={MIN_LEVEL}
-                        max={maxLevelForRarity(set.rarity)}
-                        value={addLevel}
-                        onChange={(event) => handleLevelChange(Number(event.target.value), set.rarity)}
-                        className="-mt-1 w-32"
-                      />
-                      <span className="w-8 text-gray-400">+{addLevel}</span>
-                    </label>
-
-                    <label className="text-sm">
-                      Main stat:
-                      <select
-                        value={addMainStatId ?? ""}
-                        onChange={(event) => handleMainStatChange(Number(event.target.value))}
-                        disabled={SLOT_MAIN_STATS[addSlot].length === 1}
-                        className="ml-1 w-[11.5rem] rounded border bg-white px-2 py-1 text-sm text-black disabled:bg-gray-100 disabled:text-gray-500"
-                      >
-                        {SLOT_MAIN_STATS[addSlot].map((name) => {
-                          const option = statTypeByName.get(name);
-                          return option ? (
-                            <option key={option.id} value={option.id}>
-                              {name}
-                            </option>
-                          ) : null;
-                        })}
-                      </select>
-                    </label>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Substats</p>
-                    {addSubstats.map((substat, index) => {
-                      const statName = statTypeById.get(substat.statTypeId ?? -1)?.name as
-                        | SubstatTypeName
-                        | undefined;
-                      const values = statName ? substatValidValues(statName, set.rarity, addLevel) : [0];
-                      // The slider steps through indices into `values` rather
-                      // than the values themselves, since they aren't evenly
-                      // spaced (only specific roll-combination sums are ever
-                      // achievable).
-                      const currentIndex = values.indexOf(nearestValidValue(values, substat.value));
-
-                      return (
-                        <div key={index} className="flex flex-wrap items-center gap-2">
-                          <select
-                            value={substat.statTypeId ?? ""}
-                            onChange={(event) =>
-                              handleSubstatTypeChange(
-                                index,
-                                event.target.value === "" ? null : Number(event.target.value),
-                                set.rarity
-                              )
-                            }
-                            className="w-44 shrink-0 rounded border bg-white px-2 py-1 text-sm text-black"
-                          >
-                            <option value="">None</option>
-                            {substatOptionsExcluding(index).map((option) => (
-                              <option key={option.id} value={option.id}>
-                                {option.name}
-                              </option>
-                            ))}
-                            {!substatOptionsExcluding(index).some((o) => o.id === substat.statTypeId) &&
-                              statTypeById.get(substat.statTypeId ?? -1) && (
-                                <option value={substat.statTypeId ?? ""}>
-                                  {statTypeById.get(substat.statTypeId ?? -1)?.name}
-                                </option>
-                              )}
-                          </select>
-                          {substat.statTypeId !== null && (
-                            <>
-                              <input
-                                type="range"
-                                min={0}
-                                max={values.length - 1}
-                                step={1}
-                                value={currentIndex}
-                                onChange={(event) =>
-                                  updateSubstatRow(index, { value: values[Number(event.target.value)] })
-                                }
-                                className="w-28"
-                              />
-                              <span className="w-14 text-sm text-gray-400">
-                                {formatStatValue(statName ?? "", values[currentIndex])}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleAddSubmit}
-                    className="rounded border border-white bg-black px-3 py-1 text-sm text-white"
-                  >
-                    Save artifact
-                  </button>
-                </div>
-              )}
-            </li>
+            <ArtifactCard
+              key={set.id}
+              setName={set.name}
+              rarity={set.rarity}
+              iconUrl={previewIcon}
+              onSelect={() => openAddForm(set.id)}
+              tooltipContent={
+                <>
+                  <p className="text-base font-semibold text-yellow-100">{set.name}</p>
+                  <p className="mt-2 text-gray-300">
+                    <span className="font-semibold text-yellow-100">2pc: </span>
+                    {set.twoPieceEffect}
+                  </p>
+                  {set.fourPieceEffect && (
+                    <p className="mt-2 text-gray-300">
+                      <span className="font-semibold text-yellow-100">4pc: </span>
+                      {set.fourPieceEffect}
+                    </p>
+                  )}
+                </>
+              }
+            />
           );
         })}
-        {filtered.length === 0 && <p className="text-sm text-gray-500">No sets match this search.</p>}
+        {filtered.length === 0 && <p className="col-span-full text-sm text-gray-500">No sets match this search.</p>}
       </ul>
+
+      <Modal open={addingSet !== null} onClose={closeAddForm} title={addingSet?.name} maxWidthClassName="max-w-2xl">
+        {addingSet && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Slot</p>
+              <div className="flex flex-wrap gap-2">
+                {SLOTS.map((slot) => {
+                  const icon = slotIconUrl(addingSet, slot);
+                  const isSelected = addSlot === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => handleSlotChange(slot)}
+                      aria-pressed={isSelected}
+                      className={`flex w-24 flex-col items-center gap-1 rounded-lg border-4 p-2 ${
+                        isSelected ? "border-blue-500" : "border-transparent"
+                      } ${rarityGradientClasses(addingSet.rarity)}`}
+                    >
+                      {icon && <Image src={icon} alt="" width={64} height={64} />}
+                      <span className="text-sm font-medium text-white">{slot}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                Level
+                <input
+                  type="range"
+                  min={MIN_LEVEL}
+                  max={maxLevelForRarity(addingSet.rarity)}
+                  value={addLevel}
+                  onChange={(event) => handleLevelChange(Number(event.target.value), addingSet.rarity)}
+                  className="-mt-1 w-32"
+                />
+                <span className="w-8 text-gray-400">+{addLevel}</span>
+              </label>
+
+              <label className="text-sm">
+                Main stat:
+                <select
+                  value={addMainStatId ?? ""}
+                  onChange={(event) => handleMainStatChange(Number(event.target.value))}
+                  disabled={SLOT_MAIN_STATS[addSlot].length === 1}
+                  className="ml-1 w-[11.5rem] rounded border bg-white px-2 py-1 text-sm text-black disabled:bg-gray-100 disabled:text-gray-500"
+                >
+                  {SLOT_MAIN_STATS[addSlot].map((name) => {
+                    const option = statTypeByName.get(name);
+                    return option ? (
+                      <option key={option.id} value={option.id}>
+                        {name}
+                      </option>
+                    ) : null;
+                  })}
+                </select>
+              </label>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Substats</p>
+              {addSubstats.map((substat, index) => {
+                const statName = statTypeById.get(substat.statTypeId ?? -1)?.name as SubstatTypeName | undefined;
+                const values = statName ? substatValidValues(statName, addingSet.rarity, addLevel) : [0];
+                // The slider steps through indices into `values` rather
+                // than the values themselves, since they aren't evenly
+                // spaced (only specific roll-combination sums are ever
+                // achievable).
+                const currentIndex = values.indexOf(nearestValidValue(values, substat.value));
+
+                return (
+                  <div key={index} className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={substat.statTypeId ?? ""}
+                      onChange={(event) =>
+                        handleSubstatTypeChange(
+                          index,
+                          event.target.value === "" ? null : Number(event.target.value),
+                          addingSet.rarity
+                        )
+                      }
+                      className="w-44 shrink-0 rounded border bg-white px-2 py-1 text-sm text-black"
+                    >
+                      <option value="">None</option>
+                      {substatOptionsExcluding(index).map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.name}
+                        </option>
+                      ))}
+                      {!substatOptionsExcluding(index).some((o) => o.id === substat.statTypeId) &&
+                        statTypeById.get(substat.statTypeId ?? -1) && (
+                          <option value={substat.statTypeId ?? ""}>
+                            {statTypeById.get(substat.statTypeId ?? -1)?.name}
+                          </option>
+                        )}
+                    </select>
+                    {substat.statTypeId !== null && (
+                      <>
+                        <input
+                          type="range"
+                          min={0}
+                          max={values.length - 1}
+                          step={1}
+                          value={currentIndex}
+                          onChange={(event) => updateSubstatRow(index, { value: values[Number(event.target.value)] })}
+                          className="w-28"
+                        />
+                        <span className="w-14 text-sm text-gray-400">
+                          {formatStatValue(statName ?? "", values[currentIndex])}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end border-t pt-3">
+              <button
+                type="button"
+                onClick={handleAddSubmit}
+                className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+              >
+                Save artifact
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Toast message={message} visible={visible} />
     </div>

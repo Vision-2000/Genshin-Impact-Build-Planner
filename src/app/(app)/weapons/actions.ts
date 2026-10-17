@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
+import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import type { OwnedWeaponItem } from "./filter-sort";
 import { UpdateWeaponProgressionInputSchema, type UpdateWeaponProgressionErrors } from "./schemas";
 
@@ -33,7 +34,15 @@ export async function addWeapon(
 
   const created = await prisma.ownedWeapon.create({
     data: { gameProfileId: profile.id, weaponId, ...validated.data },
-    include: { weapon: { include: { secondaryStat: true } } },
+    include: {
+      weapon: {
+        include: {
+          secondaryStat: true,
+          refinementEffects: { orderBy: { refinement: "asc" } },
+          refinementValues: { orderBy: { slotIndex: "asc" } },
+        },
+      },
+    },
   });
 
   return {
@@ -49,6 +58,7 @@ export async function addWeapon(
       refinement: created.refinement,
       level: created.level,
       ascensionPhase: created.ascensionPhase,
+      hoverDetail: computeWeaponHoverDetail(created.weapon, created.level, created.ascensionPhase, created.refinement),
     },
   };
 }

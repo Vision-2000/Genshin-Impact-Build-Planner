@@ -418,21 +418,49 @@ the app or the seed script.
   each with up to 4 individually-editable substats). `/artifacts/add`'s set
   catalog drops pagination like Characters/Weapons, since ArtifactSet itself
   is bounded/slow-growing (~55 sets).
-  Owned artifacts deliberately did NOT get the big square icon-dominant grid
-  card Characters/Weapons use: that treatment only works because there's
-  almost nothing else to show per item. An owned artifact needs to display
-  and let you edit a level dropdown plus up to 4 substat rows, which doesn't
-  fit in a small square card without cramping the editing UI. The owned list
-  stays row-based; only the icon gets the shared rarity-tinted treatment
-  (`rarityGradientClasses`, `src/lib/rarity-colors.ts` — extracted once a
-  third page needed rarity-based coloring, covering all 5 rarity tiers since
-  artifacts can roll any of them, unlike Characters/Weapons which only ever
-  reach 4-5★ / 3-5★). The catalog side (`/artifacts/add`, just picking a set
-  to add a piece from) has nothing to edit yet at that stage, so its list
-  entries stay simple like before (see below on why rarity isn't part of the
-  add form). The multi-field creation form (slot/level/main stat/substats)
-  stays an inline expand under the chosen set, not a separate step — it
-  already worked and a second step would add navigation for no benefit here.
+  Both pages were later redesigned around `WeaponCard`'s own card/hover/modal
+  pattern, superseding an earlier design (row-based owned list, inline
+  per-row expand on the catalog) that had deliberately avoided the
+  icon-dominant square card on the reasoning that a level plus up to 4
+  substat rows didn't fit one without cramping the editing UI — that
+  reasoning no longer applies once the stat detail moves off the card face
+  entirely. `ArtifactCard` (`src/app/(app)/artifacts/artifact-card.tsx`) is
+  now the same rarity-gradient (`rarityGradientClasses`,
+  `src/lib/rarity-colors.ts`) icon-dominant square `WeaponCard` uses, with a
+  slot badge (top-left) and `+level` badge (top-right, owned list only,
+  since the catalog deals in sets, not pieces with a level). Main stat/
+  substats move into an on-hover `MouseFollowTooltip` (owned list only,
+  that piece's own current values — not a `defaultWeaponProgression()`-like
+  fixed state, since there's no single representative state for a piece's
+  substats); the catalog's hover shows the set's 2pc/4pc effect text
+  instead, the nearest analog once there's no owned piece yet to preview.
+  Clicking a card opens a modal either way: the owned list's `onSelect`
+  opens the same level/main-stat/substat editor that already existed (now
+  reached by clicking the card instead of a pencil icon — WeaponCard
+  dropped that same affordance for the same reason), with a solid-red
+  Delete button on the card itself for quick deletion, matching WeaponCard's
+  latest Delete-button treatment; the catalog's `onSelect` opens the same
+  slot/level/main-stat/substat fields the old inline expand had, just moved
+  into a `Modal` instead of expanding in place. The catalog deliberately has
+  no quick-add button (unlike Weapons' catalog): a weapon has a sensible
+  `defaultWeaponProgression()` to add at with one click, but an artifact
+  piece has no equivalent default — slot and main stat have to be chosen
+  before anything can be saved at all. The add modal also deliberately does
+  NOT close on submit, unlike Weapons' own customize-and-add modal — kept
+  open (toast confirms the add instead) so a near-duplicate piece can be
+  saved without re-entering every substat, since substat entry is far more
+  tedious than a weapon's refinement.
+  One remaining call site keeps the pre-redesign look on purpose:
+  `ArtifactSlotPicker` (`src/app/(app)/builds/artifact-slot-picker.tsx`)
+  still shows the full main-stat/substat block always visible below the
+  icon rather than behind a hover, since picking a build artifact means
+  telling several same-set pieces apart at a glance across a whole grid —
+  a hover can't do that for more than one card at a time. `ArtifactCard`
+  supports both looks side by side: an optional `mainStatName`/`substats`
+  pair renders the picker's always-visible block (and taller `aspect-[4/3]`
+  icon area to match), while an optional `tooltipContent` renders the owned
+  list/catalog's hover-only detail instead — never both from the same call
+  site, though nothing enforces that at the type level.
   Also extracted `useToast`/`Toast` (`src/components/toast.tsx`) once a
   second page (this one) needed the same "confirm an add via a temporary
   banner, since the created item lives on a different page's list" pattern
