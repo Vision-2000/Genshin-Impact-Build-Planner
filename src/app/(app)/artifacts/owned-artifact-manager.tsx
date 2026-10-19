@@ -15,7 +15,13 @@ import { removeArtifact, updateArtifact } from "./actions";
 import { ArtifactCard } from "./artifact-card";
 import { ArtifactSlotFilterRow } from "./artifact-slot-filter-row";
 import { ArtifactProgressionForm } from "./artifact-progression-form";
-import { ARTIFACT_RARITIES, MAIN_STAT_NAMES, SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
+import {
+  ARTIFACT_RARITIES,
+  MAIN_STAT_NAMES,
+  SUBSTAT_TYPE_NAMES,
+  computeArtifactMainStatValue,
+  type SubstatTypeName,
+} from "./artifact-rules";
 import {
   filterAndSortOwnedArtifacts,
   type OwnedArtifactItem,
@@ -234,7 +240,13 @@ export function OwnedArtifactManager({
                   <p className="text-base font-semibold text-yellow-100">{artifact.setName}</p>
                   <p className="text-base font-semibold text-gray-400">+{artifact.level}</p>
                 </div>
-                <p className="mt-1 text-base font-semibold text-yellow-100">Main Stat: {artifact.mainStatName}</p>
+                <p className="mt-1 text-base font-semibold text-yellow-100">
+                  Main Stat: {artifact.mainStatName} +
+                  {formatStatValue(
+                    artifact.mainStatName,
+                    computeArtifactMainStatValue(artifact.mainStatName, artifact.rarity, artifact.level)
+                  )}
+                </p>
                 {artifact.substats.length > 0 && (
                   <>
                     <hr className="mt-2 border-gray-700" />

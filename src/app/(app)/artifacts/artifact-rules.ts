@@ -195,3 +195,97 @@ export function nearestValidValue(validValues: number[], value: number): number 
     Math.abs(candidate - value) < Math.abs(closest - value) ? candidate : closest
   );
 }
+
+// Main stat value at every level, by rarity -- from
+// data-source/Artifact_Stats_Scaling_report.txt (summarized from
+// https://genshin-impact.fandom.com/wiki/Artifact/Scaling). A closed-form
+// formula was tried first (the source itself describes the real mechanic as
+// AffixValue_Current = AffixValue_Previous + (AffixValue_MainBase ×
+// AffixMultiplier), i.e. linear in level) and rejected: that per-level step
+// is rounded in-game before the NEXT step is computed, so a single
+// end-to-end multiply-and-round does not reproduce the source table exactly
+// -- verified directly (every stat/rarity combination in the source table,
+// all 21 or 17 levels each): a closed-form reconstruction mismatches by one
+// decimal unit in nearly every row (e.g. 4-star Crit DMG% at +15: table
+// says 44.1, closed-form gives 44.0). A plain lookup table is the only way
+// to show the exact value the game itself displays, same reasoning
+// SUBSTAT_HIGHEST_ROLL above already follows for substats.
+//
+// Only 9 distinct curves exist, not one per stat name: HP%, ATK%, and
+// every elemental DMG Bonus% share one curve, and DEF%/Physical DMG Bonus%
+// share another (both confirmed by the source's own "Identical Affix
+// Values" section) -- MAIN_STAT_VALUE_BY_LEVEL still has one entry per real
+// StatType name below, for a plain `[statName][rarity][level]` lookup at
+// call sites, but the shared groups point at the exact same array rather
+// than duplicating it.
+const GROUP_A_CURVE: Record<number, number[]> = {
+  5: [7.0, 9.0, 11.0, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+  4: [6.3, 8.1, 9.9, 11.6, 13.4, 15.2, 17.0, 18.8, 20.6, 22.3, 24.1, 25.9, 27.7, 29.5, 31.3, 33.0, 34.8],
+};
+
+const GROUP_B_CURVE: Record<number, number[]> = {
+  5: [8.7, 11.2, 13.7, 16.2, 18.6, 21.1, 23.6, 26.1, 28.6, 31, 33.5, 36, 38.5, 40.9, 43.4, 45.9, 48.4, 50.8, 53.3, 55.8, 58.3],
+  4: [7.9, 10.1, 12.3, 14.6, 16.8, 19.0, 21.2, 23.5, 25.7, 27.9, 30.2, 32.4, 34.6, 36.8, 39.1, 41.3, 43.5],
+};
+
+const HP_CURVE: Record<number, number[]> = {
+  5: [717, 920, 1123, 1326, 1530, 1733, 1936, 2139, 2342, 2545, 2749, 2952, 3155, 3358, 3561, 3764, 3967, 4171, 4374, 4577, 4780],
+  4: [645, 828, 1011, 1194, 1377, 1559, 1742, 1925, 2108, 2291, 2474, 2657, 2839, 3022, 3205, 3388, 3571],
+};
+
+const ATK_CURVE: Record<number, number[]> = {
+  5: [47, 60, 73, 86, 100, 113, 126, 139, 152, 166, 179, 192, 205, 219, 232, 245, 258, 272, 285, 298, 311],
+  4: [42, 54, 66, 78, 90, 102, 113, 125, 137, 149, 161, 173, 185, 197, 209, 221, 232],
+};
+
+const ELEMENTAL_MASTERY_CURVE: Record<number, number[]> = {
+  5: [28.0, 35.9, 43.8, 51.8, 59.7, 67.6, 75.5, 83.5, 91.4, 99.3, 107.2, 115.2, 123.1, 131.0, 138.9, 146.9, 154.8, 162.7, 170.6, 178.6, 186.5],
+  4: [25.2, 32.3, 39.4, 46.6, 53.7, 60.8, 68.0, 75.1, 82.2, 89.4, 96.5, 103.6, 110.8, 117.9, 125.0, 132.2, 139.3],
+};
+
+const ENERGY_RECHARGE_CURVE: Record<number, number[]> = {
+  5: [7.8, 10.0, 12.2, 14.4, 16.6, 18.8, 21.0, 23.2, 25.4, 27.6, 29.8, 32.0, 34.2, 36.4, 38.6, 40.8, 43.0, 45.2, 47.4, 49.6, 51.8],
+  4: [7.0, 9.0, 11.0, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7],
+};
+
+const CRIT_RATE_CURVE: Record<number, number[]> = {
+  5: [4.7, 6.0, 7.3, 8.6, 9.9, 11.3, 12.6, 13.9, 15.2, 16.6, 17.9, 19.2, 20.5, 21.8, 23.2, 24.5, 25.8, 27.1, 28.4, 29.8, 31.1],
+  4: [4.2, 5.4, 6.6, 7.8, 9.0, 10.1, 11.3, 12.5, 13.7, 14.9, 16.1, 17.3, 18.5, 19.7, 20.8, 22.0, 23.2],
+};
+
+const CRIT_DMG_CURVE: Record<number, number[]> = {
+  5: [9.3, 12.0, 14.6, 17.3, 19.9, 22.5, 25.2, 27.8, 30.5, 33.1, 35.7, 38.4, 41.0, 43.7, 46.3, 49.0, 51.6, 54.2, 56.9, 59.5, 62.2],
+  4: [8.4, 10.8, 13.1, 15.5, 17.9, 20.3, 22.7, 25.0, 27.4, 29.8, 32.2, 34.5, 36.9, 39.3, 41.7, 44.1, 46.4],
+};
+
+const HEALING_BONUS_CURVE: Record<number, number[]> = {
+  5: [5.4, 6.9, 8.4, 10.0, 11.5, 13.0, 14.5, 16.1, 17.6, 19.1, 20.6, 22.1, 23.7, 25.2, 26.7, 28.2, 29.8, 31.3, 32.8, 34.3, 35.9],
+  4: [4.8, 6.2, 7.6, 9.0, 10.3, 11.7, 13.1, 14.4, 15.8, 17.2, 18.6, 19.9, 21.3, 22.7, 24.0, 25.4, 26.8],
+};
+
+export const MAIN_STAT_VALUE_BY_LEVEL: Record<string, Record<number, number[]>> = {
+  HP: HP_CURVE,
+  ATK: ATK_CURVE,
+  "Elemental Mastery": ELEMENTAL_MASTERY_CURVE,
+  "Energy Recharge%": ENERGY_RECHARGE_CURVE,
+  "Crit Rate%": CRIT_RATE_CURVE,
+  "Crit DMG%": CRIT_DMG_CURVE,
+  "Healing Bonus%": HEALING_BONUS_CURVE,
+  "HP%": GROUP_A_CURVE,
+  "ATK%": GROUP_A_CURVE,
+  "Pyro DMG Bonus%": GROUP_A_CURVE,
+  "Hydro DMG Bonus%": GROUP_A_CURVE,
+  "Electro DMG Bonus%": GROUP_A_CURVE,
+  "Cryo DMG Bonus%": GROUP_A_CURVE,
+  "Anemo DMG Bonus%": GROUP_A_CURVE,
+  "Geo DMG Bonus%": GROUP_A_CURVE,
+  "Dendro DMG Bonus%": GROUP_A_CURVE,
+  "DEF%": GROUP_B_CURVE,
+  "Physical DMG Bonus%": GROUP_B_CURVE,
+};
+
+// A plain lookup, not a computation -- see MAIN_STAT_VALUE_BY_LEVEL's own
+// comment on why this can't be a formula.
+export function computeArtifactMainStatValue(statName: string, rarity: number, level: number): number {
+  return MAIN_STAT_VALUE_BY_LEVEL[statName][rarity][level];
+}

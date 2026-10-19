@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
@@ -67,6 +67,15 @@ export function ArtifactCard({
   // aspect-square treatment instead.
   const hasStatBlock = mainStatName !== undefined;
 
+  // Same loaded-flag/spinner-overlay technique as SplashImage (not reused
+  // directly -- that component hardcodes sizes="100vw" and a plain
+  // object-fit className, neither of which fits this card's own tailored
+  // sizes/padding), since a freshly-added set's icon has no browser cache
+  // to fall back on and otherwise renders nothing at all while it loads.
+  // key={iconUrl} resets this back to "not loaded" if the card is ever
+  // reused for a different icon.
+  const [loaded, setLoaded] = useState(false);
+
   const cardBody = (
     <div
       onClick={onSelect}
@@ -92,13 +101,22 @@ export function ArtifactCard({
       } ${rarityGradientClasses(rarity)}`}
     >
       {iconUrl && (
-        <Image
-          src={iconUrl}
-          alt={setName}
-          fill
-          sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-          className="object-contain p-4"
-        />
+        <>
+          <div
+            className={`absolute inset-0 flex items-center justify-center transition-opacity ${loaded ? "opacity-0" : "opacity-100"}`}
+          >
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+          </div>
+          <Image
+            key={iconUrl}
+            src={iconUrl}
+            alt={setName}
+            fill
+            sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+            className="object-contain p-4"
+            onLoad={() => setLoaded(true)}
+          />
+        </>
       )}
 
       {showSlotBadge && slot && (
