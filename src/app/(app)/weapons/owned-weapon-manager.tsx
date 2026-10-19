@@ -298,16 +298,14 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         open={confirmingBulkDelete}
         onClose={() => setConfirmingBulkDelete(false)}
         title={`Delete ${selectedIds.size} weapon${selectedIds.size === 1 ? "" : "s"}?`}
-        // max-w-[610px] is a ceiling sized to EXACTLY 6 MiniatureCards per
-        // row (6*84px cards + 5*8px gaps + the panel's own p-5 padding and
-        // border, plus the scrollbar gutter reserved below) -- a looser
-        // ceiling like max-w-2xl left visible empty space to the right
-        // once a selection large enough to wrap kicked in, since cards
-        // would still only fill 6-per-row's own width inside a wider box.
-        // fitContent then shrinks the panel below this ceiling too, for a
-        // selection of 6 or fewer that doesn't need to wrap at all.
+        // max-w-[610px] is sized to EXACTLY 6 MiniatureCards per row
+        // (6*84px cards + 5*8px gaps + the panel's own p-5 padding and
+        // border, plus the scrollbar gutter reserved below) -- no
+        // fitContent (unlike the edit-progression modal below), so the
+        // panel always renders at this same full width regardless of how
+        // many cards there are, rather than shrinking for a small
+        // selection and only reaching this width once wrapping kicks in.
         maxWidthClassName="max-w-[610px]"
-        fitContent
       >
         <div className="space-y-4">
           <p className="text-sm">This can&apos;t be undone.</p>
