@@ -196,6 +196,114 @@ export function nearestValidValue(validValues: number[], value: number): number 
   );
 }
 
+const SUBSTAT_VALUE_EPSILON = 1e-6;
+
+// Inverts a substat's stored value back to how many individual rolls
+// produced it. Well-defined (not a guess) because the achievable-value
+// range for N rolls -- [0.7N, 1.0N] x highest, from SUBSTAT_ROLL_MULTIPLIERS
+// -- never overlaps the range for N+1 rolls: 0.7(N+1) exceeds 1.0N for every
+// N >= 3, and the N=1/N=2 cases don't overlap either (1.4 > 1.0). So a value
+// falls into exactly one N-roll bracket. Expects a value that actually came
+// from substatValidValues (true for every value this app ever saves, once
+// actions.ts's own snap-to-nearest-valid-value runs first) -- an
+// out-of-bracket value falls through to the highest possible roll count
+// rather than throwing.
+export function substatRollCount(statName: SubstatTypeName, rarity: number, value: number): number {
+  const highest = SUBSTAT_HIGHEST_ROLL[statName][rarity] ?? SUBSTAT_HIGHEST_ROLL[statName][5];
+  const maxRolls = 1 + rarity;
+  const lowestMultiplier = SUBSTAT_ROLL_MULTIPLIERS[0];
+  const highestMultiplier = SUBSTAT_ROLL_MULTIPLIERS[SUBSTAT_ROLL_MULTIPLIERS.length - 1];
+
+  for (let rolls = 1; rolls <= maxRolls; rolls++) {
+    const low = roundTo2(rolls * lowestMultiplier * highest);
+    const high = roundTo2(rolls * highestMultiplier * highest);
+    if (value >= low - SUBSTAT_VALUE_EPSILON && value <= high + SUBSTAT_VALUE_EPSILON) return rolls;
+  }
+  return maxRolls;
+}
+
+export type SubstatRollValidation = { valid: true } | { valid: false; reason: string };
+
+// A real piece always drops with either (rarity-2) or (rarity-1) initial
+// substats (3 or 4 for a 5-star, 2 or 3 for a 4-star) -- there's no third
+// option. From there, a missing substat is NOT unlocked at some flexible
+// point before a cap -- it's unlocked by a FIXED upgrade: if the piece is
+// short of 4, its first upgrade is always spent revealing the next missing
+// one (never boosting an existing substat instead), and this repeats upgrade
+// after upgrade until all 4 exist, only THEN do upgrades start boosting
+// existing substats. That makes the filled substat COUNT an exact function
+// of (initial count, upgrades so far) -- expectedCount(c) = min(4, c +
+// upgrades) -- not a range a piece could sit anywhere within; e.g. a 5-star
+// can only ever show 3 substats before its first upgrade (level < 4) --
+// from level 4 onward it's always exactly 4, whichever initial count it
+// actually had (3+1 or 4+1, both min(4, ...) = 4). Confirmed directly: a
+// level-4 5-star piece reported with only 3 substats (one of them already
+// upgraded) is impossible under this rule, since both candidate initial
+// counts already require exactly 4 substats by then.
+//
+// Every upgrade still adds exactly one roll somewhere (never "wasted"), so
+// the TOTAL roll count summed across every present substat remains a
+// deterministic function of (rarity, level, initial count) too --
+// initial + upgrades -- e.g. a maxed 5-star's substats must sum to exactly
+// 8 or 9 total rolls, never more, never fewer. Checked here at save time
+// rather than live in the slider UI since it needs every substat's value
+// (and count) at once, not one slider in isolation -- too heavy for live UI
+// feedback, same reasoning substatValidValues itself stays a per-stat
+// approximation rather than a whole-piece one.
+export function validateSubstatRollTotal(
+  rarity: number,
+  level: number,
+  substats: { statTypeName: SubstatTypeName; value: number }[]
+): SubstatRollValidation {
+  const filledCount = substats.length;
+  const minInitial = rarity - 2;
+  const maxInitial = rarity - 1;
+  const upgrades = Math.min(rarity, Math.floor(level / 4));
+
+  // Exactly which initial count(s) (minInitial/maxInitial) are consistent
+  // with the CURRENT filled count at this level -- not a range, an exact
+  // match (see this function's own comment on why the unlock schedule is
+  // fixed, not flexible). A single check covers both "too few to have ever
+  // dropped at all" and "wrong for this specific level" -- both are the
+  // same underlying problem (the count is wrong), so they get the same one
+  // message, checked -- and reported -- before the upgrade-count check
+  // below ever runs.
+  const expectedCounts = [...new Set([minInitial, maxInitial].map((initial) => Math.min(4, initial + upgrades)))].sort(
+    (a, b) => a - b
+  );
+
+  if (!expectedCounts.includes(filledCount)) {
+    const countsPhrase = expectedCounts.length === 2 ? `${expectedCounts[0]} or ${expectedCounts[1]}` : `${expectedCounts[0]}`;
+    return {
+      valid: false,
+      reason: `A level ${level} ${rarity}★ piece must have ${countsPhrase} substats, not ${filledCount}.`,
+    };
+  }
+
+  const candidates = [minInitial, maxInitial].filter((initial) => Math.min(4, initial + upgrades) === filledCount);
+  const totalRolls = substats.reduce((sum, s) => sum + substatRollCount(s.statTypeName, rarity, s.value), 0);
+  const requiredTotals = candidates.map((initial) => initial + upgrades);
+
+  if (requiredTotals.includes(totalRolls)) {
+    return { valid: true };
+  }
+
+  // Expressed as "upgrades" (rolls beyond each filled substat's own first
+  // appearance) rather than the raw roll total, matching how players
+  // usually talk about this (e.g. "4 or 5 substat upgrades" for a maxed
+  // 5-star, not "8 or 9 total rolls").
+  const uniqueUpgradeCounts = [...new Set(requiredTotals.map((total) => total - filledCount))].sort((a, b) => a - b);
+  const upgradesPhrase =
+    uniqueUpgradeCounts.length === 2 ? `${uniqueUpgradeCounts[0]} or ${uniqueUpgradeCounts[1]}` : `${uniqueUpgradeCounts[0]}`;
+  const word = uniqueUpgradeCounts.every((n) => n === 1) ? "substat upgrade" : "substat upgrades";
+  const actualUpgradeCount = totalRolls - filledCount;
+
+  return {
+    valid: false,
+    reason: `A level ${level} ${rarity}★ piece must have ${upgradesPhrase} ${word}, not ${actualUpgradeCount}.`,
+  };
+}
+
 // Main stat value at every level, by rarity -- from
 // data-source/Artifact_Stats_Scaling_report.txt (summarized from
 // https://genshin-impact.fandom.com/wiki/Artifact/Scaling). A closed-form

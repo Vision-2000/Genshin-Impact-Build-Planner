@@ -3,7 +3,17 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
-import { MAX_SUBSTATS, MIN_LEVEL, MAX_LEVEL, maxLevelForRarity } from "./artifact-rules";
+import {
+  MAX_SUBSTATS,
+  MIN_LEVEL,
+  MAX_LEVEL,
+  maxLevelForRarity,
+  substatValidValues,
+  nearestValidValue,
+  validateSubstatRollTotal,
+  SUBSTAT_TYPE_NAMES,
+  type SubstatTypeName,
+} from "./artifact-rules";
 import { toOwnedArtifactItem, type OwnedArtifactItem } from "./filter-sort";
 
 type SubstatInput = { statTypeId: number; value: number };
@@ -13,20 +23,63 @@ function clamp(value: number, min: number, max: number) {
 }
 
 // Defense-in-depth only — the UI already prevents duplicates, the main stat
-// being re-picked as a substat, and going over the cap.
-function sanitizeSubstats(substats: SubstatInput[], mainStatId: number): SubstatInput[] {
+// being re-picked as a substat, going over the cap, and ever setting a value
+// off the roll-based slider in the first place (substatValidValues/
+// nearestValidValue, see artifact-rules.ts). rarity/level are the artifact's
+// own already-clamped values, not whatever the caller claims, since the
+// achievable value set depends on them. Needs a DB round-trip (statTypeId ->
+// name) since the caller only sends ids, not names — artifact-rules.ts's
+// value tables are keyed by name.
+async function sanitizeSubstats(
+  substats: SubstatInput[],
+  mainStatId: number,
+  rarity: number,
+  level: number
+): Promise<SubstatInput[]> {
   const seen = new Set<number>();
-  const result: SubstatInput[] = [];
+  const deduped: SubstatInput[] = [];
 
   for (const substat of substats) {
     if (substat.statTypeId === mainStatId) continue;
     if (seen.has(substat.statTypeId)) continue;
-    if (result.length >= MAX_SUBSTATS) break;
+    if (deduped.length >= MAX_SUBSTATS) break;
     seen.add(substat.statTypeId);
-    result.push(substat);
+    deduped.push(substat);
   }
 
-  return result;
+  if (deduped.length === 0) return deduped;
+
+  const statTypes = await prisma.statType.findMany({
+    where: { id: { in: deduped.map((s) => s.statTypeId) } },
+    select: { id: true, name: true },
+  });
+  const nameById = new Map(statTypes.map((s) => [s.id, s.name]));
+  const substatNames: readonly string[] = SUBSTAT_TYPE_NAMES;
+
+  const named: { statTypeId: number; statTypeName: SubstatTypeName; value: number }[] = [];
+  for (const substat of deduped) {
+    const name = nameById.get(substat.statTypeId);
+    // Not a real substat-eligible stat (e.g. a deleted StatType id, or one
+    // that only ever appears as a main stat) — drop rather than save a
+    // value this app has no roll table for.
+    if (!name || !substatNames.includes(name)) continue;
+
+    const validValues = substatValidValues(name as SubstatTypeName, rarity, level);
+    named.push({
+      statTypeId: substat.statTypeId,
+      statTypeName: name as SubstatTypeName,
+      value: nearestValidValue(validValues, substat.value),
+    });
+  }
+
+  // Also defense-in-depth only — ArtifactProgressionForm.handleSubmit
+  // already blocks a save whose substats add up to an impossible total roll
+  // count (see validateSubstatRollTotal's own comment) before this action is
+  // ever called on the normal save path.
+  const validation = validateSubstatRollTotal(rarity, level, named);
+  if (!validation.valid) throw new Error(validation.reason);
+
+  return named.map(({ statTypeId, value }) => ({ statTypeId, value }));
 }
 
 export async function addArtifact(
@@ -45,16 +98,20 @@ export async function addArtifact(
     select: { rarity: true },
   });
   const maxLevel = artifactSet ? maxLevelForRarity(artifactSet.rarity) : MAX_LEVEL;
+  const clampedLevel = clamp(level, MIN_LEVEL, maxLevel);
+  // Default to 5-star when the set lookup somehow misses — matches maxLevel's
+  // own fallback above (MAX_LEVEL == maxLevelForRarity(5)).
+  const sanitizedSubstats = await sanitizeSubstats(substats, mainStatId, artifactSet?.rarity ?? 5, clampedLevel);
 
   const created = await prisma.ownedArtifact.create({
     data: {
       gameProfileId: profile.id,
       artifactSetId,
       slot,
-      level: clamp(level, MIN_LEVEL, maxLevel),
+      level: clampedLevel,
       mainStatId,
       substats: {
-        create: sanitizeSubstats(substats, mainStatId).map((s) => ({
+        create: sanitizedSubstats.map((s) => ({
           statTypeId: s.statTypeId,
           value: s.value,
         })),
@@ -87,15 +144,17 @@ export async function updateArtifact(
   if (!existing) return null;
 
   const maxLevel = maxLevelForRarity(existing.artifactSet.rarity);
+  const clampedLevel = clamp(level, MIN_LEVEL, maxLevel);
+  const sanitizedSubstats = await sanitizeSubstats(substats, mainStatId, existing.artifactSet.rarity, clampedLevel);
 
   const updated = await prisma.ownedArtifact.update({
     where: { id: ownedArtifactId },
     data: {
-      level: clamp(level, MIN_LEVEL, maxLevel),
+      level: clampedLevel,
       mainStatId,
       substats: {
         deleteMany: {},
-        create: sanitizeSubstats(substats, mainStatId).map((s) => ({
+        create: sanitizedSubstats.map((s) => ({
           statTypeId: s.statTypeId,
           value: s.value,
         })),

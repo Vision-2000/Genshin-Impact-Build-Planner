@@ -17,6 +17,7 @@ import {
   maxLevelForRarity,
   substatValidValues,
   nearestValidValue,
+  validateSubstatRollTotal,
   type SubstatTypeName,
 } from "./artifact-rules";
 import type { StatTypeOption } from "./filter-sort";
@@ -109,6 +110,10 @@ export function ArtifactProgressionForm({
     while (rows.length < MAX_SUBSTATS) rows.push(emptySubstatRow());
     return rows;
   });
+  // Set by handleSubmit when validateSubstatRollTotal rejects the current
+  // substats; cleared by every other handler below so it never lingers past
+  // the edit that was meant to fix it.
+  const [rollError, setRollError] = useState<string | null>(null);
 
   const mainStatNames = SLOT_MAIN_STATS[slot];
   const mainStatName = statTypeById.get(mainStatId)?.name;
@@ -117,6 +122,7 @@ export function ArtifactProgressionForm({
     : null;
 
   function handleSlotChange(newSlot: ArtifactSlot) {
+    setRollError(null);
     setSlot(newSlot);
     const validNames = SLOT_MAIN_STATS[newSlot];
     const currentName = statTypeById.get(mainStatId)?.name;
@@ -133,6 +139,7 @@ export function ArtifactProgressionForm({
   // A stat can't be both the main stat and a substat -- clear any row that
   // collides with the newly picked main stat.
   function handleMainStatChange(nextMainStatId: number) {
+    setRollError(null);
     setMainStatId(nextMainStatId);
     setSubstats((prev) => prev.map((s) => (s.statTypeId === nextMainStatId ? emptySubstatRow() : s)));
   }
@@ -151,6 +158,7 @@ export function ArtifactProgressionForm({
   }
 
   function updateSubstatRow(index: number, changes: Partial<DraftSubstat>) {
+    setRollError(null);
     setSubstats((prev) => prev.map((s, i) => (i === index ? { ...s, ...changes } : s)));
   }
 
@@ -169,6 +177,7 @@ export function ArtifactProgressionForm({
   // Changing level shifts which values each substat can hold, so snap every
   // set substat to the closest value still valid at the new level.
   function handleLevelChange(newLevel: number) {
+    setRollError(null);
     setLevel(newLevel);
     setSubstats((prev) =>
       prev.map((s) => {
@@ -181,10 +190,24 @@ export function ArtifactProgressionForm({
     );
   }
 
+  // Not live-validated per keystroke -- see validateSubstatRollTotal's own
+  // comment on why this is checked only here, not in the slider UI.
   function handleSubmit() {
     const payload = substats
       .filter((s): s is { statTypeId: number; value: number } => s.statTypeId !== null)
       .map((s) => ({ statTypeId: s.statTypeId, value: s.value }));
+
+    const named = payload
+      .map((s) => ({ statTypeName: statTypeById.get(s.statTypeId)?.name as SubstatTypeName | undefined, value: s.value }))
+      .filter((s): s is { statTypeName: SubstatTypeName; value: number } => s.statTypeName !== undefined);
+
+    const validation = validateSubstatRollTotal(rarity, level, named);
+    if (!validation.valid) {
+      setRollError(validation.reason);
+      return;
+    }
+
+    setRollError(null);
     onSubmit({ slot, level, mainStatId, substats: payload });
   }
 
@@ -422,23 +445,26 @@ export function ArtifactProgressionForm({
             })}
           </div>
 
-          <div className="-mr-9 mt-auto flex items-center justify-end gap-2 border-t pt-3">
-            {onDelete && (
+          <div className="-mr-9 mt-auto flex flex-col gap-2 border-t pt-3">
+            {rollError && <p className="text-right text-xs text-red-400">{rollError}</p>}
+            <div className="flex items-center justify-end gap-2">
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                >
+                  Delete artifact
+                </button>
+              )}
               <button
                 type="button"
-                onClick={onDelete}
-                className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                onClick={handleSubmit}
+                className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
               >
-                Delete artifact
+                {submitLabel}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
-            >
-              {submitLabel}
-            </button>
+            </div>
           </div>
         </div>
       </div>
