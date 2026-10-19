@@ -173,3 +173,14 @@ export async function removeArtifact(ownedArtifactId: number) {
     where: { id: ownedArtifactId, gameProfileId: profile.id },
   });
 }
+
+// Bulk variant for the owned-artifacts page's multi-select delete -- one
+// deleteMany scoped to the profile (never trusting a caller-supplied id list
+// alone to belong to this profile) rather than one removeArtifact call per id.
+export async function removeArtifacts(ownedArtifactIds: number[]) {
+  const profile = await requireActiveProfile();
+
+  await prisma.ownedArtifact.deleteMany({
+    where: { id: { in: ownedArtifactIds }, gameProfileId: profile.id },
+  });
+}

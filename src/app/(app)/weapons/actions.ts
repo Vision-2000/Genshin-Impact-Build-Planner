@@ -204,3 +204,14 @@ export async function removeWeapon(ownedWeaponId: number) {
     where: { id: ownedWeaponId, gameProfileId: profile.id },
   });
 }
+
+// Bulk variant for the owned-weapons page's multi-select delete -- one
+// deleteMany scoped to the profile (never trusting a caller-supplied id list
+// alone to belong to this profile) rather than one removeWeapon call per id.
+export async function removeWeapons(ownedWeaponIds: number[]) {
+  const profile = await requireActiveProfile();
+
+  await prisma.ownedWeapon.deleteMany({
+    where: { id: { in: ownedWeaponIds }, gameProfileId: profile.id },
+  });
+}

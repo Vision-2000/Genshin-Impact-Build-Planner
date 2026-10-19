@@ -40,6 +40,7 @@ export function ArtifactCard({
   showSetName = true,
   showSlotBadge = true,
   tooltipContent,
+  selected,
 }: {
   setName: string;
   // Optional -- the add-catalog deals in sets, not pieces, so slot isn't
@@ -59,6 +60,9 @@ export function ArtifactCard({
   showSetName?: boolean;
   showSlotBadge?: boolean;
   tooltipContent?: ReactNode;
+  // Owned-artifacts page's bulk-delete select mode only -- same red-border
+  // treatment as WeaponCard's own `selected` prop (see its own comment).
+  selected?: boolean;
 }) {
   // The picker's own stat block needs the icon area to stay shorter
   // (aspect-[4/3]) so two cards' worth of stat text underneath don't push
@@ -91,14 +95,15 @@ export function ArtifactCard({
             }
           : undefined
       }
-      className={`relative w-full overflow-hidden rounded-xl border-8 border-gray-600 shadow ${
+      aria-pressed={selected !== undefined ? selected : undefined}
+      className={`relative w-full overflow-hidden rounded-xl border-8 shadow ${
         hasStatBlock ? "aspect-[4/3]" : "aspect-square"
       } ${
         // Same :not(:has(button:hover)) trick as WeaponCard -- the action
         // button lives inside this same div, so a plain hover:opacity-90
         // would also dim the whole card while hovering the button.
         onSelect ? "cursor-pointer [&:hover:not(:has(button:hover))]:opacity-90" : ""
-      } ${rarityGradientClasses(rarity)}`}
+      } ${selected ? "border-red-500" : "border-gray-600"} ${rarityGradientClasses(rarity)}`}
     >
       {iconUrl && (
         <>

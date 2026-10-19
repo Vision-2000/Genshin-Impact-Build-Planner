@@ -7,11 +7,13 @@ import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation
 import { formatStatValue } from "@/lib/stat-format";
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
+import { TrashIcon } from "@/components/trash-icon";
+import { MiniatureCard } from "@/components/miniature-card";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import type { SortDirection } from "@/lib/sort";
 import { PaginationControls } from "../pagination-controls";
-import { removeArtifact, updateArtifact } from "./actions";
+import { removeArtifact, removeArtifacts, updateArtifact } from "./actions";
 import { ArtifactCard } from "./artifact-card";
 import { ArtifactSlotFilterRow } from "./artifact-slot-filter-row";
 import { ArtifactProgressionForm } from "./artifact-progression-form";
@@ -36,6 +38,39 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   if (next.has(value)) next.delete(value);
   else next.add(value);
   return next;
+}
+
+// Extracted so the bulk-delete confirmation's MiniatureCard rows can show
+// the exact same hover detail as the grid card without duplicating this JSX
+// a second time.
+function buildTooltipContent(artifact: OwnedArtifactItem) {
+  return (
+    <>
+      <div className="flex items-baseline gap-2">
+        <p className="text-base font-semibold text-yellow-100">{artifact.setName}</p>
+        <p className="text-base font-semibold text-gray-400">+{artifact.level}</p>
+      </div>
+      <p className="mt-1 text-base font-semibold text-yellow-100">
+        Main Stat: {artifact.mainStatName} +
+        {formatStatValue(
+          artifact.mainStatName,
+          computeArtifactMainStatValue(artifact.mainStatName, artifact.rarity, artifact.level)
+        )}
+      </p>
+      {artifact.substats.length > 0 && (
+        <>
+          <hr className="mt-2 border-gray-700" />
+          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+            {artifact.substats.map((substat) => (
+              <p key={substat.id} className="text-gray-300">
+                {substat.statTypeName} +{formatStatValue(substat.statTypeName, substat.value)}
+              </p>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 export function OwnedArtifactManager({
@@ -74,6 +109,14 @@ export function OwnedArtifactManager({
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Bulk-delete select mode -- selectedIds is intentionally independent of
+  // `filtered` below, so a selection made before narrowing a filter survives
+  // the narrowing instead of silently shrinking (the status line and
+  // Delete button reflect this differently: see their own comments).
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
 
   const filtered = filterAndSortOwnedArtifacts(owned, {
     search,
@@ -137,6 +180,29 @@ export function OwnedArtifactManager({
     });
   }
 
+  function handleEnterSelectMode() {
+    setSelectMode(true);
+    setSelectedIds(new Set());
+  }
+
+  function handleCancelSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }
+
+  function handleConfirmBulkDelete() {
+    const idsToDelete = [...selectedIds];
+    setConfirmingBulkDelete(false);
+    setSelectMode(false);
+    setSelectedIds(new Set());
+
+    startTransition(() => {
+      const previous = owned;
+      setOwned((prev) => prev.filter((a) => !selectedIds.has(a.id)));
+      removeArtifacts(idsToDelete).catch(() => setOwned(previous));
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -180,6 +246,44 @@ export function OwnedArtifactManager({
             </option>
           ))}
         </select>
+
+        {selectMode ? (
+          <>
+            {/* h-[38px] on all 3 of these -- matches the row's other
+                elements' own natural/explicit height; without it, the row
+                container itself still sizes to whichever button happens to
+                be tallest in the current mode (items-center above only
+                stops OTHER elements from stretching, it doesn't equalize
+                this). Fixing all 3 to the same explicit height removes
+                that remaining source of mismatch in either mode. */}
+            <button
+              type="button"
+              onClick={handleCancelSelectMode}
+              className="h-[38px] rounded border bg-white px-3 text-sm text-black"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingBulkDelete(true)}
+              disabled={selectedIds.size === 0}
+              className="flex h-[38px] items-center gap-1.5 rounded bg-red-600 px-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:hover:bg-red-600"
+            >
+              <TrashIcon className="h-5 w-5" />
+              Delete ({selectedIds.size})
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={handleEnterSelectMode}
+            aria-label="Select artifacts to delete"
+            title="Select artifacts to delete"
+            className="flex h-[38px] items-center justify-center rounded bg-red-600 px-2 text-white hover:bg-red-700"
+          >
+            <TrashIcon />
+          </button>
+        )}
       </div>
 
       <ArtifactSlotFilterRow
@@ -218,7 +322,14 @@ export function OwnedArtifactManager({
       </div>
 
       <p className="text-sm text-gray-500 dark:text-gray-300">
-        {filtered.length} artifact{filtered.length === 1 ? "" : "s"}
+        {selectMode
+          // Counts selections across every filtered page, not just the one
+          // currently shown -- `selectedIds.size` itself (used for the
+          // Delete button) is the same number here, since a selection made
+          // before narrowing a filter stays selected even once it's
+          // filtered out of view, same reasoning as the weapons page.
+          ? `${filtered.filter((a) => selectedIds.has(a.id)).length}/${filtered.length} artifact${filtered.length === 1 ? "" : "s"} selected`
+          : `${filtered.length} artifact${filtered.length === 1 ? "" : "s"}`}
       </p>
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
@@ -230,37 +341,11 @@ export function OwnedArtifactManager({
             rarity={artifact.rarity}
             level={artifact.level}
             iconUrl={artifact.iconUrl}
-            actionLabel="Delete"
-            onAction={() => handleRemoveArtifact(artifact.id)}
-            danger
-            onSelect={() => setEditingId(artifact.id)}
-            tooltipContent={
-              <>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-base font-semibold text-yellow-100">{artifact.setName}</p>
-                  <p className="text-base font-semibold text-gray-400">+{artifact.level}</p>
-                </div>
-                <p className="mt-1 text-base font-semibold text-yellow-100">
-                  Main Stat: {artifact.mainStatName} +
-                  {formatStatValue(
-                    artifact.mainStatName,
-                    computeArtifactMainStatValue(artifact.mainStatName, artifact.rarity, artifact.level)
-                  )}
-                </p>
-                {artifact.substats.length > 0 && (
-                  <>
-                    <hr className="mt-2 border-gray-700" />
-                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-                      {artifact.substats.map((substat) => (
-                        <p key={substat.id} className="text-gray-300">
-                          {substat.statTypeName} +{formatStatValue(substat.statTypeName, substat.value)}
-                        </p>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
+            onSelect={() =>
+              selectMode ? setSelectedIds((prev) => toggleInSet(prev, artifact.id)) : setEditingId(artifact.id)
             }
+            selected={selectMode ? selectedIds.has(artifact.id) : undefined}
+            tooltipContent={buildTooltipContent(artifact)}
           />
         ))}
         {pageItems.length === 0 && (
@@ -299,6 +384,65 @@ export function OwnedArtifactManager({
             onDelete={() => handleRemoveArtifact(editingArtifact.id)}
           />
         )}
+      </Modal>
+
+      <Modal
+        open={confirmingBulkDelete}
+        onClose={() => setConfirmingBulkDelete(false)}
+        title={`Delete ${selectedIds.size} artifact${selectedIds.size === 1 ? "" : "s"}?`}
+        // max-w-[610px] is a ceiling sized to EXACTLY 6 MiniatureCards per
+        // row (6*84px cards + 5*8px gaps + the panel's own p-5 padding and
+        // border, plus the scrollbar gutter reserved below) -- a looser
+        // ceiling like max-w-2xl left visible empty space to the right
+        // once a selection large enough to wrap kicked in, since cards
+        // would still only fill 6-per-row's own width inside a wider box.
+        // fitContent then shrinks the panel below this ceiling too, for a
+        // selection of 6 or fewer that doesn't need to wrap at all.
+        maxWidthClassName="max-w-[610px]"
+        fitContent
+      >
+        <div className="space-y-4">
+          <p className="text-sm">This can&apos;t be undone.</p>
+          {/* max-h -- caps this at 3 rows' worth (84px cards + gap-2 gaps)
+              before scrolling, so a large selection doesn't grow the modal
+              past the screen instead. [scrollbar-gutter:stable] -- same
+              fix as the app shell's own <main> (see layout.tsx's own
+              comment): reserves the scrollbar's width ALWAYS, whether or
+              not it's actually showing, so a selection large enough to
+              need scrolling doesn't shrink the 6-card row down to 5 once
+              the real scrollbar eats into the same space the ceiling above
+              was sized for. */}
+          <div className="flex max-h-[268px] flex-wrap gap-2 overflow-y-auto [scrollbar-gutter:stable]">
+            {owned
+              .filter((artifact) => selectedIds.has(artifact.id))
+              .map((artifact) => (
+                <MiniatureCard
+                  key={artifact.id}
+                  iconUrl={artifact.iconUrl}
+                  alt={artifact.setName}
+                  rarity={artifact.rarity}
+                  objectFit="contain"
+                  hoverContent={buildTooltipContent(artifact)}
+                />
+              ))}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmingBulkDelete(false)}
+              className="rounded px-3 py-1.5 text-sm transition-colors hover:bg-foreground/10"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmBulkDelete}
+              className="rounded bg-red-600 px-3 py-1.5 text-sm text-white transition-opacity hover:opacity-80"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

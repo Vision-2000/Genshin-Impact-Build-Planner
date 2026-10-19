@@ -23,6 +23,66 @@ import type { WeaponHoverDetail } from "./filter-sort";
 // edit modal"); the owned list and catalog both additionally pass
 // actionLabel/onAction for a quick one-click action (Delete / Add) that
 // doesn't require opening that modal at all.
+// The hover tooltip's own content -- extracted out of WeaponCard so the
+// weapons bulk-delete confirmation's MiniatureCard rows can show the exact
+// same detail on hover without duplicating this JSX a second time.
+export function WeaponHoverCardContent({
+  name,
+  secondaryStatName,
+  level,
+  refinement,
+  hoverDetail,
+}: {
+  name: string;
+  secondaryStatName: string | null;
+  level?: number;
+  refinement?: number;
+  hoverDetail: WeaponHoverDetail;
+}) {
+  // Only needed for the hover tooltip, to label exactly which state its
+  // stats/passive are shown at. The owned-weapons page always passes its own
+  // real level/refinement props (that copy's actual current state); the
+  // add-catalog passes neither, so this falls back to the weapon's own
+  // defaultWeaponProgression() state there.
+  const defaultProgression = defaultWeaponProgression(name);
+  const tooltipLevel = level ?? defaultProgression.level;
+  const tooltipRefinement = refinement ?? defaultProgression.refinement;
+
+  return (
+    <>
+      {/* Level pairs with the stats row below it (level is what the
+          base-stat formulas scale on), refinement pairs with the passive
+          name below the divider instead (refinement is what the passive's
+          own numbers scale on) -- not grouped together as one "current
+          state" line. */}
+      <div className="flex items-baseline gap-2">
+        <p className="text-base font-semibold text-yellow-100">{name}</p>
+        <p className="text-base font-semibold text-gray-400">Lv.{tooltipLevel}</p>
+      </div>
+      <div className="mt-1 flex items-baseline gap-6">
+        <p className="text-base font-semibold text-yellow-100">Base ATK: {hoverDetail.attack}</p>
+        {secondaryStatName && hoverDetail.secondaryStatValue !== null && (
+          <p className="text-base font-semibold text-yellow-100">
+            {secondaryStatName}: {formatStatValue(secondaryStatName, hoverDetail.secondaryStatValue)}
+          </p>
+        )}
+      </div>
+      {hoverDetail.passiveName && hoverDetail.passiveDescription && (
+        <>
+          <hr className="mt-2 border-gray-700" />
+          <div className="mt-2 flex items-baseline gap-2">
+            <p className="text-base font-semibold text-yellow-100">{hoverDetail.passiveName}</p>
+            <p className="text-base font-semibold text-gray-400">R{tooltipRefinement}</p>
+          </div>
+          <p className="mt-1.5 whitespace-pre-line text-gray-300">
+            <BoldHighlightedText text={hoverDetail.passiveDescription} />
+          </p>
+        </>
+      )}
+    </>
+  );
+}
+
 export function WeaponCard({
   name,
   weaponType,
@@ -38,6 +98,7 @@ export function WeaponCard({
   showWeaponTypeBadge = true,
   level,
   hoverDetail,
+  selected,
 }: {
   name: string;
   weaponType: WeaponType;
@@ -70,6 +131,11 @@ export function WeaponCard({
   // same spot). Undefined only for pickers, where this wouldn't mean
   // anything extra beyond the refinement/level already on the card face.
   hoverDetail?: WeaponHoverDetail;
+  // Owned-weapons page's bulk-delete select mode only -- same red-border
+  // treatment CharacterCard's showOwnershipBorder uses for green, just a
+  // different color since this marks "about to delete", not "owned".
+  // Undefined everywhere else, which keeps the ordinary neutral border.
+  selected?: boolean;
 }) {
   const cardBody = (
     <div
@@ -86,7 +152,8 @@ export function WeaponCard({
             }
           : undefined
       }
-      className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 border-gray-600 shadow ${
+      aria-pressed={selected !== undefined ? selected : undefined}
+      className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 shadow ${
         // The Add button lives inside this same div (absolutely positioned
         // overlay, not a sibling like ArtifactCard's edit/delete buttons),
         // so a plain hover:opacity-90 would also dim the whole card while
@@ -96,7 +163,7 @@ export function WeaponCard({
         // being hovered, leaving the button's own hover style the only
         // thing that changes.
         onSelect ? "cursor-pointer [&:hover:not(:has(button:hover))]:opacity-90" : ""
-      } ${rarityGradientClasses(rarity)}`}
+      } ${selected ? "border-red-500" : "border-gray-600"} ${rarityGradientClasses(rarity)}`}
     >
       {iconUrl && (
         <Image
@@ -164,17 +231,6 @@ export function WeaponCard({
     </div>
   );
 
-  // Only needed for the hover tooltip below, to label exactly which
-  // state its stats/passive are shown at. The owned-weapons page always
-  // passes its own real level/refinement props (that copy's actual
-  // current state); the add-catalog passes neither, so this falls back
-  // to the weapon's own defaultWeaponProgression() state there. Computed
-  // unconditionally since it's a cheap, pure lookup -- not worth gating
-  // behind hoverDetail.
-  const defaultProgression = defaultWeaponProgression(name);
-  const tooltipLevel = level ?? defaultProgression.level;
-  const tooltipRefinement = refinement ?? defaultProgression.refinement;
-
   return (
     <li className="relative">
       {hoverDetail ? (
@@ -182,37 +238,13 @@ export function WeaponCard({
           wrapperClassName="relative block w-full"
           widthClassName="w-[28rem]"
           content={
-            <>
-              {/* Level pairs with the stats row below it (level is what the
-                  base-stat formulas scale on), refinement pairs with the
-                  passive name below the divider instead (refinement is
-                  what the passive's own numbers scale on) -- not grouped
-                  together as one "current state" line. */}
-              <div className="flex items-baseline gap-2">
-                <p className="text-base font-semibold text-yellow-100">{name}</p>
-                <p className="text-base font-semibold text-gray-400">Lv.{tooltipLevel}</p>
-              </div>
-              <div className="mt-1 flex items-baseline gap-6">
-                <p className="text-base font-semibold text-yellow-100">Base ATK: {hoverDetail.attack}</p>
-                {secondaryStatName && hoverDetail.secondaryStatValue !== null && (
-                  <p className="text-base font-semibold text-yellow-100">
-                    {secondaryStatName}: {formatStatValue(secondaryStatName, hoverDetail.secondaryStatValue)}
-                  </p>
-                )}
-              </div>
-              {hoverDetail.passiveName && hoverDetail.passiveDescription && (
-                <>
-                  <hr className="mt-2 border-gray-700" />
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <p className="text-base font-semibold text-yellow-100">{hoverDetail.passiveName}</p>
-                    <p className="text-base font-semibold text-gray-400">R{tooltipRefinement}</p>
-                  </div>
-                  <p className="mt-1.5 whitespace-pre-line text-gray-300">
-                    <BoldHighlightedText text={hoverDetail.passiveDescription} />
-                  </p>
-                </>
-              )}
-            </>
+            <WeaponHoverCardContent
+              name={name}
+              secondaryStatName={secondaryStatName}
+              level={level}
+              refinement={refinement}
+              hoverDetail={hoverDetail}
+            />
           }
         >
           {cardBody}
