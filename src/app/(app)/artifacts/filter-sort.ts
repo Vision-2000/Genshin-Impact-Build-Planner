@@ -1,6 +1,13 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import type { SortDirection } from "@/lib/sort";
-import { OTHER_TWO_PIECE_BONUS, SUBSTAT_TYPE_NAMES, type SubstatTypeName } from "./artifact-rules";
+import {
+  OTHER_TWO_PIECE_BONUS,
+  SORTABLE_STAT_NAMES,
+  SUBSTAT_TYPE_NAMES,
+  computeArtifactMainStatValue,
+  type SortableStatName,
+  type SubstatTypeName,
+} from "./artifact-rules";
 
 export type { SortDirection };
 
@@ -50,6 +57,10 @@ export type OwnedArtifactItem = {
   twoPieceEffect: string;
   fourPieceEffect: string | null;
   substats: OwnedArtifactSubstatItem[];
+  // Epoch ms, not a Date -- this crosses the server/client boundary as a
+  // prop, and a plain number sidesteps any Date-serialization surprises.
+  // Backs the "obtained" sortKey below, same as Weapons' own createdAt.
+  createdAt: number;
 };
 
 export function slotIconUrl(
@@ -82,6 +93,7 @@ type OwnedArtifactRow = {
   slot: ArtifactSlot;
   level: number;
   mainStatId: number;
+  createdAt: Date;
   artifactSet: {
     name: string;
     rarity: number;
@@ -117,10 +129,15 @@ export function toOwnedArtifactItem(row: OwnedArtifactRow): OwnedArtifactItem {
       statTypeName: s.statType.name,
       value: s.value,
     })),
+    createdAt: row.createdAt.getTime(),
   };
 }
 
-export type OwnedSortKey = "name" | "rarity" | "level" | SubstatTypeName;
+// "obtained" sorts by createdAt -- its forward direction is newest-first
+// rather than oldest-first (more intuitive for browsing what you just
+// picked up), same "flip the shared direction multiplier" treatment
+// Weapons' own "obtained" sortKey uses.
+export type OwnedSortKey = "name" | "rarity" | "level" | "obtained" | SortableStatName;
 
 export type OwnedFilters = {
   search: string;
@@ -138,6 +155,39 @@ export type OwnedFilters = {
 function substatValue(artifact: OwnedArtifactItem, statName: string): number | null {
   const substat = artifact.substats.find((s) => s.statTypeName === statName);
   return substat ? substat.value : null;
+}
+
+// Used only for sorting by a stat, not the "has this substat" filter above
+// (which stays substat-only, matching its own "Substat: X" label) -- a
+// piece's main stat can be the same StatType as one of these sortable names
+// (e.g. a Circlet's Crit Rate% main stat), and ideally sorting by "Crit
+// Rate%" should reflect the piece's TOTAL Crit Rate%, main stat included,
+// not just whatever (if anything) also rolled as a substat. Returns null
+// only when the stat appears in neither place, so an artifact with it as
+// ONLY a main stat (no matching substat) still sorts by that value instead
+// of falling to "absent". statName is SortableStatName, not SubstatTypeName
+// -- SORTABLE_STAT_NAMES also covers stats that can ONLY ever be a main
+// stat (Healing Bonus%, every elemental/Physical DMG Bonus%), for which
+// substatValue above will simply always return null.
+function sortableStatValue(artifact: OwnedArtifactItem, statName: SortableStatName): number | null {
+  const substat = substatValue(artifact, statName);
+  const mainStat =
+    artifact.mainStatName === statName
+      ? computeArtifactMainStatValue(artifact.mainStatName, artifact.rarity, artifact.level)
+      : null;
+
+  if (substat === null && mainStat === null) return null;
+  return (substat ?? 0) + (mainStat ?? 0);
+}
+
+// Breaks a tie by createdAt, newest first -- fixed regardless of the
+// primary sort's own direction toggle, same convention and same reasoning
+// as Weapons' own tiebreakByAdded (two owned pieces can never be created at
+// the exact same moment, unlike setName/level/substat value, which can tie
+// across different physical pieces). Used as every sortKey's tiebreaker
+// here, not just "obtained"'s own.
+function tiebreakByAdded(a: OwnedArtifactItem, b: OwnedArtifactItem): number {
+  return b.createdAt - a.createdAt;
 }
 
 export function filterAndSortOwnedArtifacts(
@@ -166,18 +216,29 @@ export function filterAndSortOwnedArtifacts(
   const direction = sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
+    // Flipped (-direction) -- forward is highest rarity first, same "flip
+    // the shared direction multiplier" treatment this file's own "release"
+    // sortKey (catalog side) and Weapons' own rarity/level/refinement
+    // sortKeys use.
     if (sortKey === "rarity") {
-      return direction * (a.rarity - b.rarity) || a.setName.localeCompare(b.setName);
+      return -direction * (a.rarity - b.rarity) || tiebreakByAdded(a, b);
     }
+    // Flipped (-direction) -- forward is highest level first, same reasoning
+    // as the rarity sortKey above.
     if (sortKey === "level") {
-      return direction * (a.level - b.level) || a.setName.localeCompare(b.setName);
+      return -direction * (a.level - b.level) || tiebreakByAdded(a, b);
     }
-    if ((SUBSTAT_TYPE_NAMES as readonly string[]).includes(sortKey)) {
-      const aValue = substatValue(a, sortKey) ?? -Infinity;
-      const bValue = substatValue(b, sortKey) ?? -Infinity;
-      return direction * (aValue - bValue) || a.setName.localeCompare(b.setName);
+    if (sortKey === "obtained") {
+      return -direction * (a.createdAt - b.createdAt);
     }
-    return direction * a.setName.localeCompare(b.setName);
+    // Flipped (-direction) -- forward is highest value first, same
+    // reasoning as the rarity/level sortKeys above.
+    if ((SORTABLE_STAT_NAMES as readonly string[]).includes(sortKey)) {
+      const aValue = sortableStatValue(a, sortKey as SortableStatName) ?? -Infinity;
+      const bValue = sortableStatValue(b, sortKey as SortableStatName) ?? -Infinity;
+      return -direction * (aValue - bValue) || tiebreakByAdded(a, b);
+    }
+    return direction * a.setName.localeCompare(b.setName) || tiebreakByAdded(a, b);
   });
 }
 

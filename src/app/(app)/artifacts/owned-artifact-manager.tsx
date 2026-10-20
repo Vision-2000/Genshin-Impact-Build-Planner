@@ -20,6 +20,7 @@ import { ArtifactProgressionForm } from "./artifact-progression-form";
 import {
   ARTIFACT_RARITIES,
   MAIN_STAT_NAMES,
+  SORTABLE_STAT_NAMES,
   SUBSTAT_TYPE_NAMES,
   computeArtifactMainStatValue,
   type SubstatTypeName,
@@ -105,7 +106,7 @@ export function OwnedArtifactManager({
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [substatFilter, setSubstatFilter] = useState<Set<SubstatTypeName>>(new Set());
   const [mainStatFilter, setMainStatFilter] = useState("");
-  const [sortKey, setSortKey] = useState<OwnedSortKey>("name");
+  const [sortKey, setSortKey] = useState<OwnedSortKey>("obtained");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -221,10 +222,11 @@ export function OwnedArtifactManager({
           onChange={(event) => setSortKey(event.target.value as OwnedSortKey)}
           className="h-[38px] rounded border bg-white px-2 text-sm text-black"
         >
+          <option value="obtained">Sort: Added</option>
           <option value="name">Sort: Name</option>
           <option value="rarity">Sort: Rarity</option>
           <option value="level">Sort: Level</option>
-          {SUBSTAT_TYPE_NAMES.map((name) => (
+          {SORTABLE_STAT_NAMES.map((name) => (
             <option key={name} value={name}>
               Sort: {name}
             </option>

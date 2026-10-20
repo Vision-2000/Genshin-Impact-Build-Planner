@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ArtifactSlot } from "@/generated/prisma/enums";
-import type { SubstatTypeName } from "./artifact-rules";
+import { computeArtifactMainStatValue, type SubstatTypeName } from "./artifact-rules";
 import {
   filterAndSortOwnedArtifacts,
   filterArtifactSetCatalog,
@@ -27,6 +27,7 @@ function ownedItem(overrides: Partial<OwnedArtifactItem>): OwnedArtifactItem {
     twoPieceEffect: "2pc effect",
     fourPieceEffect: "4pc effect",
     substats: [],
+    createdAt: 0,
     ...overrides,
   };
 }
@@ -66,6 +67,7 @@ describe("filterAndSortOwnedArtifacts", () => {
       slot: ArtifactSlot.Flower,
       rarity: 5,
       level: 20,
+      createdAt: 100,
       substats: [
         substat({ id: 1, statTypeName: "Crit Rate%", value: 7.8 }),
         substat({ id: 2, statTypeName: "ATK%", value: 5.8 }),
@@ -78,6 +80,7 @@ describe("filterAndSortOwnedArtifacts", () => {
       rarity: 4,
       level: 4,
       mainStatName: "Crit DMG%",
+      createdAt: 200,
       substats: [substat({ id: 3, statTypeName: "Crit DMG%", value: 15.5 })],
     }),
     ownedItem({
@@ -86,6 +89,7 @@ describe("filterAndSortOwnedArtifacts", () => {
       slot: ArtifactSlot.Flower,
       rarity: 5,
       level: 8,
+      createdAt: 300,
       substats: [],
     }),
   ];
@@ -136,39 +140,117 @@ describe("filterAndSortOwnedArtifacts", () => {
     expect(result.map((a) => a.setName)).toEqual(["Wanderer's Troupe"]);
   });
 
-  it("sorts by rarity ascending, breaking ties by name", () => {
+  it("sorts by rarity forward (highest first), breaking ties by added (newest first)", () => {
+    // Gladiator's Finale and Noblesse Oblige tie at rarity 5 -- Noblesse
+    // Oblige (createdAt 300) is more recently added than Gladiator's Finale
+    // (createdAt 100), so it sorts first despite "Gladiator's" coming first
+    // alphabetically.
     const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "rarity" });
-    expect(result.map((a) => a.setName)).toEqual(["Wanderer's Troupe", "Gladiator's Finale", "Noblesse Oblige"]);
+    expect(result.map((a) => a.setName)).toEqual(["Noblesse Oblige", "Gladiator's Finale", "Wanderer's Troupe"]);
   });
 
-  it("sorts by rarity descending, breaking ties by name", () => {
+  it("sorts by rarity reversed (lowest first), still breaking ties by added (newest first)", () => {
+    // The tiebreaker's own direction is fixed (always newest-first),
+    // independent of whether the primary rarity sort itself is forward or
+    // reversed.
     const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "rarity", sortDirection: "desc" });
-    expect(result.map((a) => a.setName)).toEqual(["Gladiator's Finale", "Noblesse Oblige", "Wanderer's Troupe"]);
-  });
-
-  it("sorts by level ascending, breaking ties by name", () => {
-    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "level" });
     expect(result.map((a) => a.setName)).toEqual(["Wanderer's Troupe", "Noblesse Oblige", "Gladiator's Finale"]);
   });
 
-  it("sorts by level descending, breaking ties by name", () => {
-    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "level", sortDirection: "desc" });
+  it("sorts by level forward (highest first) (no tie here -- every level is distinct)", () => {
+    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "level" });
     expect(result.map((a) => a.setName)).toEqual(["Gladiator's Finale", "Noblesse Oblige", "Wanderer's Troupe"]);
   });
 
-  it("sorts by a substat's value ascending, treating artifacts without that substat as lowest", () => {
-    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "Crit Rate%" });
-    // Only id 1 has Crit Rate%; the other two tie at "absent" and fall back to name order.
+  it("sorts by level reversed (lowest first) (no tie here -- every level is distinct)", () => {
+    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "level", sortDirection: "desc" });
+    expect(result.map((a) => a.setName)).toEqual(["Wanderer's Troupe", "Noblesse Oblige", "Gladiator's Finale"]);
+  });
+
+  it("sorts by obtained forward (newest createdAt first)", () => {
+    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "obtained" });
     expect(result.map((a) => a.setName)).toEqual(["Noblesse Oblige", "Wanderer's Troupe", "Gladiator's Finale"]);
   });
 
-  it("sorts by a substat's value descending, treating artifacts without that substat as lowest", () => {
+  it("sorts by obtained reversed (oldest createdAt first)", () => {
+    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "obtained", sortDirection: "desc" });
+    expect(result.map((a) => a.setName)).toEqual(["Gladiator's Finale", "Wanderer's Troupe", "Noblesse Oblige"]);
+  });
+
+  it("breaks a name tie (two pieces from the same set) by added, newest first", () => {
+    const duplicates: OwnedArtifactItem[] = [
+      ownedItem({ id: 10, setName: "Gladiator's Finale", createdAt: 400 }),
+      ownedItem({ id: 11, setName: "Gladiator's Finale", createdAt: 500 }),
+    ];
+    const result = filterAndSortOwnedArtifacts(duplicates, baseFilters);
+    expect(result.map((a) => a.id)).toEqual([11, 10]);
+  });
+
+  it("sorts by a stat's value forward (highest first), treating artifacts without it as lowest", () => {
+    const result = filterAndSortOwnedArtifacts(artifacts, { ...baseFilters, sortKey: "Crit Rate%" });
+    // Only id 1 has Crit Rate%; the other two tie at "absent" and fall back
+    // to added (newest first) -- Noblesse Oblige (id 3, createdAt 300) is
+    // newer than Wanderer's Troupe (id 2, createdAt 200).
+    expect(result.map((a) => a.setName)).toEqual(["Gladiator's Finale", "Noblesse Oblige", "Wanderer's Troupe"]);
+  });
+
+  it("sorts by a stat's value reversed (lowest first), treating artifacts without it as lowest", () => {
     const result = filterAndSortOwnedArtifacts(artifacts, {
       ...baseFilters,
       sortKey: "Crit Rate%",
       sortDirection: "desc",
     });
-    expect(result.map((a) => a.setName)).toEqual(["Gladiator's Finale", "Noblesse Oblige", "Wanderer's Troupe"]);
+    expect(result.map((a) => a.setName)).toEqual(["Noblesse Oblige", "Wanderer's Troupe", "Gladiator's Finale"]);
+  });
+
+  it("sorting by a stat includes the piece's main stat, not just its substats", () => {
+    const circletMainStatOnly = ownedItem({
+      id: 20,
+      setName: "Main Stat Only",
+      rarity: 5,
+      level: 0,
+      mainStatName: "Crit Rate%",
+      substats: [],
+    });
+    const circletMainStatAndSubstat = ownedItem({
+      id: 21,
+      setName: "Main Stat Plus Substat",
+      rarity: 5,
+      level: 0,
+      mainStatName: "Crit Rate%",
+      substats: [substat({ statTypeName: "Crit Rate%", value: 3.89 })],
+    });
+    const noCritRateAtAll = ownedItem({ id: 22, setName: "Neither", rarity: 5, level: 0 });
+
+    const result = filterAndSortOwnedArtifacts(
+      [noCritRateAtAll, circletMainStatOnly, circletMainStatAndSubstat],
+      { ...baseFilters, sortKey: "Crit Rate%" }
+    );
+
+    // Main-stat-only sorts by its own main stat value (not "absent") --
+    // Crit Rate%'s 5-star level-0 main stat value is 4.7 (see
+    // artifact-rules.test.ts). Main stat + substat sorts by their SUM
+    // (4.7 + 3.89 = 8.59), ahead of main-stat-only.
+    expect(result.map((a) => a.setName)).toEqual(["Main Stat Plus Substat", "Main Stat Only", "Neither"]);
+    expect(computeArtifactMainStatValue("Crit Rate%", 5, 0)).toBe(4.7);
+  });
+
+  it("sorts by a main-stat-only stat (never a substat), not just the 10 substat-eligible names", () => {
+    const healingBonusCirclet = ownedItem({
+      id: 30,
+      setName: "Healing Circlet",
+      rarity: 5,
+      level: 0,
+      mainStatName: "Healing Bonus%",
+    });
+    const noHealingBonus = ownedItem({ id: 31, setName: "No Healing Bonus", rarity: 5, level: 0 });
+
+    const result = filterAndSortOwnedArtifacts([noHealingBonus, healingBonusCirclet], {
+      ...baseFilters,
+      sortKey: "Healing Bonus%",
+    });
+
+    expect(result.map((a) => a.setName)).toEqual(["Healing Circlet", "No Healing Bonus"]);
   });
 
   it("sorts by name descending", () => {

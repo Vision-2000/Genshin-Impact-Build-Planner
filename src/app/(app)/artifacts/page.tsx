@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Artifacts",
 };
 
-const HELP_TEXT = `This page shows the artifacts you currently own. Hover a card to see its main stat and substats, click it to edit its level/main stat/substats, or use the Delete button on the card to delete it.`;
+const HELP_TEXT = `This page shows the artifacts you currently own. Hover a card to see its main stat and substats, or click it to edit its level/main stat/substats (and delete it from there, if needed). Use the trash-can button to select multiple pieces and delete them all at once.`;
 
 export default async function ArtifactsPage() {
   const profile = await requireActiveProfile();

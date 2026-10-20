@@ -56,6 +56,38 @@ export const SUBSTAT_TYPE_NAMES = [
 
 export type SubstatTypeName = (typeof SUBSTAT_TYPE_NAMES)[number];
 
+// Every StatType name sortable on the owned-artifacts page -- the union of
+// SUBSTAT_TYPE_NAMES and MAIN_STAT_NAMES, so a stat that can ONLY ever be a
+// main stat (Healing Bonus%, every elemental/Physical DMG Bonus%) still gets
+// its own sortKey, not just the 10 that can also roll as a substat.
+// Hardcoded rather than computed from the other two (MAIN_STAT_NAMES isn't
+// literal-typed, so spreading it wouldn't produce a narrow union here) --
+// same "hardcode the known values" treatment SUBSTAT_TYPE_NAMES itself
+// already gets.
+export const SORTABLE_STAT_NAMES = [
+  "HP",
+  "ATK",
+  "DEF",
+  "HP%",
+  "ATK%",
+  "DEF%",
+  "Elemental Mastery",
+  "Energy Recharge%",
+  "Crit Rate%",
+  "Crit DMG%",
+  "Healing Bonus%",
+  "Physical DMG Bonus%",
+  "Pyro DMG Bonus%",
+  "Hydro DMG Bonus%",
+  "Electro DMG Bonus%",
+  "Cryo DMG Bonus%",
+  "Anemo DMG Bonus%",
+  "Geo DMG Bonus%",
+  "Dendro DMG Bonus%",
+] as const;
+
+export type SortableStatName = (typeof SORTABLE_STAT_NAMES)[number];
+
 // Every StatType name that currently appears as a 2-piece effect's
 // unconditional stat bonus (ArtifactSetStatBonus, piece: Two) across all
 // seeded sets -- backs the add-catalog's own 2pc-effect filter. Same
@@ -139,14 +171,24 @@ function roundTo2(value: number): number {
 // The most rolls a substat present since the artifact's first appearance
 // (this app always assumes it was, since it doesn't track when a 4th
 // substat was unlocked -- see CLAUDE.md) could have received by a given
-// level: 1 guaranteed initial roll, plus one more every 4 levels -- capped
-// at the rarity's own total upgrade count, since a 5-star artifact only
-// ever gets 5 upgrades over its lifetime (+4/+8/+12/+16/+20). The actual
-// roll count could be anywhere from 1 (never touched by an upgrade) up to
-// this maximum, since upgrades are distributed randomly among a piece's
-// existing substats -- not always this one.
+// level: 1 guaranteed initial roll, plus one more per upgrade (+4 levels,
+// capped at the rarity's own total upgrade count) -- MINUS however many of
+// those upgrades are guaranteed to be spent revealing a missing substat
+// instead of boosting an existing one (see validateSubstatRollTotal's own
+// comment on why that's a fixed, not flexible, schedule). A piece's own
+// best-case initial count is rarity-1 -- for a 5-star that's already 4 (the
+// full slot count), so zero upgrades are ever forced into a reveal and
+// every one of them COULD land on a single substat; for a 4-star it's only
+// 3, so at least 1 upgrade is always spent revealing the still-missing 4th
+// substat before any boosting even becomes possible. Getting this wrong
+// previously let a single 4-star substat's slider reach a roll count
+// (1 + upgrades) that validateSubstatRollTotal could never actually accept,
+// since that count assumes no upgrade was ever spent on a reveal -- true
+// only for 5-star.
 function maxRollCount(rarity: number, level: number): number {
-  return 1 + Math.min(rarity, Math.floor(level / 4));
+  const upgrades = Math.min(rarity, Math.floor(level / 4));
+  const guaranteedReveals = Math.max(0, 4 - (rarity - 1));
+  return 1 + Math.max(0, upgrades - guaranteedReveals);
 }
 
 // Every value a substat could actually have landed on: each individual roll

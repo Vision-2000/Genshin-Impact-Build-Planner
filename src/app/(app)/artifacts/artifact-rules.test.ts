@@ -3,6 +3,7 @@ import { roundHalfUp } from "@/lib/round";
 import {
   computeArtifactMainStatValue,
   substatRollCount,
+  substatValidValues,
   validateSubstatRollTotal,
   SUBSTAT_HIGHEST_ROLL,
   type SubstatTypeName,
@@ -51,6 +52,29 @@ describe("computeArtifactMainStatValue", () => {
     const expected = computeArtifactMainStatValue("DEF%", 4, 8);
     expect(expected).toBe(25.7);
     expect(computeArtifactMainStatValue("Physical DMG Bonus%", 4, 8)).toBe(expected);
+  });
+});
+
+describe("substatValidValues", () => {
+  // Regression guard for a real bug: a 4-star's best-case initial substat
+  // count (rarity-1 = 3) is one short of the full 4 slots, so at least 1 of
+  // its (up to 4) upgrades is always spent revealing the still-missing 4th
+  // substat -- the true max for any ONE substat is 4 rolls at max level,
+  // not 5 (1 + every upgrade, which wrongly assumed none of them was ever
+  // forced into a reveal).
+  it("caps a maxed 4-star substat's highest value at 4 rolls, not 5", () => {
+    const values = substatValidValues("Crit Rate%", 4, 16);
+    const highest = SUBSTAT_HIGHEST_ROLL["Crit Rate%"][4];
+    expect(Math.max(...values)).toBe(roundHalfUp(4 * 1.0 * highest, 2));
+  });
+
+  // A 5-star's best-case initial count (rarity-1 = 4) already fills all 4
+  // slots, so none of its 5 upgrades is ever forced into a reveal -- every
+  // one of them really could land on a single substat.
+  it("doesn't cap a maxed 5-star substat the same way -- all 5 upgrades can land on one", () => {
+    const values = substatValidValues("Crit Rate%", 5, 20);
+    const highest = SUBSTAT_HIGHEST_ROLL["Crit Rate%"][5];
+    expect(Math.max(...values)).toBe(roundHalfUp(6 * 1.0 * highest, 2));
   });
 });
 
