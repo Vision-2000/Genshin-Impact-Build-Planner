@@ -76,6 +76,10 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
     sortDirection,
   });
   const editingWeapon = editingId === null ? null : (owned.find((w) => w.id === editingId) ?? null);
+  // Drives the select-all/unselect-all toggle button below -- true only
+  // once every CURRENTLY FILTERED item is selected (an empty filtered list
+  // never counts as "all selected").
+  const allFilteredSelected = filtered.length > 0 && filtered.every((weapon) => selectedIds.has(weapon.id));
 
   function handleUpdateProgression(ownedWeaponId: number, input: UpdateWeaponProgressionInput) {
     const previous = owned;
@@ -114,6 +118,25 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   function handleEnterSelectMode() {
     setSelectMode(true);
     setSelectedIds(new Set());
+  }
+
+  // Unions with the existing selection rather than replacing it -- a
+  // selection made before narrowing a filter stays selected (see this
+  // component's own selectedIds comment), so selecting everything in the
+  // current filter should only ever grow the set, never drop something the
+  // user already picked that's since scrolled out of view. Toggles to
+  // unselecting just the current filter's own ids (not the whole
+  // selection) once every one of them is already selected -- anything
+  // selected outside the current filter stays selected either way.
+  function handleToggleSelectAll() {
+    setSelectedIds((prev) => {
+      if (allFilteredSelected) {
+        const next = new Set(prev);
+        for (const weapon of filtered) next.delete(weapon.id);
+        return next;
+      }
+      return new Set([...prev, ...filtered.map((weapon) => weapon.id)]);
+    });
   }
 
   function handleCancelSelectMode() {
@@ -180,13 +203,13 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
 
         {selectMode ? (
           <>
-            {/* h-[38px] on all 3 of these -- matches the inputs/selects'
+            {/* h-[38px] on both of these -- matches the inputs/selects'
                 own natural height (border + py-2 + text-sm), which their
                 own borderless/icon-sized content wouldn't reproduce on its
                 own (see this row's own items-center comment above: that
                 fixed the OTHER elements getting stretched, but not the row
                 container itself still sizing to whichever button happens
-                to be tallest in the current mode). Fixing all 3 to the
+                to be tallest in the current mode). Fixing both to the
                 same explicit height removes that remaining source of
                 mismatch entirely, in either mode. */}
             <button
@@ -229,15 +252,36 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
       />
 
-      <p className="text-sm text-gray-500 dark:text-gray-300">
-        {selectMode
-          // Counts only currently-visible selections against the visible
-          // total -- `selectedIds.size` itself (used for the Delete button)
-          // can be larger, since a selection made before narrowing a filter
-          // stays selected even once it's filtered out of view.
-          ? `${filtered.filter((weapon) => selectedIds.has(weapon.id)).length}/${filtered.length} weapon${filtered.length === 1 ? "" : "s"} selected`
-          : `${filtered.length} weapon${filtered.length === 1 ? "" : "s"}`}
-      </p>
+      <div className="flex items-center gap-2">
+        <p className="text-sm text-gray-500 dark:text-gray-300">
+          {selectMode
+            // Counts only currently-visible selections against the visible
+            // total -- `selectedIds.size` itself (used for the Delete
+            // button) can be larger, since a selection made before
+            // narrowing a filter stays selected even once it's filtered
+            // out of view.
+            ? `${filtered.filter((weapon) => selectedIds.has(weapon.id)).length}/${filtered.length} weapon${filtered.length === 1 ? "" : "s"} selected`
+            : `${filtered.length} weapon${filtered.length === 1 ? "" : "s"}`}
+        </p>
+        {selectMode && (
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            // pt-[3px] pb-px (not symmetric py-0.5) -- same fix as the
+            // artifact edit modal's dropdowns: Arial's own line-height
+            // metrics aren't split evenly above/below the glyphs, so the
+            // text sat visibly high within its own border; more
+            // padding-top than padding-bottom nudges it down to
+            // compensate. A first attempt at pt-1/pb-px (4px/1px)
+            // overcorrected -- this keeps the same 4px total as the
+            // original symmetric py-0.5 (2px/2px), just redistributed
+            // less aggressively (3px/1px).
+            className="relative -top-0.5 rounded border px-2 pb-px pt-[3px] text-xs transition-colors hover:bg-foreground/10"
+          >
+            {allFilteredSelected ? "Unselect all" : "Select all"}
+          </button>
+        )}
+      </div>
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {filtered.map((weapon) => (
