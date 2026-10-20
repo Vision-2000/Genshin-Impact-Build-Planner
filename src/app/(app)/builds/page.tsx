@@ -3,7 +3,7 @@ import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { HelpButton } from "@/components/help-button";
 import { slotIconUrl } from "../artifacts/filter-sort";
-import { AddBuildLink } from "./add-build-link";
+import { CreateBuildLink } from "./create-build-link";
 import { OwnedBuildManager } from "./owned-build-manager";
 import { toBuildItem, type OwnedWeaponOption, type OwnedArtifactOption } from "./filter-sort";
 
@@ -72,7 +72,7 @@ export default async function BuildsPage() {
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-300">Managing builds for {profile.name}</p>
         </div>
-        <AddBuildLink />
+        <CreateBuildLink />
       </div>
       <OwnedBuildManager weapons={weaponOptions} artifacts={artifactOptions} initialBuilds={buildItems} />
       </div>

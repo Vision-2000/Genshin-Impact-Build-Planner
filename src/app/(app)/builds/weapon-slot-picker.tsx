@@ -55,8 +55,11 @@ function NoneWeaponCard({ onSelect }: { onSelect: () => void }) {
 // pattern here exists mainly for parity with ArtifactSlotPicker (a select
 // genuinely isn't enough there) and to give both a consistent feel. The
 // picker's filters mirror the Weapons page (search, rarity, sort) -- weapon
-// type is left out since every candidate here already matches the
-// character's own weapon type, so that filter would never do anything.
+// type is left out: once a character narrows `weaponType` to one value,
+// every candidate already matches it, so the filter would never do
+// anything; before that (weaponType null), it's simplest to just let the
+// grid span every type rather than add a filter only needed in that one
+// state.
 export function WeaponSlotPicker({
   weaponType,
   weapons,
@@ -65,7 +68,10 @@ export function WeaponSlotPicker({
   autoOpen,
   onOpenChange,
 }: {
-  weaponType: WeaponType;
+  // null only for BuildCatalog's own "no character chosen yet" state --
+  // every candidate then spans every weapon type instead of just one (see
+  // `options` below), since there's no character to narrow it by yet.
+  weaponType: WeaponType | null;
   weapons: OwnedWeaponOption[];
   value: number | null;
   onChange: (ownedWeaponId: number | null) => void;
@@ -100,7 +106,7 @@ export function WeaponSlotPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpen]);
 
-  const options = weapons.filter((w) => w.weaponType === weaponType);
+  const options = weaponType === null ? weapons : weapons.filter((w) => w.weaponType === weaponType);
   const selected = value !== null ? options.find((w) => w.ownedWeaponId === value) : undefined;
 
   const query = search.trim().toLowerCase();
@@ -126,7 +132,10 @@ export function WeaponSlotPicker({
         <ul className="w-56 shrink-0">
           <WeaponCard
             name={selected.name}
-            weaponType={weaponType}
+            // selected's own type, not the (possibly null) prop above --
+            // correct regardless of whether this was picked before or
+            // after a character narrowed the candidates to one type.
+            weaponType={selected.weaponType}
             rarity={selected.rarity}
             secondaryStatName={selected.secondaryStatName}
             iconUrl={selected.iconUrl}
@@ -143,7 +152,9 @@ export function WeaponSlotPicker({
           title="Choose weapon"
           className="relative flex h-56 w-56 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90"
         >
-          <Image src={WEAPON_TYPE_ICON_URL[weaponType]} alt="" fill className="object-contain p-1 opacity-30" />
+          {weaponType && (
+            <Image src={WEAPON_TYPE_ICON_URL[weaponType]} alt="" fill className="object-contain p-1 opacity-30" />
+          )}
           <BlinkingPlusIcon />
         </button>
       )}
@@ -179,7 +190,10 @@ export function WeaponSlotPicker({
 
           <p className="text-sm text-gray-500">
             Cannot find a weapon? Add one on the{" "}
-            <Link href={`/weapons/add?weaponType=${weaponType}`} className="underline hover:text-foreground">
+            <Link
+              href={weaponType ? `/weapons/add?weaponType=${weaponType}` : "/weapons/add"}
+              className="underline hover:text-foreground"
+            >
               Add weapon page
             </Link>
             .
@@ -191,7 +205,10 @@ export function WeaponSlotPicker({
               <WeaponCard
                 key={weapon.ownedWeaponId}
                 name={weapon.name}
-                weaponType={weaponType}
+                // weapon's own type, not the (possibly null) prop above --
+                // candidates span every type when no character has
+                // narrowed this down yet.
+                weaponType={weapon.weaponType}
                 rarity={weapon.rarity}
                 secondaryStatName={weapon.secondaryStatName}
                 iconUrl={weapon.iconUrl}

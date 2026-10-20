@@ -9,12 +9,12 @@ import { BuildCatalog } from "./build-catalog";
 import type { OwnedCharacterOption, OwnedWeaponOption, OwnedArtifactOption } from "../filter-sort";
 
 export const metadata: Metadata = {
-  title: "Add Build",
+  title: "Create Build",
 };
 
 const HELP_TEXT = `Pick one of your owned characters, give the build a name, and optionally assign a weapon and up to 5 artifacts. Only weapons matching the character's weapon type are offered, and each artifact slot only offers pieces you own for that slot.`;
 
-export default async function AddBuildPage() {
+export default async function CreateBuildPage() {
   const profile = await requireActiveProfile();
 
   const [ownedCharacters, ownedWeapons, ownedArtifacts] = await Promise.all([
@@ -40,6 +40,7 @@ export default async function AddBuildPage() {
     characterId: owned.characterId,
     name: travelerDisplayName(owned.character.name),
     iconUrl: owned.character.iconUrl,
+    splashUrl: owned.character.splashUrl,
     weaponType: owned.character.weaponType,
     element: owned.character.element,
     rarity: owned.character.rarity,
@@ -72,10 +73,10 @@ export default async function AddBuildPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">Add a build</h1>
-            <HelpButton title="Add build help" text={HELP_TEXT} />
+            <h1 className="text-2xl font-semibold">Create a build</h1>
+            <HelpButton title="Create build help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-300">Adding builds for {profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">Creating builds for {profile.name}</p>
         </div>
         <Link
           href="/builds"

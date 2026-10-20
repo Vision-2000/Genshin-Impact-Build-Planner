@@ -10,6 +10,10 @@ export type OwnedCharacterOption = {
   characterId: number;
   name: string;
   iconUrl: string | null;
+  // Backs CharacterSlotPicker's own left-column splash-art display (see its
+  // own comment) -- unlike iconUrl, this can be null for a character that
+  // genuinely has no splash art on record.
+  splashUrl: string | null;
   weaponType: WeaponType;
   element: Element;
   rarity: number;

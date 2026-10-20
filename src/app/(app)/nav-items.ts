@@ -21,7 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { href: "/weapons", label: "Weapons", children: [{ href: "/weapons/add", label: "Add" }] },
   { href: "/artifacts", label: "Artifacts", children: [{ href: "/artifacts/add", label: "Add" }] },
-  { href: "/builds", label: "Builds", children: [{ href: "/builds/add", label: "Add" }] },
+  { href: "/builds", label: "Builds", children: [{ href: "/builds/create", label: "Create" }] },
   { href: "/teams", label: "Teams" },
   { href: "/rosters", label: "Rosters" },
   { href: "/lineups", label: "Lineups" },
