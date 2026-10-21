@@ -1,5 +1,6 @@
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { roundHalfUp } from "@/lib/round";
+import { displayDecimals } from "@/lib/stat-format";
 
 // Artifact sets are seeded at 4-5 star only (see prisma/seed.ts), so this is
 // every rarity a set (or a piece from it) can ever be -- shared by the
@@ -140,11 +141,9 @@ export function maxLevelForRarity(rarity: number): number {
   return rarity * 4;
 }
 
-// Substat rolls: only the "highest roll" (the biggest of the 4 possible
-// values a single roll can land on) is stored per stat type and rarity --
-// the other 3 tiers are always 70%/80%/90% of that highest value (verified
-// against a community-sourced roll table). Only 4-5 star are covered, since
-// that's all this app ever seeds.
+// Substat rolls: the "highest roll" (the biggest of the 4 possible values a
+// single roll can land on) is stored per stat type and rarity. Only 4-5 star
+// are covered, since that's all this app ever seeds.
 export const SUBSTAT_ROLL_MULTIPLIERS = [0.7, 0.8, 0.9, 1] as const;
 
 export const SUBSTAT_HIGHEST_ROLL: Record<SubstatTypeName, Record<number, number>> = {
@@ -158,6 +157,34 @@ export const SUBSTAT_HIGHEST_ROLL: Record<SubstatTypeName, Record<number, number
   "Energy Recharge%": { 4: 5.18, 5: 6.48 },
   "Crit Rate%": { 4: 3.11, 5: 3.89 },
   "Crit DMG%": { 4: 6.22, 5: 7.77 },
+};
+
+// The other 3 tiers' own values -- NOT derived as roundTo2(multiplier x
+// highest). That derivation is exactly right at the 1.0 (highest) tier
+// trivially (nothing to multiply), but can land one hundredth off at the
+// 0.7/0.8/0.9 tiers: the real in-game base value carries more precision
+// than the 2 decimals SUBSTAT_HIGHEST_ROLL itself displays at, so
+// multiplying that already-rounded number by a fraction and rounding again
+// doesn't always land on the same hundredth the game's own (more precise)
+// internal value does. Confirmed directly against a community-sourced roll
+// table covering all 4 tiers at 4-5 star: 5 of 40 values differed by
+// exactly 0.01 from the derived ones (DEF 5★'s 90% tier, HP%/ATK% 4★'s 90%
+// tier, Energy Recharge% 5★'s 70% tier, Crit DMG% 4★'s 80% tier) -- always
+// at a non-1.0 tier, never at the highest-roll tier itself, consistent with
+// that tier never actually being derived in the first place. [low,
+// mid-low, mid-high] -- SUBSTAT_HIGHEST_ROLL above already covers the 4th
+// (high) tier, so it isn't repeated here.
+export const SUBSTAT_LOWER_ROLL_TIERS: Record<SubstatTypeName, Record<number, readonly [number, number, number]>> = {
+  HP: { 4: [167.3, 191.2, 215.1], 5: [209.13, 239.0, 268.88] },
+  ATK: { 4: [10.89, 12.45, 14.0], 5: [13.62, 15.56, 17.51] },
+  DEF: { 4: [12.96, 14.82, 16.67], 5: [16.2, 18.52, 20.83] },
+  "HP%": { 4: [3.26, 3.73, 4.2], 5: [4.08, 4.66, 5.25] },
+  "ATK%": { 4: [3.26, 3.73, 4.2], 5: [4.08, 4.66, 5.25] },
+  "DEF%": { 4: [4.08, 4.66, 5.25], 5: [5.1, 5.83, 6.56] },
+  "Elemental Mastery": { 4: [13.06, 14.92, 16.79], 5: [16.32, 18.65, 20.98] },
+  "Energy Recharge%": { 4: [3.63, 4.14, 4.66], 5: [4.53, 5.18, 5.83] },
+  "Crit Rate%": { 4: [2.18, 2.49, 2.8], 5: [2.72, 3.11, 3.5] },
+  "Crit DMG%": { 4: [4.35, 4.97, 5.6], 5: [5.44, 6.22, 6.99] },
 };
 
 // roundHalfUp (not Math.round) since these are the candidate values the
@@ -191,42 +218,77 @@ function maxRollCount(rarity: number, level: number): number {
   return 1 + Math.max(0, upgrades - guaranteedReveals);
 }
 
-// Every value a substat could actually have landed on: each individual roll
-// independently picks one of the 4 multiplier tiers, and the substat could
-// have received anywhere from 1 up to maxRollCount rolls -- so the
-// achievable totals are every distinct SUM across every roll count in that
-// range (order doesn't matter, repeats allowed), not a continuous range.
-// Different combinations can tie (0.7+1.0 == 0.8+0.9), so this is usually
-// fewer than the raw combination count. maxRollCount never exceeds 6 (a
-// 5-star's max), so this whole search is tiny regardless -- no need to
-// memoize.
-export function substatValidValues(statName: SubstatTypeName, rarity: number, level: number): number[] {
+// The 4 individual roll values this stat/rarity can land on, [low,
+// mid-low, mid-high, high] -- SUBSTAT_LOWER_ROLL_TIERS' own 3 plus
+// SUBSTAT_HIGHEST_ROLL's one, read directly rather than derived by
+// multiplying a fraction against the highest roll (see
+// SUBSTAT_LOWER_ROLL_TIERS's own comment on why that derivation isn't
+// always exact). Each is already the actual number added to the piece's
+// displayed stat for one roll -- summing several of these (done by
+// achievableSumsForRollCount below) is summing already-rounded roll
+// values, not raw fractions rounded only once at the end.
+function rollTierValues(statName: SubstatTypeName, rarity: number): readonly number[] {
+  const lower = SUBSTAT_LOWER_ROLL_TIERS[statName][rarity] ?? SUBSTAT_LOWER_ROLL_TIERS[statName][5];
   const highest = SUBSTAT_HIGHEST_ROLL[statName][rarity] ?? SUBSTAT_HIGHEST_ROLL[statName][5];
-  const maxRolls = maxRollCount(rarity, level);
+  return [...lower, highest];
+}
 
-  const multiplierSums = new Set<number>();
+// Every achievable sum across EXACTLY `rolls` rolls (order doesn't matter,
+// repeats allowed) -- each individual roll already rounded via
+// rollTierValues above before being summed. Shared by substatValidValues
+// (unions this across every roll count up to a cap) and substatRollCount
+// (searches it per roll count to invert a stored value back to how many
+// rolls produced it). `rolls` never exceeds 6 (a 5-star's max), so this
+// whole search is tiny regardless -- no need to memoize.
+function achievableSumsForRollCount(statName: SubstatTypeName, rarity: number, rolls: number): Set<number> {
+  const tierValues = rollTierValues(statName, rarity);
+  const sums = new Set<number>();
   function pick(startTier: number, rollsLeft: number, sumSoFar: number) {
     if (rollsLeft === 0) {
-      multiplierSums.add(sumSoFar);
+      // Re-rounded here too: summing already-2-decimal numbers as binary
+      // floats can still land a hair off (e.g. 4.66 + 5.25 as doubles),
+      // which would otherwise produce a near-duplicate value one ULP away
+      // from a real one -- the same silent-slider-snap-back bug the old
+      // single dedupe-after-rounding step existed to prevent.
+      sums.add(roundTo2(sumSoFar));
       return;
     }
-    for (let tier = startTier; tier < SUBSTAT_ROLL_MULTIPLIERS.length; tier++) {
-      pick(tier, rollsLeft - 1, sumSoFar + SUBSTAT_ROLL_MULTIPLIERS[tier]);
+    for (let tier = startTier; tier < tierValues.length; tier++) {
+      pick(tier, rollsLeft - 1, sumSoFar + tierValues[tier]);
     }
   }
-  for (let rolls = 1; rolls <= maxRolls; rolls++) {
-    pick(0, rolls, 0);
-  }
+  pick(0, rolls, 0);
+  return sums;
+}
 
-  // Distinct multiplier sums can still round to the same 2-decimal value
-  // once multiplied by `highest` -- dedupe again after rounding, otherwise
-  // the returned array can contain repeats. That matters beyond tidiness:
-  // the UI finds a value's slider index via indexOf, which always resolves
-  // to a repeat's first occurrence, so a slider sitting on a later repeat
-  // gets silently snapped back a step on every render -- invisible when
-  // dragging past it, but it makes the right-arrow key look stuck.
-  const roundedValues = new Set([...multiplierSums].map((sum) => roundTo2(sum * highest)));
-  return [...roundedValues].sort((a, b) => a - b);
+// Every value a substat could actually land on, as a player would actually
+// see it -- one slider stop per DISTINCT displayed number (see
+// displayDecimals: 1 decimal for a %-stat, a whole number for a flat one),
+// not one per distinct 2-decimal stored number. Two different exact sums
+// can display identically (e.g. Crit Rate% 5★'s 13.99, only achievable at
+// 5 rolls, and 14.00, only achievable at 4, both read "14.0%") -- the
+// player was never shown a 2-decimal number to begin with, so a second
+// slider stop that LOOKS identical to one already offered isn't a real
+// extra choice, just internal storage precision leaking into the UI. Once
+// a displayed value is reached by some roll count, any later (necessarily
+// higher, since roll counts are walked ascending) roll count that merely
+// reproduces the same displayed value contributes nothing new and is
+// skipped outright -- whichever exact number got there first is kept as
+// that display value's one representative, which is always the SAME
+// smallest roll count substatRollCount would resolve that display value to
+// anyway (see its own comment).
+export function substatValidValues(statName: SubstatTypeName, rarity: number, level: number): number[] {
+  const maxRolls = maxRollCount(rarity, level);
+  const decimals = displayDecimals(statName);
+
+  const exactValueByDisplayValue = new Map<number, number>();
+  for (let rolls = 1; rolls <= maxRolls; rolls++) {
+    for (const sum of achievableSumsForRollCount(statName, rarity, rolls)) {
+      const displayValue = roundHalfUp(sum, decimals);
+      if (!exactValueByDisplayValue.has(displayValue)) exactValueByDisplayValue.set(displayValue, sum);
+    }
+  }
+  return [...exactValueByDisplayValue.values()].sort((a, b) => a - b);
 }
 
 // Snaps to the closest of a set of valid values -- used when a substat's
@@ -238,30 +300,64 @@ export function nearestValidValue(validValues: number[], value: number): number 
   );
 }
 
-const SUBSTAT_VALUE_EPSILON = 1e-6;
-
-// Inverts a substat's stored value back to how many individual rolls
-// produced it. Well-defined (not a guess) because the achievable-value
-// range for N rolls -- [0.7N, 1.0N] x highest, from SUBSTAT_ROLL_MULTIPLIERS
-// -- never overlaps the range for N+1 rolls: 0.7(N+1) exceeds 1.0N for every
-// N >= 3, and the N=1/N=2 cases don't overlap either (1.4 > 1.0). So a value
-// falls into exactly one N-roll bracket. Expects a value that actually came
-// from substatValidValues (true for every value this app ever saves, once
-// actions.ts's own snap-to-nearest-valid-value runs first) -- an
-// out-of-bracket value falls through to the highest possible roll count
-// rather than throwing.
-export function substatRollCount(statName: SubstatTypeName, rarity: number, value: number): number {
-  const highest = SUBSTAT_HIGHEST_ROLL[statName][rarity] ?? SUBSTAT_HIGHEST_ROLL[statName][5];
+// Every roll count a substat's stored value is consistent with -- matched
+// at DISPLAY precision (see displayDecimals: 1 decimal for a %-stat, a
+// whole number for a flat one), not the full 2 decimals
+// substatValidValues/achievableSumsForRollCount compute the sum at. Two
+// genuinely different roll histories can land on exact values that are
+// only 0.01 apart and round to the exact same displayed number (e.g. Crit
+// Rate% 5★'s 13.99, only achievable at 5 rolls, and 14.00, only achievable
+// at 4 -- both read "14.0%" on screen); from the player's own perspective
+// those are indistinguishable, so this rounds the achievable sum for EVERY
+// roll count to display precision too, and collects every one whose
+// rounded sum matches the target's own rounded value. This is on top of
+// (not instead of) the plain exact-value ambiguity that already exists one
+// precision level down (a value near the top of N rolls' own exact range
+// can coincide with one near the bottom of (N+1) rolls' range even before
+// any display rounding, e.g. flat ATK 5★'s 77.80 is exactly either 4 rolls
+// at the 100% tier or 5 at the 80% tier) -- display-rounding only ever
+// surfaces MORE ties than that, never fewer.
+//
+// Returns MULTIPLE roll counts (ascending) rather than picking one,
+// specifically so validateSubstatRollTotal can search every combination
+// across a whole piece's substats instead of committing each one to a
+// single guess up front -- see that function's own comment on why
+// optimistically assuming the smallest count for every substat
+// independently can wrongly reject a real piece (e.g. a value that's
+// ambiguous between "3 upgrades" and "4 upgrades" might only sum to a
+// valid total with the 4 reading, not the 3 everywhere-smallest one would
+// force).
+//
+// Expects a value that actually came from substatValidValues (true for
+// every value this app ever saves, once actions.ts's own
+// snap-to-nearest-valid-value runs first) -- a value matching no roll count
+// at all falls through to [the highest possible roll count] rather than
+// throwing.
+export function possibleSubstatRollCounts(statName: SubstatTypeName, rarity: number, value: number): number[] {
   const maxRolls = 1 + rarity;
-  const lowestMultiplier = SUBSTAT_ROLL_MULTIPLIERS[0];
-  const highestMultiplier = SUBSTAT_ROLL_MULTIPLIERS[SUBSTAT_ROLL_MULTIPLIERS.length - 1];
+  const decimals = displayDecimals(statName);
+  const target = roundHalfUp(value, decimals);
 
+  const matches: number[] = [];
   for (let rolls = 1; rolls <= maxRolls; rolls++) {
-    const low = roundTo2(rolls * lowestMultiplier * highest);
-    const high = roundTo2(rolls * highestMultiplier * highest);
-    if (value >= low - SUBSTAT_VALUE_EPSILON && value <= high + SUBSTAT_VALUE_EPSILON) return rolls;
+    for (const sum of achievableSumsForRollCount(statName, rarity, rolls)) {
+      if (roundHalfUp(sum, decimals) === target) {
+        matches.push(rolls);
+        break;
+      }
+    }
   }
-  return maxRolls;
+  return matches.length > 0 ? matches : [maxRolls];
+}
+
+// Convenience for a caller that just wants ONE answer, not every
+// possibility -- the smallest of possibleSubstatRollCounts (see its own
+// comment on why that's the optimistic, piece-friendly default). Not used
+// by validateSubstatRollTotal itself any more -- see that function's own
+// comment on why always taking the smallest, independently per substat,
+// isn't always correct for a whole-piece check.
+export function substatRollCount(statName: SubstatTypeName, rarity: number, value: number): number {
+  return possibleSubstatRollCounts(statName, rarity, value)[0];
 }
 
 export type SubstatRollValidation = { valid: true } | { valid: false; reason: string };
@@ -292,6 +388,24 @@ export type SubstatRollValidation = { valid: true } | { valid: false; reason: st
 // (and count) at once, not one slider in isolation -- too heavy for live UI
 // feedback, same reasoning substatValidValues itself stays a per-stat
 // approximation rather than a whole-piece one.
+//
+// A substat's own stored value doesn't always pin down ONE roll count (see
+// possibleSubstatRollCounts) -- so this doesn't just sum one guess per
+// substat and check that single total. It instead computes every TOTAL
+// reachable by picking one roll count from each substat's own
+// possibleSubstatRollCounts (the Minkowski sum of those small sets -- at
+// most a handful of values each, so this is tiny regardless of how many
+// substats are ambiguous at once) and accepts the piece if ANY reachable
+// total matches one of the few the level/rarity allow. Concretely: a Crit
+// Rate% substat landing on a value ambiguous between "3 upgrades" (4
+// rolls) and "4 upgrades" (5 rolls) is no longer forced to the smaller
+// reading everywhere -- if only the 4-upgrade reading makes the piece's
+// total add up, that's the reading this function finds. (Always summing
+// each substat's own smallest possible count, independently, was tried
+// first and is simpler, but provably wrong: it can reject a piece whose
+// true history needed a substat's LARGER reading, even though that larger
+// reading is itself a perfectly ordinary, physically possible roll
+// outcome.)
 export function validateSubstatRollTotal(
   rarity: number,
   level: number,
@@ -323,10 +437,24 @@ export function validateSubstatRollTotal(
   }
 
   const candidates = [minInitial, maxInitial].filter((initial) => Math.min(4, initial + upgrades) === filledCount);
-  const totalRolls = substats.reduce((sum, s) => sum + substatRollCount(s.statTypeName, rarity, s.value), 0);
   const requiredTotals = candidates.map((initial) => initial + upgrades);
 
-  if (requiredTotals.includes(totalRolls)) {
+  // Minkowski sum: every total reachable by picking ONE roll count from
+  // each substat's own possibleSubstatRollCounts (see this function's own
+  // comment on why that's not just each substat's smallest). Starts from
+  // {0} so folding in the first substat's own possible counts gives
+  // exactly that substat's own set, not an empty one.
+  let achievableTotals = new Set<number>([0]);
+  for (const substat of substats) {
+    const possibleCounts = possibleSubstatRollCounts(substat.statTypeName, rarity, substat.value);
+    const next = new Set<number>();
+    for (const total of achievableTotals) {
+      for (const count of possibleCounts) next.add(total + count);
+    }
+    achievableTotals = next;
+  }
+
+  if (requiredTotals.some((total) => achievableTotals.has(total))) {
     return { valid: true };
   }
 
@@ -338,7 +466,11 @@ export function validateSubstatRollTotal(
   const upgradesPhrase =
     uniqueUpgradeCounts.length === 2 ? `${uniqueUpgradeCounts[0]} or ${uniqueUpgradeCounts[1]}` : `${uniqueUpgradeCounts[0]}`;
   const word = uniqueUpgradeCounts.every((n) => n === 1) ? "substat upgrade" : "substat upgrades";
-  const actualUpgradeCount = totalRolls - filledCount;
+  // The smallest reachable total (every substat's own smallest possible
+  // reading, summed) is the most charitable total this piece could
+  // possibly have -- reported as "what you actually have" now that there's
+  // no single, forced totalRolls value to report instead.
+  const actualUpgradeCount = Math.min(...achievableTotals) - filledCount;
 
   return {
     valid: false,

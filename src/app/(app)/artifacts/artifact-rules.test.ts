@@ -6,16 +6,26 @@ import {
   substatValidValues,
   validateSubstatRollTotal,
   SUBSTAT_HIGHEST_ROLL,
+  SUBSTAT_LOWER_ROLL_TIERS,
+  SUBSTAT_ROLL_MULTIPLIERS,
   type SubstatTypeName,
 } from "./artifact-rules";
 
-// Mirrors artifact-rules.ts's own private roundTo2 -- builds a substat value
-// that's unambiguously the result of `rolls` rolls each landing on
-// `multiplier`, for exercising substatRollCount/validateSubstatRollTotal
-// without needing production's own roll-combination search.
+// Mirrors artifact-rules.ts's own private rollTierValues -- builds a
+// substat value that's the result of `rolls` rolls each landing on
+// `multiplier` (one of SUBSTAT_ROLL_MULTIPLIERS), for exercising
+// substatRollCount/validateSubstatRollTotal without needing production's
+// own roll-combination search. Reads the per-roll value straight out of
+// SUBSTAT_LOWER_ROLL_TIERS/SUBSTAT_HIGHEST_ROLL -- the same tables
+// production itself reads -- rather than re-deriving it by multiplying
+// `multiplier x highest`, since that derivation is known to be off by
+// 0.01 at some (stat, rarity, tier) combinations (see
+// SUBSTAT_LOWER_ROLL_TIERS's own comment).
 function rollValue(statName: SubstatTypeName, rarity: number, rolls: number, multiplier: number): number {
-  const highest = SUBSTAT_HIGHEST_ROLL[statName][rarity];
-  return roundHalfUp(rolls * multiplier * highest, 2);
+  const tierIndex = SUBSTAT_ROLL_MULTIPLIERS.indexOf(multiplier as (typeof SUBSTAT_ROLL_MULTIPLIERS)[number]);
+  const tierValues = [...SUBSTAT_LOWER_ROLL_TIERS[statName][rarity], SUBSTAT_HIGHEST_ROLL[statName][rarity]];
+  const perRoll = tierValues[tierIndex];
+  return roundHalfUp(rolls * perRoll, 2);
 }
 
 // Values transcribed directly from
@@ -76,6 +86,42 @@ describe("substatValidValues", () => {
     const highest = SUBSTAT_HIGHEST_ROLL["Crit Rate%"][5];
     expect(Math.max(...values)).toBe(roundHalfUp(6 * 1.0 * highest, 2));
   });
+
+  // Regression guard for a real bug: a 2-roll sum must be the sum of each
+  // roll's OWN rounded value (4.08 + 4.66 = 8.74 for ATK%'s low+mid-low
+  // tiers), not round(1.5 x highest, 2) = 8.75 -- summing the raw unrounded
+  // multiplier fractions and rounding only once at the end offers a value
+  // (8.75, which displays as "8.8%") no real roll combination ever
+  // produces, while omitting the real one (8.74, "8.7%").
+  it("offers the sum of each roll's own rounded value, not a once-at-the-end rounding of the raw fraction sum", () => {
+    const values = substatValidValues("ATK%", 5, 20);
+    expect(values).toContain(8.74);
+    expect(values).not.toContain(8.75);
+  });
+
+  // Regression guard: these 4 tier values can't be reproduced by
+  // multiplying SUBSTAT_HIGHEST_ROLL by each of SUBSTAT_ROLL_MULTIPLIERS
+  // and rounding -- that derivation gives 20.84 for DEF 5★'s 90% tier, not
+  // the real 20.83 (confirmed against a community-sourced roll table
+  // covering all 4 tiers) -- which is exactly why each tier is now its own
+  // stored value (SUBSTAT_LOWER_ROLL_TIERS) rather than a derived one.
+  it("uses DEF 5★'s real 90%-tier value (20.83), not the derived one (20.84)", () => {
+    const values = substatValidValues("DEF", 5, 20);
+    expect(values).toContain(20.83);
+    expect(values).not.toContain(20.84);
+  });
+
+  // Crit Rate% 5★'s 13.99 (5 rolls) and 14.00 (4 rolls) are two genuinely
+  // different exact sums that both display as "14.0%" -- the player was
+  // never shown a 2-decimal number, so offering both as separate slider
+  // stops would be exposing internal storage precision nobody asked for.
+  // Only one survives, and it's 14.00 -- the smaller (4) roll count's own
+  // value, reached first since roll counts are walked ascending.
+  it("collapses two exact values that display identically into a single slider stop", () => {
+    const values = substatValidValues("Crit Rate%", 5, 20);
+    const matchingDisplay14 = values.filter((v) => roundHalfUp(v, 1) === 14.0);
+    expect(matchingDisplay14).toEqual([14.0]);
+  });
 });
 
 describe("substatRollCount", () => {
@@ -92,11 +138,36 @@ describe("substatRollCount", () => {
   it("identifies the max possible rolls for a 5-star piece (1 + rarity)", () => {
     expect(substatRollCount("ATK%", 5, rollValue("ATK%", 5, 6, 1.0))).toBe(6);
   });
+
+  // Regression guard: 77.80 flat ATK on a 5★ piece is genuinely ambiguous
+  // -- 4 rolls all at the 100% tier (19.45 x 4) lands on the exact same
+  // value as 5 rolls all at the 80% tier (15.56 x 5). substatRollCount must
+  // deliberately resolve this to the SMALLER count (see its own comment on
+  // why) -- not whichever happens to be found first by iteration order.
+  it("resolves a value ambiguous between two roll counts to the smaller one", () => {
+    const fourRollsAtMax = rollValue("ATK", 5, 4, 1.0);
+    const fiveRollsAtMidLow = rollValue("ATK", 5, 5, 0.8);
+    expect(fourRollsAtMax).toBe(fiveRollsAtMidLow);
+    expect(substatRollCount("ATK", 5, fourRollsAtMax)).toBe(4);
+  });
+
+  // substatValidValues itself never offers 13.99 any more (see its own
+  // comment -- it's collapsed into 14.00's slider stop, since both read
+  // "14.0%"), but substatRollCount must still resolve 13.99 correctly if
+  // it's ever handed one anyway -- a piece saved before this collapsing
+  // existed could still have 13.99 sitting in the database. Matched at
+  // display precision (1 decimal for a %-stat), not the full 2-decimal
+  // stored value, it still reports the smaller roll count (4) either way.
+  it("still resolves a pre-existing, non-canonical value to the smaller roll count its display value implies", () => {
+    expect(substatRollCount("Crit Rate%", 5, 13.99)).toBe(4);
+    expect(substatRollCount("Crit Rate%", 5, 14.0)).toBe(4);
+  });
 });
 
-// rolls/multipliers chosen so each substat's value is unambiguously inside
-// one roll-count bracket (see substatRollCount's own comment on why that's
-// always possible) -- the actual multiplier tier used doesn't matter to
+// rolls/multipliers chosen (mostly 1.0, the highest tier) so each
+// substat's value is unambiguously inside one roll-count bracket -- see
+// possibleSubstatRollCounts's own comment on why that's usually, but not
+// always, the case. The actual multiplier tier used doesn't matter to
 // validateSubstatRollTotal, only the resulting roll count does.
 describe("validateSubstatRollTotal", () => {
   it("accepts a maxed 5-star piece with the lucky 4th initial substat (4+5 = 9 total rolls)", () => {
@@ -105,6 +176,27 @@ describe("validateSubstatRollTotal", () => {
       { statTypeName: "Crit DMG%", value: rollValue("Crit DMG%", 5, 2, 1.0) },
       { statTypeName: "ATK%", value: rollValue("ATK%", 5, 2, 1.0) },
       { statTypeName: "Energy Recharge%", value: rollValue("Energy Recharge%", 5, 2, 1.0) },
+    ];
+    expect(validateSubstatRollTotal(5, 20, substats)).toEqual({ valid: true });
+  });
+
+  // Regression guard for the exact bug the "always take the smallest roll
+  // count" policy caused: a 5★ level 20 piece with 3 initial substats (CR
+  // + 2 others) has 5 total upgrades -- 1 forced to reveal the still-
+  // missing 4th substat, the other 4 all landing on Crit Rate%. CR's own
+  // TRUE roll count is then 5 (1 initial + 4 upgrades), landing on 13.99 --
+  // which displays identically to the 4-roll value (14.00), so it's
+  // AMBIGUOUS between "3 upgrades" and "4 upgrades" worth of rolls. The
+  // true total here is 5 (CR) + 1 + 1 + 1 = 8, one of this piece's own two
+  // valid totals (8 or 9) -- but summing every substat's own SMALLEST
+  // possible reading instead (CR=4, not the true 5) gives 7, matching
+  // neither, and would wrongly reject this real, valid piece.
+  it("accepts a piece whose true roll history needs a substat's LARGER ambiguous reading, not just its smallest", () => {
+    const substats: { statTypeName: SubstatTypeName; value: number }[] = [
+      { statTypeName: "Crit Rate%", value: 13.99 },
+      { statTypeName: "ATK%", value: substatValidValues("ATK%", 5, 20)[0] },
+      { statTypeName: "DEF%", value: substatValidValues("DEF%", 5, 20)[0] },
+      { statTypeName: "Energy Recharge%", value: substatValidValues("Energy Recharge%", 5, 20)[0] },
     ];
     expect(validateSubstatRollTotal(5, 20, substats)).toEqual({ valid: true });
   });
