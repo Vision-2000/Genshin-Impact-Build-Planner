@@ -5,14 +5,24 @@ import Link from "next/link";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
+import { formatStatValue } from "@/lib/stat-format";
 import { createBuild } from "../actions";
 import { ArtifactSlotPicker } from "../artifact-slot-picker";
 import { CharacterSlotPicker } from "../character-slot-picker";
 import { WeaponSlotPicker } from "../weapon-slot-picker";
+import { computeFinalStats, orderedFinalStats } from "../final-stats";
 import type { CreateBuildErrors } from "../schemas";
 import type { OwnedArtifactOption, OwnedCharacterOption, OwnedWeaponOption } from "../filter-sort";
 
 const SLOTS = Object.values(ArtifactSlot);
+
+// Weapon + all 5 artifact slots share one row here (unlike their own usual
+// 224x224, each on its own row/section) -- scaling up by breakpoint lets
+// them grow on a wide screen instead of staying capped at whatever size
+// fits the narrowest one, while still leaving enough room for all 6 boxes
+// (plus the character splash column and its own padding) to stay on that
+// one line rather than wrapping.
+const SLOT_SIZE_CLASS = "h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-32 lg:w-32 xl:h-40 xl:w-40 2xl:h-48 2xl:w-48";
 
 type SlotSelections = Partial<Record<ArtifactSlot, number>>;
 
@@ -115,6 +125,25 @@ export function BuildCatalog({
   }, [characterId, name, weaponId, slots, weaponPickerOpen]);
 
   const character = characterId !== null ? characters.find((c) => c.ownedCharacterId === characterId) : undefined;
+  const weapon = weaponId !== null ? weapons.find((w) => w.ownedWeaponId === weaponId) : undefined;
+  const selectedArtifacts = SLOTS.map((slot) => {
+    const ownedArtifactId = slots[slot];
+    return ownedArtifactId !== undefined ? artifacts.find((a) => a.ownedArtifactId === ownedArtifactId) : undefined;
+  }).filter((a): a is OwnedArtifactOption => a !== undefined);
+
+  // Recomputed on every render from whatever's currently picked -- cheap
+  // enough (a handful of stat rows summed across at most 1 weapon + 5
+  // artifacts) that memoizing would be premature. See final-stats.ts's own
+  // comment on what this totals (and deliberately doesn't).
+  const finalStats = character
+    ? orderedFinalStats(
+        computeFinalStats({
+          character,
+          weapon: weapon ?? null,
+          artifacts: selectedArtifacts,
+        })
+      )
+    : [];
 
   function resetForm() {
     setCharacterId(null);
@@ -212,49 +241,102 @@ export function BuildCatalog({
             </button>
           </div>
 
-          {/* w-full (no max-w cap) -- fills the page's own max-w-[110rem]
-              container instead of wrapping at a narrower width, so the
-              weapon + 5 artifact picker boxes (w-56 each) have more room to
-              stay on one line before wrapping forces a scroll. flex-row
-              (sm+) puts the character splash (see CharacterSlotPicker) as
-              its own full-height left column, same two-column shape the
-              character/weapon progression editors use, rather than
-              treating it as just one more same-sized slot among the
-              others. */}
+          {/* flex-row (sm+) puts the character splash (see
+              CharacterSlotPicker) as its own left column, same two-column
+              shape the character/weapon progression editors use, rather
+              than treating it as just one more same-sized slot among the
+              others -- though unlike this row, CharacterSlotPicker's own
+              height is a fixed aspect ratio now, not stretched to match
+              this row's own height. */}
           <div className="flex w-full flex-col overflow-hidden rounded border sm:flex-row">
             <CharacterSlotPicker characters={characters} value={characterId} onChange={handleCharacterChange} />
 
-            <div className="flex-1 space-y-3 p-4">
-              <p className="text-sm font-medium">Weapon</p>
-              <div className="flex flex-wrap gap-2">
-                <WeaponSlotPicker
-                  // null until a character is chosen -- WeaponSlotPicker then
-                  // shows every owned weapon regardless of type instead of
-                  // narrowing to one (see its own comment), so this field is
-                  // usable right away rather than waiting on the character
-                  // field above it.
-                  weaponType={character?.weaponType ?? null}
-                  weapons={weapons}
-                  value={weaponId}
-                  onChange={setWeaponId}
-                  autoOpen={weaponPickerOpen}
-                  onOpenChange={setWeaponPickerOpen}
-                />
-              </div>
-              <p className="text-sm font-medium">Artifacts</p>
-              <div className="flex flex-wrap gap-2">
-                {SLOTS.map((slot) => (
-                  <ArtifactSlotPicker
-                    key={slot}
-                    slot={slot}
-                    artifacts={artifacts}
-                    value={slots[slot] ?? null}
-                    onChange={(ownedArtifactId) =>
-                      setSlots((prev) => ({ ...prev, [slot]: ownedArtifactId ?? undefined }))
-                    }
+            {/* pt-2 (not p-4's own top value) -- matches CharacterSlotPicker's
+                own "Character" label's pt-2 exactly, so its text and this
+                column's own "Weapon"/"Artifacts" labels -- and the slot
+                boxes right below them -- line up at the same height instead
+                of sitting 8px lower under p-4's fuller top padding. */}
+            <div className="flex-1 px-4 pb-4 pt-2">
+              {/* Weapon and Artifacts keep their own separate labels, each
+                  directly above its own box(es), but both groups sit side
+                  by side in one flex row -- compact (boxSizeClassName, down
+                  from the usual 224x224) enough that the boxes themselves
+                  still land on one shared line. */}
+              <div className="flex flex-wrap gap-8">
+                <div>
+                  {/* mb-1 -- matches CharacterSlotPicker's own gap-1 between
+                      its "Character" label and its box, so the boxes line
+                      up at the same height too, not just the label text. */}
+                  <p className="mb-1 text-sm font-medium">Weapon</p>
+                  <WeaponSlotPicker
+                    // null until a character is chosen -- WeaponSlotPicker
+                    // then shows every owned weapon regardless of type
+                    // instead of narrowing to one (see its own comment), so
+                    // this field is usable right away rather than waiting
+                    // on the character field above it.
+                    weaponType={character?.weaponType ?? null}
+                    weapons={weapons}
+                    value={weaponId}
+                    onChange={setWeaponId}
+                    autoOpen={weaponPickerOpen}
+                    onOpenChange={setWeaponPickerOpen}
+                    boxSizeClassName={SLOT_SIZE_CLASS}
+                    // "" -- the usual 8px gray border reads as too thick at
+                    // this compact size. showStats=false drops the
+                    // refinement badge too -- no extra info at this size.
+                    cardBorderClassName=""
+                    showStats={false}
                   />
-                ))}
+                </div>
+
+                <div>
+                  <p className="mb-1 text-sm font-medium">Artifacts</p>
+                  <div className="flex gap-2">
+                    {SLOTS.map((slot) => (
+                      <ArtifactSlotPicker
+                        key={slot}
+                        slot={slot}
+                        artifacts={artifacts}
+                        value={slots[slot] ?? null}
+                        onChange={(ownedArtifactId) =>
+                          setSlots((prev) => ({ ...prev, [slot]: ownedArtifactId ?? undefined }))
+                        }
+                        boxSizeClassName={SLOT_SIZE_CLASS}
+                        // Icon only, no stat block, no border -- matches
+                        // the Weapon slot's own plain-icon treatment at
+                        // this size.
+                        showStats={false}
+                        cardBorderClassName=""
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              {character && (
+                // Same dark stat box treatment as the character progression
+                // editor's own BaseStatsSection (owned-character-manager.tsx)
+                // -- rounded bg-black box, "Stats" header, "Name: value"
+                // lines -- rather than this page's earlier ad hoc dt/dd grid.
+                // No StatLine ghost-text sizing trick here, unlike that box:
+                // that trick exists to stop the box reflowing as a slider is
+                // dragged continuously, which doesn't apply to this page's
+                // discrete character/weapon/artifact picks.
+                <div className="mt-4 rounded border bg-black p-3 text-sm">
+                  <p className="font-medium text-foreground">Stats</p>
+                  {finalStats.length === 0 ? (
+                    <p className="mt-1 text-gray-400">No stats yet.</p>
+                  ) : (
+                    <ul className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 whitespace-nowrap sm:grid-cols-3 md:grid-cols-4">
+                      {finalStats.map(({ statName, value }) => (
+                        <li key={statName}>
+                          {statName}: {formatStatValue(statName, value)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

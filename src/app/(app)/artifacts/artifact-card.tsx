@@ -41,6 +41,7 @@ export function ArtifactCard({
   showSlotBadge = true,
   tooltipContent,
   selected,
+  borderClassName = "border-8 border-gray-600",
 }: {
   setName: string;
   // Optional -- the add-catalog deals in sets, not pieces, so slot isn't
@@ -63,6 +64,12 @@ export function ArtifactCard({
   // Owned-artifacts page's bulk-delete select mode only -- same red-border
   // treatment as WeaponCard's own `selected` prop (see its own comment).
   selected?: boolean;
+  // Overridable for a caller that wants no border (or a different one) on
+  // the ordinary (selected === undefined) state -- e.g. BuildCatalog's own
+  // compact artifact slot, where the usual 8px border reads as too heavy
+  // at a much smaller box size. Has no effect once `selected` is set --
+  // bulk-delete's own red/gray distinction always wins there.
+  borderClassName?: string;
 }) {
   // The picker's own stat block needs the icon area to stay shorter
   // (aspect-[4/3]) so two cards' worth of stat text underneath don't push
@@ -96,14 +103,19 @@ export function ArtifactCard({
           : undefined
       }
       aria-pressed={selected !== undefined ? selected : undefined}
-      className={`relative w-full overflow-hidden rounded-xl border-8 shadow ${
+      className={`relative w-full overflow-hidden rounded-xl shadow ${
         hasStatBlock ? "aspect-[4/3]" : "aspect-square"
       } ${
         // Same :not(:has(button:hover)) trick as WeaponCard -- the action
         // button lives inside this same div, so a plain hover:opacity-90
         // would also dim the whole card while hovering the button.
         onSelect ? "cursor-pointer [&:hover:not(:has(button:hover))]:opacity-90" : ""
-      } ${selected ? "border-red-500" : "border-gray-600"} ${rarityGradientClasses(rarity)}`}
+      } ${
+        // selected !== undefined means bulk-delete select mode -- its own
+        // red/gray border always wins there; borderClassName only applies
+        // to the ordinary state.
+        selected === undefined ? borderClassName : selected ? "border-8 border-red-500" : "border-8 border-gray-600"
+      } ${rarityGradientClasses(rarity)}`}
     >
       {iconUrl && (
         <>

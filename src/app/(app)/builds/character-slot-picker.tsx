@@ -9,7 +9,7 @@ import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import { SplashImage } from "@/components/splash-image";
-import { rarityGradientClasses } from "@/lib/rarity-colors";
+import { elementBackgroundClass } from "@/lib/element-colors";
 import type { SortDirection } from "@/lib/sort";
 import { ElementFilterRow } from "../characters/element-filter-row";
 import { CharacterCard } from "../characters/character-card";
@@ -62,10 +62,11 @@ function NoneCharacterCard({ onSelect }: { onSelect: () => void }) {
 // CreateBuildInputSchema) -- "None" only clears the in-progress choice, it
 // doesn't represent a real valid state to save with. Also unlike those two,
 // the SELECTED state isn't a small square -- it's a full splash-art column
-// (same SplashImage/rarityGradientClasses treatment the character/weapon
-// progression editors use for their own left column), since BuildCatalog
-// embeds this as the build form's entire left column rather than one slot
-// among several equal-sized ones.
+// (same SplashImage/elementBackgroundClass treatment the character
+// progression editor uses for its own left column -- element-tinted, not
+// rarity-tinted, since that's what the character page itself does), since
+// BuildCatalog embeds this as the build form's entire left column rather
+// than one slot among several equal-sized ones.
 export function CharacterSlotPicker({
   characters,
   value,
@@ -107,43 +108,57 @@ export function CharacterSlotPicker({
 
   return (
     <>
-      {selected ? (
-        // h-64 sm:h-auto -- fixed height on a narrow viewport (matching the
-        // progression editors' own splash column), stretching to match the
-        // form's right-hand column's real height once there's room for a
-        // side-by-side row (BuildCatalog's own flex-row parent default-
-        // stretches its children). w-96 matches those same editors' own
-        // left-column width.
-        <div
-          onClick={() => setOpen(true)}
-          role="button"
-          tabIndex={0}
-          title="Choose character"
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
-            setOpen(true);
-          }}
-          className={`relative h-64 w-full shrink-0 cursor-pointer overflow-hidden shadow hover:opacity-90 sm:h-auto sm:w-96 ${rarityGradientClasses(selected.rarity)}`}
-        >
-          {selected.splashUrl && (
-            // key={selected.splashUrl} remounts SplashImage fresh whenever
-            // the selected character changes, so its own "loaded" state
-            // always starts over instead of carrying over true from
-            // whatever was shown before.
-            <SplashImage key={selected.splashUrl} src={selected.splashUrl} objectFit="cover" />
-          )}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          title="Choose character"
-          className="relative flex h-64 w-full shrink-0 items-center justify-center overflow-hidden border-2 border-white bg-foreground/10 p-1 hover:opacity-90 sm:h-auto sm:w-96"
-        >
-          <BlinkingPlusIcon />
-        </button>
-      )}
+      {/* "Character" labeled the same way BuildCatalog's own "Weapon"/
+          "Artifacts" labels sit above THOSE pickers -- this one's self-
+          contained (not added by the caller). w-96 matches the progression
+          editors' own left-column width. */}
+      {/* pb-2 pl-2 on the whole column (not just the label) -- gives the
+          splash art itself some breathing room from the outer panel's own
+          left/bottom edges, matching the padded feel of BuildCatalog's own
+          "Weapon"/"Artifacts" labels and their column's own p-4, rather
+          than sitting flush against it. No pr/pt here -- those edges are
+          either an intentional seam against the form's right column, or
+          already covered by the label's own pt-2 below. */}
+      <div className="flex w-full shrink-0 flex-col gap-1 pb-2 pl-2 sm:w-96">
+        <p className="pt-2 text-sm font-medium">Character</p>
+        {selected ? (
+          // aspect-[3/4] (not flex-1/min-h-64) -- a fixed height derived
+          // from this column's own width, independent of whatever height
+          // the Weapon/Artifacts row next to it happens to need. flex-1
+          // previously stretched this to match that row, which left it
+          // looking squished once that row's own boxes shrank (see
+          // BuildCatalog's own SLOT_SIZE_CLASS).
+          <div
+            onClick={() => setOpen(true)}
+            role="button"
+            tabIndex={0}
+            title="Choose character"
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              setOpen(true);
+            }}
+            className={`relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-lg shadow hover:opacity-90 ${elementBackgroundClass(selected.element)}`}
+          >
+            {selected.splashUrl && (
+              // key={selected.splashUrl} remounts SplashImage fresh whenever
+              // the selected character changes, so its own "loaded" state
+              // always starts over instead of carrying over true from
+              // whatever was shown before.
+              <SplashImage key={selected.splashUrl} src={selected.splashUrl} objectFit="cover" />
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            title="Choose character"
+            className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90"
+          >
+            <BlinkingPlusIcon />
+          </button>
+        )}
+      </div>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Choose character" maxWidthClassName="max-w-4xl">
         <div className="space-y-3">

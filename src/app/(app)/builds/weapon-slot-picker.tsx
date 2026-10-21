@@ -67,6 +67,9 @@ export function WeaponSlotPicker({
   onChange,
   autoOpen,
   onOpenChange,
+  boxSizeClassName = "h-56 w-56",
+  cardBorderClassName,
+  showStats = true,
 }: {
   // null only for BuildCatalog's own "no character chosen yet" state --
   // every candidate then spans every weapon type instead of just one (see
@@ -82,6 +85,22 @@ export function WeaponSlotPicker({
   // navigation (e.g. the owned-build edit modal) can ignore them entirely.
   autoOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  // Overridable for a caller that wants this slot more compact than the
+  // default 224x224 (e.g. BuildCatalog's own top row, once it needs to fit
+  // the weapon AND all 5 artifact slots alongside name/save) -- only
+  // affects this closed/empty slot, never the modal's own grid, which stays
+  // full size for picking regardless.
+  boxSizeClassName?: string;
+  // Forwarded to WeaponCard's own borderClassName for the selected display
+  // only -- e.g. BuildCatalog's own compact weapon slot, where WeaponCard's
+  // usual 8px border reads as too heavy at a much smaller box size.
+  // Undefined keeps WeaponCard's own default.
+  cardBorderClassName?: string;
+  // false drops the refinement badge on the selected display -- e.g.
+  // BuildCatalog's own compact slot, matching ArtifactSlotPicker's own
+  // showStats (main stat/level) for the same "no extra info at this size"
+  // reasoning. Default true keeps the existing behavior everywhere else.
+  showStats?: boolean;
 }) {
   const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
@@ -127,9 +146,11 @@ export function WeaponSlotPicker({
   return (
     <>
       {selected ? (
-        // Matches the artifact slot's w-56 width -- WeaponCard is a plain
-        // aspect-square card, so this alone keeps it a 224x224 square.
-        <ul className="w-56 shrink-0">
+        // Matches the artifact slot's own width -- WeaponCard is a plain
+        // aspect-square card, so the width alone (boxSizeClassName's own
+        // h-* is a no-op here, harmless) keeps it a square at whatever
+        // size boxSizeClassName asks for.
+        <ul className={`${boxSizeClassName} shrink-0`}>
           <WeaponCard
             name={selected.name}
             // selected's own type, not the (possibly null) prop above --
@@ -137,12 +158,16 @@ export function WeaponSlotPicker({
             // after a character narrowed the candidates to one type.
             weaponType={selected.weaponType}
             rarity={selected.rarity}
-            secondaryStatName={selected.secondaryStatName}
+            // showStats=false also drops this -- WeaponCard renders it
+            // independently of showName, so it still showed even with the
+            // name itself already hidden.
+            secondaryStatName={showStats ? selected.secondaryStatName : null}
             iconUrl={selected.iconUrl}
-            refinement={selected.refinement}
+            refinement={showStats ? selected.refinement : undefined}
             onSelect={() => setOpen(true)}
             showName={false}
             showWeaponTypeBadge={false}
+            borderClassName={cardBorderClassName}
           />
         </ul>
       ) : (
@@ -150,7 +175,7 @@ export function WeaponSlotPicker({
           type="button"
           onClick={() => setOpen(true)}
           title="Choose weapon"
-          className="relative flex h-56 w-56 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90"
+          className={`relative flex ${boxSizeClassName} shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90`}
         >
           {weaponType && (
             <Image src={WEAPON_TYPE_ICON_URL[weaponType]} alt="" fill className="object-contain p-1 opacity-30" />

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ArtifactSetPiece } from "@/generated/prisma/enums";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { HelpButton } from "@/components/help-button";
@@ -19,12 +20,16 @@ export default async function BuildsPage() {
   const [ownedWeapons, ownedArtifacts, builds] = await Promise.all([
     prisma.ownedWeapon.findMany({
       where: { gameProfileId: profile.id },
-      include: { weapon: { include: { secondaryStat: true } } },
+      include: { weapon: { include: { secondaryStat: true, statBonuses: { include: { statType: true } } } } },
       orderBy: { weapon: { name: "asc" } },
     }),
     prisma.ownedArtifact.findMany({
       where: { gameProfileId: profile.id },
-      include: { artifactSet: true, mainStat: true, substats: { include: { statType: true } } },
+      include: {
+        artifactSet: { include: { statBonuses: { include: { statType: true } } } },
+        mainStat: true,
+        substats: { include: { statType: true } },
+      },
       orderBy: { artifactSet: { name: "asc" } },
     }),
     prisma.build.findMany({
@@ -46,17 +51,36 @@ export default async function BuildsPage() {
     refinement: owned.refinement,
     rarity: owned.weapon.rarity,
     secondaryStatName: owned.weapon.secondaryStat?.name ?? null,
+    attackTier: owned.weapon.attackTier,
+    attackCurveRarity: owned.weapon.attackCurveRarity,
+    baseSecondaryStatValue: owned.weapon.baseSecondaryStatValue,
+    level: owned.level,
+    ascensionPhase: owned.ascensionPhase,
+    statBonuses: owned.weapon.statBonuses.map((bonus) => ({
+      statTypeName: bonus.statType.name,
+      curveType: bonus.curveType,
+      baseValue: bonus.baseValue,
+      slope: bonus.slope,
+      customValues: bonus.customValues,
+    })),
   }));
 
   const artifactOptions: OwnedArtifactOption[] = ownedArtifacts.map((owned) => ({
     ownedArtifactId: owned.id,
     slot: owned.slot,
+    artifactSetId: owned.artifactSetId,
     setName: owned.artifactSet.name,
     mainStatName: owned.mainStat.name,
     iconUrl: slotIconUrl(owned.artifactSet, owned.slot),
     rarity: owned.artifactSet.rarity,
     level: owned.level,
     substats: owned.substats.map((s) => ({ statTypeName: s.statType.name, value: s.value })),
+    twoPieceStatBonuses: owned.artifactSet.statBonuses
+      .filter((bonus) => bonus.piece === ArtifactSetPiece.Two)
+      .map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value })),
+    fourPieceStatBonuses: owned.artifactSet.statBonuses
+      .filter((bonus) => bonus.piece === ArtifactSetPiece.Four)
+      .map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value })),
   }));
 
   const buildItems = builds.map(toBuildItem);

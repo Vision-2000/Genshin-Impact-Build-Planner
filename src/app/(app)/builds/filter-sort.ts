@@ -5,6 +5,8 @@ import { slotIconUrl } from "../artifacts/filter-sort";
 
 export type { SortDirection };
 
+export type StatBonusItem = { statTypeName: string; value: number };
+
 export type OwnedCharacterOption = {
   ownedCharacterId: number;
   characterId: number;
@@ -17,6 +19,23 @@ export type OwnedCharacterOption = {
   weaponType: WeaponType;
   element: Element;
   rarity: number;
+  // Everything below backs final-stats.ts's own computeFinalStats, fetched
+  // once up front here rather than lazily per selection -- every owned
+  // character's own bonus data is small, and the picker already needs the
+  // whole list in memory regardless.
+  baseHp: number | null;
+  baseAttack: number | null;
+  baseDefense: number | null;
+  maxAscensionHp: number | null;
+  maxAscensionAttack: number | null;
+  maxAscensionDefense: number | null;
+  baseElementalMastery: number;
+  ascensionStatName: string | null;
+  level: number;
+  ascensionPhase: number;
+  constellation: number;
+  talentStatBonuses: StatBonusItem[];
+  constellationStatBonuses: (StatBonusItem & { number: number })[];
 };
 
 export type OwnedWeaponOption = {
@@ -27,17 +46,46 @@ export type OwnedWeaponOption = {
   refinement: number;
   rarity: number;
   secondaryStatName: string | null;
+  // final-stats.ts inputs -- see OwnedCharacterOption's own comment on why
+  // these are fetched up front rather than lazily. attackTier is nullable
+  // in the schema (Weapon.attackTier) -- every currently-seeded weapon has
+  // one, but final-stats.ts skips the ATK contribution entirely rather
+  // than assume it for whatever edge case doesn't.
+  attackTier: number | null;
+  attackCurveRarity: number | null;
+  baseSecondaryStatValue: number | null;
+  level: number;
+  ascensionPhase: number;
+  // Not a StatBonusItem -- these are curve-based (see
+  // computeWeaponValueCurve in final-stats.ts), not a stored flat value.
+  statBonuses: {
+    statTypeName: string;
+    curveType: "Constant" | "Linear" | "Custom";
+    baseValue: number;
+    slope: number | null;
+    customValues: number[] | null;
+  }[];
 };
 
 export type OwnedArtifactOption = {
   ownedArtifactId: number;
   slot: ArtifactSlot;
+  // final-stats.ts groups same-set pieces by this to know when a 2pc/4pc
+  // bonus is actually active -- setName alone isn't a stable grouping key
+  // (two differently-seeded sets could in principle share a display name;
+  // the id can't).
+  artifactSetId: number;
   setName: string;
   mainStatName: string;
   iconUrl: string | null;
   rarity: number;
   level: number;
-  substats: { statTypeName: string; value: number }[];
+  substats: StatBonusItem[];
+  // The set's own 2pc/4pc stat bonuses -- see FinalStatsArtifactInput's own
+  // comment on why these are duplicated per-piece rather than looked up
+  // separately.
+  twoPieceStatBonuses: StatBonusItem[];
+  fourPieceStatBonuses: StatBonusItem[];
 };
 
 export type BuildArtifactSlotItem = {

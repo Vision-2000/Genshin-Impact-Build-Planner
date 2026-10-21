@@ -99,6 +99,7 @@ export function WeaponCard({
   level,
   hoverDetail,
   selected,
+  borderClassName = "border-8 border-gray-600",
 }: {
   name: string;
   weaponType: WeaponType;
@@ -136,6 +137,12 @@ export function WeaponCard({
   // different color since this marks "about to delete", not "owned".
   // Undefined everywhere else, which keeps the ordinary neutral border.
   selected?: boolean;
+  // Overridable for a caller that wants no border (or a different one) on
+  // the ordinary (selected === undefined) state -- e.g. BuildCatalog's own
+  // compact weapon slot, where the usual 8px border reads as too heavy at
+  // a much smaller box size. Has no effect once `selected` is set -- bulk-
+  // delete's own red/gray distinction always wins there.
+  borderClassName?: string;
 }) {
   const cardBody = (
     <div
@@ -153,7 +160,7 @@ export function WeaponCard({
           : undefined
       }
       aria-pressed={selected !== undefined ? selected : undefined}
-      className={`relative aspect-square w-full overflow-hidden rounded-xl border-8 shadow ${
+      className={`relative aspect-square w-full overflow-hidden rounded-xl shadow ${
         // The Add button lives inside this same div (absolutely positioned
         // overlay, not a sibling like ArtifactCard's edit/delete buttons),
         // so a plain hover:opacity-90 would also dim the whole card while
@@ -163,7 +170,12 @@ export function WeaponCard({
         // being hovered, leaving the button's own hover style the only
         // thing that changes.
         onSelect ? "cursor-pointer [&:hover:not(:has(button:hover))]:opacity-90" : ""
-      } ${selected ? "border-red-500" : "border-gray-600"} ${rarityGradientClasses(rarity)}`}
+      } ${
+        // selected !== undefined means bulk-delete select mode -- its own
+        // red/gray border always wins there; borderClassName only applies
+        // to the ordinary state.
+        selected === undefined ? borderClassName : selected ? "border-8 border-red-500" : "border-8 border-gray-600"
+      } ${rarityGradientClasses(rarity)}`}
     >
       {iconUrl && (
         <Image
