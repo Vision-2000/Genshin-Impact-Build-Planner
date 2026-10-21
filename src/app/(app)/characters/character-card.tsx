@@ -35,6 +35,7 @@ export function CharacterCard({
   isOwned,
   showOwnershipBorder = false,
   progression,
+  borderClassName = "border-8 border-gray-600",
 }: {
   name: string;
   // Undefined only for the collapsed Traveler-gender roster card, which
@@ -53,6 +54,16 @@ export function CharacterCard({
   // WeaponCard shows its secondary stat under the weapon name); the rest
   // (constellation, talent levels) is hover-only -- see the overlay below.
   progression?: CharacterCardProgression;
+  // Overridable for a caller that wants no border (or a different one) on
+  // the ordinary (showOwnershipBorder === false) state -- e.g. a build's
+  // character picker modal, where the usual thick gray border reads as
+  // heavier than WeaponCard/ArtifactCard's own modal grids now go for. Has
+  // no effect once showOwnershipBorder is true -- the roster's own
+  // green/gray distinction always wins there. Same borderClassName pattern
+  // WeaponCard/ArtifactCard already use (the full border classes, width
+  // included, not just a color) -- "" removes the border entirely rather
+  // than just thinning it.
+  borderClassName?: string;
 }) {
   // A freshly-started dev server (or just a cold browser cache) has never
   // fetched this icon before, and Image renders nothing at all while it's
@@ -79,9 +90,11 @@ export function CharacterCard({
             : undefined
         }
         aria-pressed={showOwnershipBorder ? isOwned : undefined}
-        className={`group relative aspect-square w-full overflow-hidden rounded-xl border-8 shadow ${
+        className={`group relative aspect-square w-full overflow-hidden rounded-xl shadow ${
           onSelect ? "cursor-pointer hover:opacity-90" : ""
-        } ${showOwnershipBorder ? (isOwned ? "border-green-500" : "border-gray-600") : "border-gray-600"} ${rarityGradientClasses(rarity)}`}
+        } ${
+          showOwnershipBorder ? (isOwned ? "border-8 border-green-500" : "border-8 border-gray-600") : borderClassName
+        } ${rarityGradientClasses(rarity)}`}
       >
         {iconUrl && (
           <>

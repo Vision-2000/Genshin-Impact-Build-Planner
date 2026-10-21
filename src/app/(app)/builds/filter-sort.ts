@@ -1,9 +1,10 @@
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import type { SortDirection } from "@/lib/sort";
 import { travelerDisplayName } from "@/lib/character-scaling";
+import type { WeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import { slotIconUrl } from "../artifacts/filter-sort";
 
-export type { SortDirection };
+export type { SortDirection, WeaponHoverDetail };
 
 export type StatBonusItem = { statTypeName: string; value: number };
 
@@ -34,6 +35,12 @@ export type OwnedCharacterOption = {
   level: number;
   ascensionPhase: number;
   constellation: number;
+  // Hover-only (CharacterCard's own `progression` prop, see the character
+  // picker modal) -- not used by final-stats.ts, which only needs the
+  // three fields above.
+  normalAttackLevel: number;
+  skillLevel: number;
+  burstLevel: number;
   talentStatBonuses: StatBonusItem[];
   constellationStatBonuses: (StatBonusItem & { number: number })[];
 };
@@ -65,6 +72,14 @@ export type OwnedWeaponOption = {
     slope: number | null;
     customValues: number[] | null;
   }[];
+  // Hover-only (WeaponCard's own `hoverDetail` prop, see the weapon picker
+  // modal) -- this copy's own current stats/passive text, computed
+  // server-side the same way the owned-weapons page's own hover tooltip is
+  // (see computeWeaponHoverDetail).
+  hoverDetail: WeaponHoverDetail;
+  // "obtained" sort parity with the owned-weapons page (see OwnedSortKey
+  // there) -- epoch ms, same as OwnedWeaponItem.createdAt.
+  createdAt: number;
 };
 
 export type OwnedArtifactOption = {
@@ -86,6 +101,9 @@ export type OwnedArtifactOption = {
   // separately.
   twoPieceStatBonuses: StatBonusItem[];
   fourPieceStatBonuses: StatBonusItem[];
+  // "obtained" sort parity with the owned-artifacts page (see OwnedSortKey
+  // there) -- epoch ms, same as OwnedArtifactItem.createdAt.
+  createdAt: number;
 };
 
 export type BuildArtifactSlotItem = {

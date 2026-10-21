@@ -25,13 +25,20 @@ const SLOTS = Object.values(ArtifactSlot);
 const SLOT_SIZE_CLASS = "h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-32 lg:w-32 xl:h-40 xl:w-40 2xl:h-48 2xl:w-48";
 
 type SlotSelections = Partial<Record<ArtifactSlot, number>>;
+// Same per-slot shape as SlotSelections, one open/closed flag per artifact
+// slot instead of one chosen piece -- there are 5 independent
+// ArtifactSlotPicker instances, so a single shared boolean (like
+// weaponPickerOpen) couldn't say WHICH one to reopen.
+type SlotOpenState = Partial<Record<ArtifactSlot, boolean>>;
 
 type Draft = {
   characterId: number | null;
   name: string;
   weaponId: number | null;
   slots: SlotSelections;
+  characterPickerOpen: boolean;
   weaponPickerOpen: boolean;
+  artifactPickerOpenSlots: SlotOpenState;
 };
 
 // Leaving the page to add a missing character/weapon/artifact (via a
@@ -84,7 +91,9 @@ export function BuildCatalog({
   const [name, setName] = useState("");
   const [weaponId, setWeaponId] = useState<number | null>(null);
   const [slots, setSlots] = useState<SlotSelections>({});
+  const [characterPickerOpen, setCharacterPickerOpen] = useState(false);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
+  const [artifactPickerOpenSlots, setArtifactPickerOpenSlots] = useState<SlotOpenState>({});
   const [errors, setErrors] = useState<CreateBuildErrors>({});
 
   // Runs once, right after the initial (SSR-matching) render: apply a
@@ -103,7 +112,9 @@ export function BuildCatalog({
       setName(draft.name);
       setWeaponId(draft.weaponId);
       setSlots(draft.slots);
+      setCharacterPickerOpen(draft.characterPickerOpen);
       setWeaponPickerOpen(draft.weaponPickerOpen);
+      setArtifactPickerOpenSlots(draft.artifactPickerOpenSlots);
       // Freshness of characters/weapons/artifacts after returning here (e.g.
       // via Back after following a picker's own "add it" link) is handled
       // by useRefreshOnBackNavigation() above, which refetches on browser
@@ -120,9 +131,17 @@ export function BuildCatalog({
       sessionStorage.removeItem(DRAFT_KEY);
       return;
     }
-    const draft: Draft = { characterId, name, weaponId, slots, weaponPickerOpen };
+    const draft: Draft = {
+      characterId,
+      name,
+      weaponId,
+      slots,
+      characterPickerOpen,
+      weaponPickerOpen,
+      artifactPickerOpenSlots,
+    };
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }, [characterId, name, weaponId, slots, weaponPickerOpen]);
+  }, [characterId, name, weaponId, slots, characterPickerOpen, weaponPickerOpen, artifactPickerOpenSlots]);
 
   const character = characterId !== null ? characters.find((c) => c.ownedCharacterId === characterId) : undefined;
   const weapon = weaponId !== null ? weapons.find((w) => w.ownedWeaponId === weaponId) : undefined;
@@ -150,7 +169,9 @@ export function BuildCatalog({
     setName("");
     setWeaponId(null);
     setSlots({});
+    setCharacterPickerOpen(false);
     setWeaponPickerOpen(false);
+    setArtifactPickerOpenSlots({});
     setErrors({});
   }
 
@@ -249,7 +270,13 @@ export function BuildCatalog({
               height is a fixed aspect ratio now, not stretched to match
               this row's own height. */}
           <div className="flex w-full flex-col overflow-hidden rounded border sm:flex-row">
-            <CharacterSlotPicker characters={characters} value={characterId} onChange={handleCharacterChange} />
+            <CharacterSlotPicker
+              characters={characters}
+              value={characterId}
+              onChange={handleCharacterChange}
+              autoOpen={characterPickerOpen}
+              onOpenChange={setCharacterPickerOpen}
+            />
 
             {/* pt-2 (not p-4's own top value) -- matches CharacterSlotPicker's
                 own "Character" label's pt-2 exactly, so its text and this
@@ -300,6 +327,10 @@ export function BuildCatalog({
                         value={slots[slot] ?? null}
                         onChange={(ownedArtifactId) =>
                           setSlots((prev) => ({ ...prev, [slot]: ownedArtifactId ?? undefined }))
+                        }
+                        autoOpen={artifactPickerOpenSlots[slot] ?? false}
+                        onOpenChange={(open) =>
+                          setArtifactPickerOpenSlots((prev) => ({ ...prev, [slot]: open }))
                         }
                         boxSizeClassName={SLOT_SIZE_CLASS}
                         // Icon only, no stat block, no border -- matches

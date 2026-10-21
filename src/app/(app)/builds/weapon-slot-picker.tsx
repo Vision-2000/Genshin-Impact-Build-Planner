@@ -1,22 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { WeaponType } from "@/generated/prisma/enums";
-import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
-import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
+import { DEFAULT_WEAPON, DEFAULT_WEAPON_RARITY } from "@/lib/default-weapon";
 import { Modal } from "@/components/modal";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import type { SortDirection } from "@/lib/sort";
+import { WEAPON_SECONDARY_STAT_NAMES } from "../weapons/filter-sort";
 import { WeaponCard } from "../weapons/weapon-card";
 import type { OwnedWeaponOption } from "./filter-sort";
 
 // Weapons are seeded from 3-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4, 3];
 
-type SortKey = "name" | "rarity" | "refinement";
+// Same 5 sort keys the owned-weapons page itself offers (see its own
+// OwnedSortKey) -- "obtained" needs OwnedWeaponOption.createdAt, added
+// alongside hoverDetail for exactly this kind of owned-page parity.
+type SortKey = "name" | "rarity" | "refinement" | "level" | "obtained";
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -25,29 +28,11 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   return next;
 }
 
-// Sits alongside the real WeaponCard entries in the picker's grid so "no
-// weapon" is just another option to click, not a separate row above the
-// grid. Kept local rather than folded into WeaponCard itself -- WeaponCard's
-// other two call sites (owned weapons, add-weapon catalog) always represent
-// a real weapon, so an "empty" variant would only ever be exercised here.
-function NoneWeaponCard({ onSelect }: { onSelect: () => void }) {
-  return (
-    <li>
-      <div
-        onClick={onSelect}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          event.preventDefault();
-          onSelect();
-        }}
-        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border-8 border-gray-600 bg-foreground/10 shadow hover:opacity-90"
-      >
-        <span className="text-lg font-semibold text-gray-400">None</span>
-      </div>
-    </li>
-  );
+// Same convention as the owned-weapons page's own tiebreakByAdded: newest
+// first, fixed regardless of the primary sort's own direction toggle,
+// since two owned copies can never be created at the exact same moment.
+function tiebreakByAdded(a: OwnedWeaponOption, b: OwnedWeaponOption): number {
+  return b.createdAt - a.createdAt;
 }
 
 // Replaces a plain <select> -- a dropdown only has room for a weapon's name
@@ -60,6 +45,13 @@ function NoneWeaponCard({ onSelect }: { onSelect: () => void }) {
 // anything; before that (weaponType null), it's simplest to just let the
 // grid span every type rather than add a filter only needed in that one
 // state.
+//
+// No "None" option (unlike the weaponType-null disabled state below, which
+// is this picker having nothing to narrow candidates by, not a real
+// unequipped state) -- a character always has SOME weapon equipped
+// in-game, so `value === null` renders and totals as DEFAULT_WEAPON (see
+// its own comment), not a blank slot. Still clickable, to swap in a real
+// one.
 export function WeaponSlotPicker({
   weaponType,
   weapons,
@@ -104,8 +96,15 @@ export function WeaponSlotPicker({
 }) {
   const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
+  // Only rendered (see the modal below) when weaponType is null -- once a
+  // character has narrowed every candidate to one type already, this
+  // filter could never do anything (see this component's own top comment).
+  const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
-  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [secondaryStatFilter, setSecondaryStatFilter] = useState("");
+  // "obtained" (not "name") -- matches the owned-weapons page's own default
+  // exactly, not just offering the same option.
+  const [sortKey, setSortKey] = useState<SortKey>("obtained");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   function setOpen(next: boolean) {
@@ -131,11 +130,24 @@ export function WeaponSlotPicker({
   const query = search.trim().toLowerCase();
   const direction = sortDirection === "desc" ? -1 : 1;
   const filtered = options
-    .filter((w) => w.name.toLowerCase().includes(query) && (rarityFilter.size === 0 || rarityFilter.has(w.rarity)))
+    .filter(
+      (w) =>
+        w.name.toLowerCase().includes(query) &&
+        (weaponTypeFilter.size === 0 || weaponTypeFilter.has(w.weaponType)) &&
+        (rarityFilter.size === 0 || rarityFilter.has(w.rarity)) &&
+        (!secondaryStatFilter || w.secondaryStatName === secondaryStatFilter)
+    )
     .sort((a, b) => {
-      if (sortKey === "rarity") return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
-      if (sortKey === "refinement") return direction * (a.refinement - b.refinement) || a.name.localeCompare(b.name);
-      return direction * a.name.localeCompare(b.name);
+      // Signs match the owned-weapons page's own comparator exactly
+      // (filterAndSortOwnedWeapons), not just offering the same sort keys
+      // -- rarity/refinement/level/obtained all flip the shared direction
+      // multiplier (forward = highest/newest first), same tiebreakByAdded
+      // convention too.
+      if (sortKey === "rarity") return -direction * (a.rarity - b.rarity) || tiebreakByAdded(a, b);
+      if (sortKey === "refinement") return -direction * (a.refinement - b.refinement) || tiebreakByAdded(a, b);
+      if (sortKey === "level") return -direction * (a.level - b.level) || tiebreakByAdded(a, b);
+      if (sortKey === "obtained") return -direction * (a.createdAt - b.createdAt);
+      return direction * a.name.localeCompare(b.name) || tiebreakByAdded(a, b);
     });
 
   function select(ownedWeaponId: number | null) {
@@ -170,18 +182,35 @@ export function WeaponSlotPicker({
             borderClassName={cardBorderClassName}
           />
         </ul>
+      ) : weaponType === null ? (
+        // Disabled -- no character chosen yet, so there's no weapon type to
+        // narrow candidates by and nothing meaningful to open. Not a
+        // <button> (no click handler, no keyboard focus) -- a disabled
+        // native control still needs explicit styling to read as inert, and
+        // a plain non-interactive div gets there for free.
+        <div
+          title="Pick a character first"
+          aria-disabled="true"
+          className={`flex ${boxSizeClassName} shrink-0 cursor-not-allowed items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-500 bg-foreground/5 opacity-40`}
+        />
       ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          title="Choose weapon"
-          className={`relative flex ${boxSizeClassName} shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90`}
-        >
-          {weaponType && (
-            <Image src={WEAPON_TYPE_ICON_URL[weaponType]} alt="" fill className="object-contain p-1 opacity-30" />
-          )}
-          <BlinkingPlusIcon />
-        </button>
+        // A character is picked but no real weapon chosen yet -- defaults
+        // to (and totals as, see final-stats.ts) this type's own 1-star
+        // starter weapon, same as a fresh in-game account, not a blank
+        // slot. Still clickable, to swap in a real one.
+        <ul className={`${boxSizeClassName} shrink-0`}>
+          <WeaponCard
+            name={DEFAULT_WEAPON[weaponType].name}
+            weaponType={weaponType}
+            rarity={DEFAULT_WEAPON_RARITY}
+            secondaryStatName={null}
+            iconUrl={DEFAULT_WEAPON[weaponType].iconUrl}
+            onSelect={() => setOpen(true)}
+            showName={false}
+            showWeaponTypeBadge={false}
+            borderClassName={cardBorderClassName}
+          />
+        </ul>
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Choose weapon" maxWidthClassName="max-w-4xl">
@@ -193,7 +222,7 @@ export function WeaponSlotPicker({
               placeholder="Search by name..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="min-w-0 flex-1 rounded border bg-white px-3 py-2 text-sm text-black"
+              className="rounded border bg-white px-3 py-2 text-sm text-black"
             />
             <select
               value={sortKey}
@@ -203,9 +232,32 @@ export function WeaponSlotPicker({
               <option value="name">Sort: Name</option>
               <option value="rarity">Sort: Rarity</option>
               <option value="refinement">Sort: Refinement</option>
+              <option value="level">Sort: Level</option>
+              <option value="obtained">Sort: Added</option>
             </select>
             <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+            <select
+              value={secondaryStatFilter}
+              onChange={(event) => setSecondaryStatFilter(event.target.value)}
+              className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+            >
+              <option value="">Weapon stat: Any</option>
+              {WEAPON_SECONDARY_STAT_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  Weapon stat: {name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {/* Only shown once weaponType is null -- see this component's own
+              top comment on why it would never do anything otherwise. */}
+          {weaponType === null && (
+            <WeaponTypeFilterRow
+              weaponTypeFilter={weaponTypeFilter}
+              onToggle={(type) => setWeaponTypeFilter((prev) => toggleInSet(prev, type))}
+            />
+          )}
 
           <RarityFilterRow
             rarities={RARITIES}
@@ -224,8 +276,29 @@ export function WeaponSlotPicker({
             .
           </p>
 
-          <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4 md:grid-cols-5">
-            <NoneWeaponCard onSelect={() => select(null)} />
+          <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto [scrollbar-gutter:stable] sm:grid-cols-4 md:grid-cols-5">
+            {/* Switching back to the default 1-star starter is a real,
+                legitimate choice (e.g. undoing an accidental pick, or
+                deliberately comparing a build against its default-weapon
+                baseline) -- not offering a way back to it here would make
+                `value === null` a state this picker could enter but never
+                return to. The weaponType check is really just a type
+                narrow, not a real condition -- it's never null while this
+                modal is reachable (the whole picker is disabled instead,
+                see this component's own weaponType-null branch above). */}
+            {weaponType && (
+              <WeaponCard
+                name={DEFAULT_WEAPON[weaponType].name}
+                weaponType={weaponType}
+                rarity={DEFAULT_WEAPON_RARITY}
+                secondaryStatName={null}
+                iconUrl={DEFAULT_WEAPON[weaponType].iconUrl}
+                onSelect={() => select(null)}
+                showName={false}
+                showWeaponTypeBadge={false}
+                borderClassName=""
+              />
+            )}
             {filtered.map((weapon) => (
               <WeaponCard
                 key={weapon.ownedWeaponId}
@@ -238,9 +311,12 @@ export function WeaponSlotPicker({
                 secondaryStatName={weapon.secondaryStatName}
                 iconUrl={weapon.iconUrl}
                 refinement={weapon.refinement}
+                level={weapon.level}
+                hoverDetail={weapon.hoverDetail}
                 onSelect={() => select(weapon.ownedWeaponId)}
                 showName={false}
                 showWeaponTypeBadge={false}
+                borderClassName=""
               />
             ))}
           </ul>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ArtifactSetPiece } from "@/generated/prisma/enums";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import { HelpButton } from "@/components/help-button";
 import { slotIconUrl } from "../artifacts/filter-sort";
 import { CreateBuildLink } from "./create-build-link";
@@ -20,7 +21,16 @@ export default async function BuildsPage() {
   const [ownedWeapons, ownedArtifacts, builds] = await Promise.all([
     prisma.ownedWeapon.findMany({
       where: { gameProfileId: profile.id },
-      include: { weapon: { include: { secondaryStat: true, statBonuses: { include: { statType: true } } } } },
+      include: {
+        weapon: {
+          include: {
+            secondaryStat: true,
+            statBonuses: { include: { statType: true } },
+            refinementEffects: { orderBy: { refinement: "asc" } },
+            refinementValues: { orderBy: { slotIndex: "asc" } },
+          },
+        },
+      },
       orderBy: { weapon: { name: "asc" } },
     }),
     prisma.ownedArtifact.findMany({
@@ -63,6 +73,8 @@ export default async function BuildsPage() {
       slope: bonus.slope,
       customValues: bonus.customValues,
     })),
+    hoverDetail: computeWeaponHoverDetail(owned.weapon, owned.level, owned.ascensionPhase, owned.refinement),
+    createdAt: owned.createdAt.getTime(),
   }));
 
   const artifactOptions: OwnedArtifactOption[] = ownedArtifacts.map((owned) => ({
@@ -81,6 +93,7 @@ export default async function BuildsPage() {
     fourPieceStatBonuses: owned.artifactSet.statBonuses
       .filter((bonus) => bonus.piece === ArtifactSetPiece.Four)
       .map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value })),
+    createdAt: owned.createdAt.getTime(),
   }));
 
   const buildItems = builds.map(toBuildItem);

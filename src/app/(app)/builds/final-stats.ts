@@ -1,3 +1,4 @@
+import type { WeaponType } from "@/generated/prisma/enums";
 import {
   characterScalingRarity,
   computeCharacterBonusStat,
@@ -6,6 +7,7 @@ import {
 } from "@/lib/character-scaling";
 import { computeWeaponAttack, computeWeaponSecondaryStat } from "@/lib/weapon-scaling";
 import { computeWeaponValueCurve, type WeaponValueCurveType } from "@/lib/weapon-refinement-scaling";
+import { DEFAULT_WEAPON } from "@/lib/default-weapon";
 import { computeArtifactMainStatValue } from "../artifacts/artifact-rules";
 
 // CLAUDE.md's own build-order step 8 ("Final-stats calculation module (pure
@@ -19,6 +21,9 @@ import { computeArtifactMainStatValue } from "../artifacts/artifact-rules";
 // growth (+ the weapon's own base ATK, for ATK only; weapons never
 // contribute a base HP/DEF), kept entirely separate from the generic
 // per-stat-name totals below so it's never accidentally summed in twice.
+// "No real weapon chosen" still contributes a base ATK, not zero -- see
+// DEFAULT_WEAPON's own comment on why a build always has SOME weapon
+// equipped, same as in-game.
 // Every other contribution (ascension stat, talents, constellations,
 // weapon secondary stat/passive, artifact main stat/substats/set bonuses)
 // is just added under whichever real StatType name it already is --
@@ -72,6 +77,10 @@ export type StatBonusItem = { statTypeName: string; value: number };
 export type FinalStatsCharacterInput = {
   name: string;
   rarity: number;
+  // Only used to look up DEFAULT_WEAPON when `weapon` below is null -- see
+  // that constant's own comment on why a build with no real weapon chosen
+  // still contributes ATK, not zero.
+  weaponType: WeaponType;
   baseHp: number | null;
   baseAttack: number | null;
   baseDefense: number | null;
@@ -202,23 +211,30 @@ export function computeFinalStats({ character, weapon, artifacts }: FinalStatsIn
     if (bonus.number <= character.constellation) add(bonus.statTypeName, bonus.value);
   }
 
-  let weaponBaseAttack = 0;
+  let weaponBaseAttack: number;
   if (weapon) {
-    if (weapon.attackTier !== null) {
-      weaponBaseAttack = computeWeaponAttack(
-        weapon.attackTier,
-        weapon.rarity,
-        weapon.level,
-        weapon.ascensionPhase,
-        weapon.attackCurveRarity ?? weapon.rarity
-      );
-    }
+    weaponBaseAttack = weapon.attackTier !== null
+      ? computeWeaponAttack(
+          weapon.attackTier,
+          weapon.rarity,
+          weapon.level,
+          weapon.ascensionPhase,
+          weapon.attackCurveRarity ?? weapon.rarity
+        )
+      : 0;
     if (weapon.secondaryStatName && weapon.baseSecondaryStatValue !== null) {
       add(weapon.secondaryStatName, computeWeaponSecondaryStat(weapon.baseSecondaryStatValue, weapon.level));
     }
     for (const bonus of weapon.statBonuses) {
       add(bonus.statTypeName, computeWeaponValueCurve(bonus, weapon.refinement));
     }
+  } else {
+    // No real weapon chosen -- every character always has SOME weapon
+    // equipped in-game (see DEFAULT_WEAPON's own comment), so this
+    // contributes that type's starter weapon's own fixed base ATK instead
+    // of nothing. No secondary stat/passive to add -- true for every
+    // default weapon.
+    weaponBaseAttack = DEFAULT_WEAPON[character.weaponType].baseAttack;
   }
 
   const setPieceCounts = new Map<number, number>();

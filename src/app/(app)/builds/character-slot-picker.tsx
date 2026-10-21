@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
@@ -18,7 +18,11 @@ import type { OwnedCharacterOption } from "./filter-sort";
 // Playable characters are only ever seeded at 4-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4];
 
-type SortKey = "name" | "rarity";
+// Same sort keys the OWNED characters page itself offers (its own
+// OwnedSortKey, not the roster's own RosterSortKey -- this picker only
+// ever lists already-owned characters, same scope as that page, not the
+// roster's "every character, toggle ownership" scope).
+type SortKey = "name" | "rarity" | "level";
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -46,7 +50,7 @@ function NoneCharacterCard({ onSelect }: { onSelect: () => void }) {
           event.preventDefault();
           onSelect();
         }}
-        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border-8 border-gray-600 bg-foreground/10 shadow hover:opacity-90"
+        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl bg-foreground/10 shadow hover:opacity-90"
       >
         <span className="text-lg font-semibold text-gray-400">None</span>
       </div>
@@ -71,18 +75,47 @@ export function CharacterSlotPicker({
   characters,
   value,
   onChange,
+  autoOpen,
+  onOpenChange,
 }: {
   characters: OwnedCharacterOption[];
   value: number | null;
   onChange: (ownedCharacterId: number | null) => void;
+  // Same as WeaponSlotPicker/ArtifactSlotPicker's own autoOpen/onOpenChange
+  // -- lets BuildCatalog's sessionStorage draft reopen this picker after a
+  // remount (e.g. following this picker's own "mark them owned on the
+  // roster" link and coming back), and stay informed when it opens/closes
+  // normally so that persisted state doesn't go stale. Both optional --
+  // callers that don't care about surviving navigation can ignore them
+  // entirely.
+  autoOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
   const [elementFilter, setElementFilter] = useState<Set<Element>>(new Set());
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  function setOpen(next: boolean) {
+    setOpenState(next);
+    onOpenChange?.(next);
+  }
+
+  // Fires when a caller's restored draft flips autoOpen to true after this
+  // component has already mounted closed (the parent's own restore effect
+  // runs post-hydration too, so this can't just be an initial state value)
+  // -- same pattern and same reasoning as WeaponSlotPicker's own identical
+  // effect. Deliberate exception to react-hooks/set-state-in-effect -- this
+  // is exactly the "synchronize with a value owned by an external system"
+  // case (the caller's own persisted draft), not derived-state busywork.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (autoOpen) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   const selected = value !== null ? characters.find((c) => c.ownedCharacterId === value) : undefined;
 
@@ -97,7 +130,12 @@ export function CharacterSlotPicker({
         (rarityFilter.size === 0 || rarityFilter.has(c.rarity))
     )
     .sort((a, b) => {
-      if (sortKey === "rarity") return direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+      // Both flipped (-direction, not direction) -- matches the owned
+      // characters page's own comparator exactly
+      // (filterAndSortOwnedCharacters): forward is highest rarity/level
+      // first.
+      if (sortKey === "rarity") return -direction * (a.rarity - b.rarity) || a.name.localeCompare(b.name);
+      if (sortKey === "level") return -direction * (a.level - b.level) || a.name.localeCompare(b.name);
       return direction * a.name.localeCompare(b.name);
     });
 
@@ -169,7 +207,7 @@ export function CharacterSlotPicker({
               placeholder="Search by name..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="min-w-0 flex-1 rounded border bg-white px-3 py-2 text-sm text-black"
+              className="rounded border bg-white px-3 py-2 text-sm text-black"
             />
             <select
               value={sortKey}
@@ -178,6 +216,7 @@ export function CharacterSlotPicker({
             >
               <option value="name">Sort: Name</option>
               <option value="rarity">Sort: Rarity</option>
+              <option value="level">Sort: Level</option>
             </select>
             <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
           </div>
@@ -204,7 +243,7 @@ export function CharacterSlotPicker({
             .
           </p>
 
-          <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4 md:grid-cols-5">
+          <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto [scrollbar-gutter:stable] sm:grid-cols-4 md:grid-cols-5">
             <NoneCharacterCard onSelect={() => select(null)} />
             {filtered.map((character) => (
               <CharacterCard
@@ -215,6 +254,15 @@ export function CharacterSlotPicker({
                 rarity={character.rarity}
                 iconUrl={character.iconUrl}
                 onSelect={() => select(character.ownedCharacterId)}
+                borderClassName=""
+                progression={{
+                  level: character.level,
+                  ascensionPhase: character.ascensionPhase,
+                  constellation: character.constellation,
+                  normalAttackLevel: character.normalAttackLevel,
+                  skillLevel: character.skillLevel,
+                  burstLevel: character.burstLevel,
+                }}
               />
             ))}
           </ul>

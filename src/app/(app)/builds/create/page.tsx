@@ -4,6 +4,7 @@ import { ArtifactSetPiece } from "@/generated/prisma/enums";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { travelerDisplayName } from "@/lib/character-scaling";
+import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import { HelpButton } from "@/components/help-button";
 import { slotIconUrl } from "../../artifacts/filter-sort";
 import { BuildCatalog } from "./build-catalog";
@@ -40,7 +41,16 @@ export default async function CreateBuildPage() {
     }),
     prisma.ownedWeapon.findMany({
       where: { gameProfileId: profile.id },
-      include: { weapon: { include: { secondaryStat: true, statBonuses: { include: { statType: true } } } } },
+      include: {
+        weapon: {
+          include: {
+            secondaryStat: true,
+            statBonuses: { include: { statType: true } },
+            refinementEffects: { orderBy: { refinement: "asc" } },
+            refinementValues: { orderBy: { slotIndex: "asc" } },
+          },
+        },
+      },
       orderBy: { weapon: { name: "asc" } },
     }),
     prisma.ownedArtifact.findMany({
@@ -74,6 +84,9 @@ export default async function CreateBuildPage() {
     level: owned.level,
     ascensionPhase: owned.ascensionPhase,
     constellation: owned.constellation,
+    normalAttackLevel: owned.normalAttackLevel,
+    skillLevel: owned.skillLevel,
+    burstLevel: owned.burstLevel,
     talentStatBonuses: owned.character.talents.flatMap((talent) =>
       talent.statBonuses.map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value }))
     ),
@@ -106,6 +119,10 @@ export default async function CreateBuildPage() {
       slope: bonus.slope,
       customValues: bonus.customValues,
     })),
+    // This copy's own current state, not defaultWeaponProgression() -- see
+    // the weapons page's own identical call.
+    hoverDetail: computeWeaponHoverDetail(owned.weapon, owned.level, owned.ascensionPhase, owned.refinement),
+    createdAt: owned.createdAt.getTime(),
   }));
 
   const artifactOptions: OwnedArtifactOption[] = ownedArtifacts.map((owned) => ({
@@ -124,6 +141,7 @@ export default async function CreateBuildPage() {
     fourPieceStatBonuses: owned.artifactSet.statBonuses
       .filter((bonus) => bonus.piece === ArtifactSetPiece.Four)
       .map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value })),
+    createdAt: owned.createdAt.getTime(),
   }));
 
   return (

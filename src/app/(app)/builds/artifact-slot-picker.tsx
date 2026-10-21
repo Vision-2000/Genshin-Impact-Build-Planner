@@ -1,20 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
+import { formatStatValue } from "@/lib/stat-format";
 import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
 import { Modal } from "@/components/modal";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import type { SortDirection } from "@/lib/sort";
-import { ARTIFACT_RARITIES } from "../artifacts/artifact-rules";
+import {
+  ARTIFACT_RARITIES,
+  MAIN_STAT_NAMES,
+  SORTABLE_STAT_NAMES,
+  SUBSTAT_TYPE_NAMES,
+  computeArtifactMainStatValue,
+  type SortableStatName,
+  type SubstatTypeName,
+} from "../artifacts/artifact-rules";
 import { ArtifactCard } from "../artifacts/artifact-card";
 import type { OwnedArtifactOption } from "./filter-sort";
 
-type SortKey = "name" | "rarity" | "level";
+// Same sort keys the owned-artifacts page itself offers (see its own
+// OwnedSortKey) -- "obtained" needs OwnedArtifactOption.createdAt, added
+// alongside the others for exactly this kind of owned-page parity.
+type SortKey = "name" | "rarity" | "level" | "obtained" | SortableStatName;
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -23,15 +35,78 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   return next;
 }
 
+// Mirrors artifact-rules.ts's own private substatValue/sortableStatValue --
+// a piece's TOTAL value for a given stat, main stat included, not just
+// whatever (if anything) also rolled as a substat (see that file's own
+// comment on why). Kept local rather than imported since those helpers
+// aren't exported -- OwnedArtifactOption's shape is close enough to
+// OwnedArtifactItem's (mainStatName/rarity/level/substats) that
+// duplicating this small a function reads clearer than exporting a
+// owned-page-specific helper for one other call site.
+function substatValue(artifact: OwnedArtifactOption, statName: string): number | null {
+  const substat = artifact.substats.find((s) => s.statTypeName === statName);
+  return substat ? substat.value : null;
+}
+
+function sortableStatValue(artifact: OwnedArtifactOption, statName: SortableStatName): number | null {
+  const substat = substatValue(artifact, statName);
+  const mainStat =
+    artifact.mainStatName === statName
+      ? computeArtifactMainStatValue(artifact.mainStatName, artifact.rarity, artifact.level)
+      : null;
+
+  if (substat === null && mainStat === null) return null;
+  return (substat ?? 0) + (mainStat ?? 0);
+}
+
+// Same convention as the owned-artifacts page's own tiebreakByAdded:
+// newest first, fixed regardless of the primary sort's own direction
+// toggle, since two owned pieces can never be created at the exact same
+// moment.
+function tiebreakByAdded(a: OwnedArtifactOption, b: OwnedArtifactOption): number {
+  return b.createdAt - a.createdAt;
+}
+
+// The exact hover detail the owned-artifacts page's own ArtifactCard shows
+// (see its buildTooltipContent) -- set name/level header, main stat, then
+// every substat.
+function buildTooltipContent(artifact: OwnedArtifactOption) {
+  return (
+    <>
+      <div className="flex items-baseline gap-2">
+        <p className="text-base font-semibold text-yellow-100">{artifact.setName}</p>
+        <p className="text-base font-semibold text-gray-400">+{artifact.level}</p>
+      </div>
+      <p className="mt-1 text-base font-semibold text-yellow-100">
+        Main Stat: {artifact.mainStatName} +
+        {formatStatValue(
+          artifact.mainStatName,
+          computeArtifactMainStatValue(artifact.mainStatName, artifact.rarity, artifact.level)
+        )}
+      </p>
+      {artifact.substats.length > 0 && (
+        <>
+          <hr className="mt-2 border-gray-700" />
+          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+            {artifact.substats.map((substat) => (
+              <p key={substat.statTypeName} className="text-gray-300">
+                {substat.statTypeName} +{formatStatValue(substat.statTypeName, substat.value)}
+              </p>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 // Sits alongside the real ArtifactCard entries in the picker's grid so "no
 // piece" is just another option to click, not a separate row above the
 // grid. Kept local rather than folded into ArtifactCard itself -- the owned-
 // artifacts page always represents a real piece, so an "empty" variant would
-// only ever be exercised here. Mirrors ArtifactCard's exact structure (icon
-// area, then the stat block below it) rather than just its icon area, so
-// this card comes out the same total height as its neighbors -- the stat
-// block's content is invisible (nothing to show for "no piece") but still
-// occupies the same space.
+// only ever be exercised here. Plain icon-only square, same as
+// NoneWeaponCard -- the modal grid's own cards are icon-only now too (hover
+// for detail), not the always-visible stat block this used to need to match.
 function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
   return (
     <li>
@@ -44,17 +119,9 @@ function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
           event.preventDefault();
           onSelect();
         }}
-        className="@container relative w-full cursor-pointer overflow-hidden rounded-xl border-8 border-gray-600 bg-foreground/10 shadow hover:opacity-90"
+        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl bg-foreground/10 shadow hover:opacity-90"
       >
-        <div className="aspect-[4/3] w-full" />
-        <div aria-hidden="true" className="invisible bg-background px-2 py-1.5">
-          <p className="-mx-2 mb-2.5 truncate bg-foreground/10 px-2 pb-1 pt-1.5 text-xs">MAIN STAT: placeholder</p>
-          <p className="mb-1.5 text-[10px] uppercase tracking-wide">Substats</p>
-          <div className="min-h-[4.5rem] @[18rem]:min-h-[2.5rem]" />
-        </div>
-        <span className="absolute inset-0 flex items-center justify-center text-lg font-semibold text-gray-400">
-          None
-        </span>
+        <span className="text-lg font-semibold text-gray-400">None</span>
       </div>
     </li>
   );
@@ -62,16 +129,24 @@ function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
 
 // Replaces a plain <select> -- a dropdown only has room for a set name and
 // main stat, which isn't enough to tell two same-set pieces apart. Mirrors
-// WeaponSlotPicker's grid-of-cards pattern (search, rarity filter, sort, a
-// link to the add page for a missing piece), reusing the same ArtifactCard
-// the owned-artifacts page uses so a piece looks the same wherever it's
-// shown -- with its full stat block still visible, since that's what
-// actually distinguishes two same-set pieces from each other.
+// WeaponSlotPicker's grid-of-cards pattern (search, rarity/main-stat/
+// substat filters, sort, a link to the add page for a missing piece),
+// reusing the same ArtifactCard the owned-artifacts page uses so a piece
+// looks the same wherever it's shown. The modal's own grid cards are
+// icon-only with hover detail (tooltipContent, see buildTooltipContent
+// above), same as the owned-artifacts page's current look -- telling two
+// same-set pieces apart now means hovering each in turn, a deliberate
+// tradeoff for full consistency with CharacterSlotPicker/WeaponSlotPicker's
+// own modal grids (this used to keep the full stat block always visible
+// specifically to avoid that tradeoff; CLAUDE.md still describes that
+// older reasoning and is now stale on this point).
 export function ArtifactSlotPicker({
   slot,
   artifacts,
   value,
   onChange,
+  autoOpen,
+  onOpenChange,
   boxSizeClassName = "h-56 w-56",
   showStats = true,
   cardBorderClassName,
@@ -80,6 +155,15 @@ export function ArtifactSlotPicker({
   artifacts: OwnedArtifactOption[];
   value: number | null;
   onChange: (ownedArtifactId: number | null) => void;
+  // Same as WeaponSlotPicker/CharacterSlotPicker's own autoOpen/
+  // onOpenChange -- lets BuildCatalog's sessionStorage draft reopen this
+  // picker after a remount (e.g. following this picker's own "add one on
+  // the Add artifact page" link and coming back), and stay informed when
+  // it opens/closes normally so that persisted state doesn't go stale.
+  // Both optional -- callers that don't care about surviving navigation
+  // (e.g. the owned-build edit modal) can ignore them entirely.
+  autoOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   // Overridable for a caller that wants this slot more compact than the
   // default 224x224 (e.g. BuildCatalog's own top row, once it needs to fit
   // all 5 of these alongside the weapon slot and name/save) -- only affects
@@ -103,11 +187,34 @@ export function ArtifactSlotPicker({
   // box size. Undefined keeps ArtifactCard's own default.
   cardBorderClassName?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
-  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [substatFilter, setSubstatFilter] = useState<Set<SubstatTypeName>>(new Set());
+  const [mainStatFilter, setMainStatFilter] = useState("");
+  // "obtained" (not "name") -- matches the owned-artifacts page's own
+  // default exactly, not just offering the same option.
+  const [sortKey, setSortKey] = useState<SortKey>("obtained");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  function setOpen(next: boolean) {
+    setOpenState(next);
+    onOpenChange?.(next);
+  }
+
+  // Fires when a caller's restored draft flips autoOpen to true after this
+  // component has already mounted closed (the parent's own restore effect
+  // runs post-hydration too, so this can't just be an initial state value)
+  // -- same pattern and same reasoning as WeaponSlotPicker/
+  // CharacterSlotPicker's own identical effect. Deliberate exception to
+  // react-hooks/set-state-in-effect -- this is exactly the "synchronize
+  // with a value owned by an external system" case (the caller's own
+  // persisted draft), not derived-state busywork.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (autoOpen) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   const options = artifacts.filter((a) => a.slot === slot);
   const selected = value !== null ? options.find((a) => a.ownedArtifactId === value) : undefined;
@@ -116,12 +223,27 @@ export function ArtifactSlotPicker({
   const direction = sortDirection === "desc" ? -1 : 1;
   const filtered = options
     .filter(
-      (a) => a.setName.toLowerCase().includes(query) && (rarityFilter.size === 0 || rarityFilter.has(a.rarity))
+      (a) =>
+        a.setName.toLowerCase().includes(query) &&
+        (rarityFilter.size === 0 || rarityFilter.has(a.rarity)) &&
+        (!mainStatFilter || a.mainStatName === mainStatFilter) &&
+        [...substatFilter].every((statName) => substatValue(a, statName) !== null)
     )
     .sort((a, b) => {
-      if (sortKey === "rarity") return direction * (a.rarity - b.rarity) || a.setName.localeCompare(b.setName);
-      if (sortKey === "level") return direction * (a.level - b.level) || a.setName.localeCompare(b.setName);
-      return direction * a.setName.localeCompare(b.setName);
+      // Signs match the owned-artifacts page's own comparator exactly
+      // (filterAndSortOwnedArtifacts), not just offering the same sort
+      // keys -- rarity/level/obtained/every sortable stat all flip the
+      // shared direction multiplier (forward = highest/newest first),
+      // same tiebreakByAdded convention too.
+      if (sortKey === "rarity") return -direction * (a.rarity - b.rarity) || tiebreakByAdded(a, b);
+      if (sortKey === "level") return -direction * (a.level - b.level) || tiebreakByAdded(a, b);
+      if (sortKey === "obtained") return -direction * (a.createdAt - b.createdAt);
+      if ((SORTABLE_STAT_NAMES as readonly string[]).includes(sortKey)) {
+        const aValue = sortableStatValue(a, sortKey as SortableStatName) ?? -Infinity;
+        const bValue = sortableStatValue(b, sortKey as SortableStatName) ?? -Infinity;
+        return -direction * (aValue - bValue) || tiebreakByAdded(a, b);
+      }
+      return direction * a.setName.localeCompare(b.setName) || tiebreakByAdded(a, b);
     });
 
   function select(ownedArtifactId: number | null) {
@@ -172,7 +294,7 @@ export function ArtifactSlotPicker({
               placeholder="Search by set name..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="min-w-0 flex-1 rounded border bg-white px-3 py-2 text-sm text-black"
+              className="rounded border bg-white px-3 py-2 text-sm text-black"
             />
             <select
               value={sortKey}
@@ -182,8 +304,26 @@ export function ArtifactSlotPicker({
               <option value="name">Sort: Name</option>
               <option value="rarity">Sort: Rarity</option>
               <option value="level">Sort: Level</option>
+              <option value="obtained">Sort: Added</option>
+              {SORTABLE_STAT_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  Sort: {name}
+                </option>
+              ))}
             </select>
             <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+            <select
+              value={mainStatFilter}
+              onChange={(event) => setMainStatFilter(event.target.value)}
+              className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+            >
+              <option value="">Main stat: Any</option>
+              {MAIN_STAT_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  Main stat: {name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <RarityFilterRow
@@ -191,6 +331,21 @@ export function ArtifactSlotPicker({
             rarityFilter={rarityFilter}
             onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
           />
+
+          <div className="flex flex-wrap gap-2">
+            {SUBSTAT_TYPE_NAMES.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setSubstatFilter((prev) => toggleInSet(prev, name))}
+                className={`rounded-full border px-3 py-1 text-xs ${
+                  substatFilter.has(name) ? "bg-foreground text-background" : ""
+                }`}
+              >
+                Substat: {name}
+              </button>
+            ))}
+          </div>
 
           <p className="text-sm text-gray-500">
             Cannot find a piece? Add one on the{" "}
@@ -200,7 +355,7 @@ export function ArtifactSlotPicker({
             .
           </p>
 
-          <ul className="grid max-h-96 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 md:grid-cols-4">
+          <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto [scrollbar-gutter:stable] sm:grid-cols-4 md:grid-cols-5">
             <NoneArtifactCard onSelect={() => select(null)} />
             {filtered.map((artifact) => (
               <ArtifactCard
@@ -209,12 +364,12 @@ export function ArtifactSlotPicker({
                 slot={slot}
                 rarity={artifact.rarity}
                 level={artifact.level}
-                mainStatName={artifact.mainStatName}
                 iconUrl={artifact.iconUrl}
-                substats={artifact.substats}
+                tooltipContent={buildTooltipContent(artifact)}
                 onSelect={() => select(artifact.ownedArtifactId)}
                 showSetName={false}
                 showSlotBadge={false}
+                borderClassName=""
               />
             ))}
           </ul>
