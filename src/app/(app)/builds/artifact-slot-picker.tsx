@@ -96,6 +96,17 @@ function buildTooltipContent(artifact: OwnedArtifactOption) {
           </div>
         </>
       )}
+      <hr className="mt-2 border-gray-700" />
+      <p className="mt-2 text-gray-300">
+        <span className="font-semibold text-yellow-100">2pc: </span>
+        {artifact.twoPieceEffect}
+      </p>
+      {artifact.fourPieceEffect && (
+        <p className="mt-2 text-gray-300">
+          <span className="font-semibold text-yellow-100">4pc: </span>
+          {artifact.fourPieceEffect}
+        </p>
+      )}
     </>
   );
 }

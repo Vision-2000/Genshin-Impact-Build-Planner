@@ -103,12 +103,14 @@ function ConstellationIcon({
 const SLOTS = Object.values(ArtifactSlot);
 
 // Weapon + all 5 artifact slots share one row here (unlike their own usual
-// 224x224, each on its own row/section) -- scaling up by breakpoint lets
-// them grow on a wide screen instead of staying capped at whatever size
-// fits the narrowest one, while still leaving enough room for all 6 boxes
-// (plus the character splash column and its own padding) to stay on that
-// one line rather than wrapping.
-const SLOT_SIZE_CLASS = "h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-32 lg:w-32 xl:h-40 xl:w-40 2xl:h-48 2xl:w-48";
+// 224x224, each on its own row/section) -- 5vw scales continuously with
+// the viewport's own width instead of jumping between fixed breakpoint
+// sizes, while still leaving enough room for all 6 boxes (plus the
+// character splash column and its own padding) to stay on that one line
+// rather than wrapping. vw for BOTH dimensions, not vh for height -- this
+// keeps the box square regardless of viewport aspect ratio, since vh
+// would instead tie its height to viewport HEIGHT, independent of width.
+const SLOT_SIZE_CLASS = "h-[9vw] w-[9vw]";
 
 type SlotSelections = Partial<Record<ArtifactSlot, number>>;
 // Same per-slot shape as SlotSelections, one open/closed flag per artifact
@@ -271,26 +273,33 @@ export function BuildCatalog({
     ? character.talents.filter((t) => t.slot !== TalentSlot.NormalAttack && t.slot !== TalentSlot.Skill && t.slot !== TalentSlot.Burst)
     : [];
 
-  // Every distinct equipped set with 2+ (or 4+) pieces, paired with that
-  // set's own real 2pc/4pc effect TEXT -- not just the stat-bonus subset
-  // final-stats.ts totals, since most 4pc effects (and some 2pc ones) are
-  // conditional/proc-based and have no stat bonus row at all. Mirrors
-  // final-stats.ts's own setPieceCounts grouping.
+  // One entry per distinct equipped set with 2+ pieces (not one per
+  // threshold -- a 4-piece set already implies its own 2pc bonus too, so
+  // it gets a single "<set name> 4" entry covering both, rather than two
+  // separate "<set name> 2"/"<set name> 4" entries for the same set).
+  // twoPieceEffect/fourPieceEffect carry the real effect TEXT -- not just
+  // the stat-bonus subset final-stats.ts totals, since most 4pc effects
+  // (and some 2pc ones) are conditional/proc-based and have no stat bonus
+  // row at all. Mirrors final-stats.ts's own setPieceCounts grouping.
   const activeSetEffects = (() => {
     const counts = new Map<number, number>();
     for (const artifact of selectedArtifacts) {
       counts.set(artifact.artifactSetId, (counts.get(artifact.artifactSetId) ?? 0) + 1);
     }
     const seenSets = new Set<number>();
-    const effects: { setName: string; piece: "2-Piece" | "4-Piece"; text: string }[] = [];
+    const effects: { setName: string; maxPiece: 2 | 4; twoPieceEffect: string; fourPieceEffect: string | null }[] = [];
     for (const artifact of selectedArtifacts) {
       if (seenSets.has(artifact.artifactSetId)) continue;
       seenSets.add(artifact.artifactSetId);
       const count = counts.get(artifact.artifactSetId) ?? 0;
-      if (count >= 2) effects.push({ setName: artifact.setName, piece: "2-Piece", text: artifact.twoPieceEffect });
-      if (count >= 4 && artifact.fourPieceEffect) {
-        effects.push({ setName: artifact.setName, piece: "4-Piece", text: artifact.fourPieceEffect });
-      }
+      if (count < 2) continue;
+      const hasFourPiece = count >= 4 && artifact.fourPieceEffect !== null;
+      effects.push({
+        setName: artifact.setName,
+        maxPiece: hasFourPiece ? 4 : 2,
+        twoPieceEffect: artifact.twoPieceEffect,
+        fourPieceEffect: hasFourPiece ? artifact.fourPieceEffect : null,
+      });
     }
     return effects;
   })();
@@ -507,12 +516,13 @@ export function BuildCatalog({
                       squeezing all three onto one cramped row. No "Lv. X/Y"
                       line repeated in any of these -- that's shown directly
                       on the splash art itself (CharacterSlotPicker's own
-                      top-left level badge). items-start -- a grid row
-                      otherwise stretches every item to the row's tallest
-                      (Active Set Effects, once its own text wraps to
-                      several lines), leaving Talents/Constellations
-                      stretched well past their own one-icon-row content. */}
-                  <div className="mt-3 grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
+                      top-left level badge). No items-start here -- a plain
+                      grid row's default stretch keeps all three the same
+                      height (the row's tallest), which is what we want now
+                      that Artifact Set Effects' own content is just a
+                      compact flex-wrap row of short entries, same scale as
+                      Talents/Constellations' own icon row. */}
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="rounded border bg-black p-3 text-sm">
                       <p className="font-medium text-foreground">Talents</p>
                       {/* Same icon row the progression editor's own
@@ -548,23 +558,75 @@ export function BuildCatalog({
                       </div>
                     </div>
 
-                    <div className="rounded border bg-black p-3 text-sm">
-                      <p className="font-medium text-foreground">Active Set Effects</p>
-                      {activeSetEffects.length === 0 ? (
-                        <p className="mt-1 text-gray-400">No 2-piece or 4-piece set bonus active yet.</p>
-                      ) : (
-                        <ul className="mt-1 space-y-2">
-                          {activeSetEffects.map((effect) => (
-                            <li key={`${effect.setName}-${effect.piece}`}>
-                              <p className="text-foreground">
-                                {effect.setName} ({effect.piece})
-                              </p>
-                              <p className="text-gray-400">{effect.text}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+                    {activeSetEffects.length === 0 ? (
+                      <div className="flex h-full flex-col rounded border bg-black p-3 text-sm">
+                        <p className="font-medium text-foreground">Artifact Set Effects</p>
+                        <p className="mt-2 flex flex-1 items-center text-gray-400">
+                          No 2-piece or 4-piece set bonus active yet.
+                        </p>
+                      </div>
+                    ) : (
+                      // One tooltip for the WHOLE box now, not one per set
+                      // name -- hovering anywhere over the box shows every
+                      // active set's full 2pc/4pc text at once, rather than
+                      // needing to hover each name individually to see its
+                      // own. wrapperClassName keeps this a block that fills
+                      // its grid cell (MouseFollowTooltip's own default,
+                      // "relative inline-block", would otherwise size to
+                      // its content instead of stretching like the other
+                      // two boxes in this row).
+                      <MouseFollowTooltip
+                        wrapperClassName="relative block h-full"
+                        content={
+                          <div className="space-y-3">
+                            {activeSetEffects.map((effect, index) => (
+                              <div key={effect.setName}>
+                                {index > 0 && <hr className="mb-3 border-gray-700" />}
+                                <p className="text-base font-semibold text-yellow-100">{effect.setName}</p>
+                                <p className="mt-1 text-gray-300">
+                                  <span className="font-semibold text-yellow-100">2pc: </span>
+                                  {effect.twoPieceEffect}
+                                </p>
+                                {effect.fourPieceEffect && (
+                                  <p className="mt-2 text-gray-300">
+                                    <span className="font-semibold text-yellow-100">4pc: </span>
+                                    {effect.fourPieceEffect}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        }
+                      >
+                        <div className="flex h-full flex-col rounded border bg-black p-3 text-sm">
+                          <p className="font-medium text-foreground">Artifact Set Effects</p>
+                          {/* One set per row, always -- not flex-wrap
+                              (which previously put 2 sets side by side on
+                              one row whenever they both fit). Each line is
+                              now just the set name + its own highest piece
+                              threshold -- no individual hover here anymore,
+                              see the single box-wide tooltip above. */}
+                          <ul className="mt-2 flex flex-1 flex-col justify-center gap-y-1">
+                            {activeSetEffects.map((effect) => (
+                              <li key={effect.setName} className="flex items-center gap-1.5 text-foreground">
+                                {/* mt-0.5 -- same fix used elsewhere in
+                                    this app for a badge sitting next to
+                                    plain text: Arial's own line-height
+                                    metrics aren't split evenly above/
+                                    below the glyphs, so items-center
+                                    alone still left this text reading
+                                    slightly above true center next to
+                                    the badge. */}
+                                <span className="mt-0.5">{effect.setName}</span>
+                                <span className="flex h-5 w-5 items-center justify-center rounded border border-gray-600 bg-black/70 text-xs font-semibold leading-none text-white">
+                                  {effect.maxPiece}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </MouseFollowTooltip>
+                    )}
                   </div>
                 </>
               )}
