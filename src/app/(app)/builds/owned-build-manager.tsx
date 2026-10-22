@@ -41,7 +41,7 @@ const RARITIES = [5, 4];
 // SLOT_SIZE_CLASS: both forms sit inside a width-capped Modal, so a fixed
 // size that's guaranteed to fit alongside 5 artifact slots at the modal's
 // own max width is more robust than anything viewport-relative.
-const EDITOR_SLOT_SIZE_CLASS = "h-[7.5rem] w-[7.5rem]";
+const EDITOR_SLOT_SIZE_CLASS = "h-32 w-32";
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -230,10 +230,15 @@ function BuildEditor({
       <div className="flex w-full flex-col sm:flex-row">
         <CharacterSlotPicker characters={[character]} value={character.ownedCharacterId} onChange={() => {}} locked />
 
-        <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
-          <div className="flex flex-wrap gap-8">
+        {/* pb-2 (not pb-4) -- matches CharacterSlotPicker's own bottom
+            padding exactly, so BuildStatsSummary's own stretched h-full
+            bottom edge (which now fills all the way down to this
+            padding, see its own comment) lands flush with the splash
+            art's bottom instead of stopping 8px short of it. */}
+        <div className="flex flex-1 flex-col gap-4 px-4 pb-2 pt-2">
+          <div className="flex flex-wrap gap-4">
             <div>
-              <p className="mb-1 text-base font-medium">Weapon</p>
+              <p className="mb-1 text-base font-bold">Weapon</p>
               <WeaponSlotPicker
                 weaponType={character.weaponType}
                 weapons={weapons}
@@ -245,7 +250,7 @@ function BuildEditor({
             </div>
 
             <div>
-              <p className="mb-1 text-base font-medium">Artifacts</p>
+              <p className="mb-1 text-base font-bold">Artifacts</p>
               <div className="flex gap-2">
                 {SLOTS.map((slot) => (
                   <ArtifactSlotPicker

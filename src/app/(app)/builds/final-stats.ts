@@ -49,8 +49,11 @@ const BASE_CRIT_DMG = 50;
 const BASE_ENERGY_RECHARGE = 100;
 
 // Purely additive, shown only when their total is above 0 -- see this
-// file's own top comment.
-const CONDITIONAL_STAT_NAMES = [
+// file's own top comment. Exported so BuildStatsSummary's own hover-only
+// "Full Stats" list (fullStatsList below) can show every one of these
+// regardless of value, not just the nonzero subset computeFinalStats
+// itself includes.
+export const CONDITIONAL_STAT_NAMES = [
   "Healing Bonus%",
   "Incoming Healing Bonus%",
   "Shield Strength%",
@@ -145,10 +148,25 @@ export type FinalStatsInput = {
   artifacts: FinalStatsArtifactInput[];
 };
 
-// Stat name -> final display value. Always includes ATK/HP/DEF/Elemental
-// Mastery/Crit Rate%/Crit DMG%/Energy Recharge%; every other stat is
-// included only when its total is above 0 (see CONDITIONAL_STAT_NAMES).
-export function computeFinalStats({ character, weapon, artifacts }: FinalStatsInput): Record<string, number> {
+export type FinalStatsResult = {
+  // Stat name -> final display value. Always includes ATK/HP/DEF/Elemental
+  // Mastery/Crit Rate%/Crit DMG%/Energy Recharge%; every other stat is
+  // included only when its total is above 0 (see CONDITIONAL_STAT_NAMES).
+  totals: Record<string, number>;
+  // The "base" (pre-%/flat-bonus) portion of ATK/HP/DEF specifically --
+  // the character's own level/ascension growth-curve value, plus, for
+  // ATK only, the equipped weapon's own base ATK (or the default
+  // starter's, see weaponBaseAttack's own comment). Exposed separately so
+  // a caller (BuildStatsSummary's own "Full Stats" tooltip) can show
+  // "base + added" for these 3 specifically -- the only stats with a
+  // clear, well-defined "base" distinct from their bonuses (HP/DEF have
+  // no weapon contribution of their own; every other stat -- EM, Crit,
+  // ER, every conditional % -- has no comparable base/bonus split at
+  // all, so this intentionally doesn't try to generalize to them).
+  baseStats: { ATK: number; HP: number; DEF: number };
+};
+
+export function computeFinalStats({ character, weapon, artifacts }: FinalStatsInput): FinalStatsResult {
   // Per-StatType-name running totals for every contribution that ISN'T
   // part of the ATK/HP/DEF base (ascension stat, talents, constellations,
   // weapon secondary stat/passive, artifact main stat/substats/set
@@ -267,7 +285,23 @@ export function computeFinalStats({ character, weapon, artifacts }: FinalStatsIn
     if (value > 0) result[statName] = value;
   }
 
-  return result;
+  // The character's own ascension stat (e.g. Alhaitham's Dendro DMG%),
+  // always included -- even at 0 -- unless it's already one of the 7
+  // primary stats above (e.g. Bennett's is Energy Recharge%, already
+  // there), OR is the %-flavor of one of the 3 that only ever show up
+  // flattened (ATK%/HP%/DEF% -- a character who ascends with one of
+  // these "falls under" the existing flat ATK/HP/DEF row, same as a
+  // Crit/EM ascension stat falling under its own primary row, rather
+  // than getting its own separate %-named row alongside it).
+  const ATK_HP_DEF_PERCENT_EQUIVALENT: Record<string, string> = { "ATK%": "ATK", "HP%": "HP", "DEF%": "DEF" };
+  if (character.ascensionStatName) {
+    const primaryEquivalent = ATK_HP_DEF_PERCENT_EQUIVALENT[character.ascensionStatName] ?? character.ascensionStatName;
+    if (!(primaryEquivalent in result)) {
+      result[character.ascensionStatName] = totals.get(character.ascensionStatName) ?? 0;
+    }
+  }
+
+  return { totals: result, baseStats: { ATK: baseAttack + weaponBaseAttack, HP: baseHp, DEF: baseDefense } };
 }
 
 // Fixed display order -- ATK/HP/DEF/EM/Crit/ER first (always present),
@@ -288,11 +322,51 @@ export const FINAL_STATS_PRIMARY_ORDER = [
 
 export function orderedFinalStats(totals: Record<string, number>): { statName: string; value: number }[] {
   const ordered: { statName: string; value: number }[] = [];
+  const seen = new Set<string>();
   for (const statName of FINAL_STATS_PRIMARY_ORDER) {
-    if (statName in totals) ordered.push({ statName, value: totals[statName] });
+    if (statName in totals) {
+      ordered.push({ statName, value: totals[statName] });
+      seen.add(statName);
+    }
   }
   for (const statName of CONDITIONAL_STAT_NAMES) {
-    if (statName in totals) ordered.push({ statName, value: totals[statName] });
+    if (statName in totals) {
+      ordered.push({ statName, value: totals[statName] });
+      seen.add(statName);
+    }
+  }
+  // Anything left over, in whatever order Object.keys gives it -- a
+  // safety net for a character's own ascension stat landing on some
+  // StatType neither a primary stat nor already in CONDITIONAL_STAT_NAMES
+  // (e.g. Cooldown Reduction%, if any character ever ascends with it --
+  // ATK%/HP%/DEF% never reach here, see computeFinalStats's own comment
+  // on why those three are excluded instead of ending up here).
+  for (const statName in totals) {
+    if (!seen.has(statName)) ordered.push({ statName, value: totals[statName] });
+  }
+  return ordered;
+}
+
+// Same primary-then-conditional ordering as orderedFinalStats, but every
+// conditional stat is listed regardless of value (0 included) instead of
+// only the nonzero subset -- backs BuildStatsSummary's own hover-only
+// "Full Stats" tooltip, which is meant to show literally everything a
+// build could have, not just what happens to be active right now.
+export function fullStatsList(totals: Record<string, number>): { statName: string; value: number }[] {
+  const ordered: { statName: string; value: number }[] = [];
+  const seen = new Set<string>();
+  for (const statName of FINAL_STATS_PRIMARY_ORDER) {
+    ordered.push({ statName, value: totals[statName] ?? 0 });
+    seen.add(statName);
+  }
+  for (const statName of CONDITIONAL_STAT_NAMES) {
+    ordered.push({ statName, value: totals[statName] ?? 0 });
+    seen.add(statName);
+  }
+  // Same leftover safety net as orderedFinalStats -- a character's own
+  // ascension stat landing on a StatType neither list covers.
+  for (const statName in totals) {
+    if (!seen.has(statName)) ordered.push({ statName, value: totals[statName] });
   }
   return ordered;
 }

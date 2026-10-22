@@ -23,7 +23,7 @@ const SLOTS = Object.values(ArtifactSlot);
 // inside OwnedBuildManager's own width-capped "create build" Modal, same
 // as BuildEditor's own EDITOR_SLOT_SIZE_CLASS there, not a full-width page
 // a vw-based size could track.
-const SLOT_SIZE_CLASS = "h-[7.5rem] w-[7.5rem]";
+const SLOT_SIZE_CLASS = "h-32 w-32";
 
 type SlotSelections = Partial<Record<ArtifactSlot, number>>;
 // Same per-slot shape as SlotSelections, one open/closed flag per artifact
@@ -291,18 +291,24 @@ export function BuildCatalog({
                   column's own "Weapon"/"Artifacts" labels -- and the slot
                   boxes right below them -- line up at the same height instead
                   of sitting 8px lower under p-4's fuller top padding. */}
-              <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
+              {/* pb-2 (not pb-4) -- matches CharacterSlotPicker's own
+                  bottom padding exactly, so BuildStatsSummary's own
+                  stretched h-full bottom edge (which now fills all the
+                  way down to this padding, see its own comment) lands
+                  flush with the splash art's bottom instead of stopping
+                  8px short of it. */}
+              <div className="flex flex-1 flex-col gap-4 px-4 pb-2 pt-2">
                 {/* Weapon and Artifacts keep their own separate labels, each
                     directly above its own box(es), but both groups sit side
                     by side in one flex row -- compact (boxSizeClassName, down
                     from the usual 224x224) enough that the boxes themselves
                     still land on one shared line. */}
-                <div className="flex flex-wrap gap-8">
+                <div className="flex flex-wrap gap-4">
                   <div>
                     {/* mb-1 -- matches CharacterSlotPicker's own gap-1 between
                         its "Character" label and its box, so the boxes line
                         up at the same height too, not just the label text. */}
-                    <p className="mb-1 text-base font-medium">Weapon</p>
+                    <p className="mb-1 text-base font-bold">Weapon</p>
                     <WeaponSlotPicker
                       // null until a character is chosen -- WeaponSlotPicker
                       // then shows every owned weapon regardless of type
@@ -323,7 +329,7 @@ export function BuildCatalog({
                   </div>
 
                   <div>
-                    <p className="mb-1 text-base font-medium">Artifacts</p>
+                    <p className="mb-1 text-base font-bold">Artifacts</p>
                     <div className="flex gap-2">
                       {SLOTS.map((slot) => (
                         <ArtifactSlotPicker

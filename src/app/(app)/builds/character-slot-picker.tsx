@@ -168,7 +168,7 @@ export function CharacterSlotPicker({
           either an intentional seam against the form's right column, or
           already covered by the label's own pt-2 below. */}
       <div className="flex w-full shrink-0 flex-col gap-1 pb-2 pl-2 sm:w-96">
-        <p className="pt-2 text-base font-medium">Character</p>
+        <p className="pt-2 text-base font-bold">Character</p>
         {selected ? (
           // aspect-[3/4] (not flex-1/min-h-64) -- a fixed height derived
           // from this column's own width, independent of whatever height

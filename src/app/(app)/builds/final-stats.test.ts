@@ -37,13 +37,13 @@ describe("computeFinalStats", () => {
   it("contributes the default 1-star weapon's base ATK when no real weapon is chosen", () => {
     const character = blankCharacter({ weaponType: WeaponType.Sword });
     const result = computeFinalStats({ character, weapon: null, artifacts: [] });
-    expect(result.ATK).toBe(DEFAULT_WEAPON[WeaponType.Sword].baseAttack);
+    expect(result.totals.ATK).toBe(DEFAULT_WEAPON[WeaponType.Sword].baseAttack);
   });
 
   it("looks up the default by the character's own weapon type, not a hardcoded one", () => {
     const character = blankCharacter({ weaponType: WeaponType.Catalyst });
     const result = computeFinalStats({ character, weapon: null, artifacts: [] });
-    expect(result.ATK).toBe(DEFAULT_WEAPON[WeaponType.Catalyst].baseAttack);
+    expect(result.totals.ATK).toBe(DEFAULT_WEAPON[WeaponType.Catalyst].baseAttack);
   });
 
   it("ignores the default weapon table once a real weapon is chosen", () => {
@@ -67,6 +67,15 @@ describe("computeFinalStats", () => {
     // of its own (see FinalStatsWeaponInput's own comment) -- the point
     // here is just that it's 0, not DEFAULT_WEAPON's 23, confirming the
     // default table is never consulted once `weapon` is non-null.
-    expect(result.ATK).toBe(0);
+    expect(result.totals.ATK).toBe(0);
+  });
+
+  it("exposes ATK/HP/DEF's own base portion separately from the full total", () => {
+    const character = blankCharacter({ weaponType: WeaponType.Sword });
+    const result = computeFinalStats({ character, weapon: null, artifacts: [] });
+    // Blank character contributes 0 base HP/ATK/DEF of its own (null
+    // baseHp/baseAttack/baseDefense) -- ATK's base is still the default
+    // weapon's own base ATK, same value totals.ATK already asserts above.
+    expect(result.baseStats).toEqual({ ATK: DEFAULT_WEAPON[WeaponType.Sword].baseAttack, HP: 0, DEF: 0 });
   });
 });

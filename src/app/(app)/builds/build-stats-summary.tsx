@@ -6,7 +6,7 @@ import { formatStatValue } from "@/lib/stat-format";
 import { elementGlowClasses } from "@/lib/element-colors";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { TaggedText } from "@/components/tagged-text";
-import { computeFinalStats, orderedFinalStats, FINAL_STATS_PRIMARY_ORDER } from "./final-stats";
+import { computeFinalStats, fullStatsList, FINAL_STATS_PRIMARY_ORDER } from "./final-stats";
 import type { OwnedArtifactOption, OwnedCharacterOption, OwnedWeaponOption } from "./filter-sort";
 
 type TalentOption = OwnedCharacterOption["talents"][number];
@@ -31,19 +31,19 @@ function TalentIcon({ talent, level }: { talent: TalentOption; level?: number })
         </>
       }
     >
-      <div className="relative h-9 w-9">
+      <div className="relative h-12 w-12">
         {/* overflow-hidden lives on this INNER wrapper (clipping the icon
             art into a circle) rather than the outer relative div -- the
             level badge below is a sibling of this, not a child, so it
             isn't clipped by it, and can hang at the circle's own bottom
             point. */}
-        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-gray-600 bg-black/30">
-          {talent.iconUrl && <Image src={talent.iconUrl} alt={talent.name} width={30} height={30} />}
+        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-gray-600 bg-black/30">
+          {talent.iconUrl && <Image src={talent.iconUrl} alt={talent.name} width={40} height={40} />}
         </div>
         {level !== undefined && (
           // Plain text, no badge background/border -- just the number,
           // centered at the circle's own bottom point.
-          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold leading-none text-white">
+          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-sm font-semibold leading-none text-white">
             {level}
           </span>
         )}
@@ -79,12 +79,12 @@ function ConstellationIcon({
       }
     >
       <div
-        className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 ${
+        className={`flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 ${
           lit ? elementGlowClasses(element) : "border-gray-600 bg-black/30 opacity-50 grayscale"
         }`}
       >
         {constellation.iconUrl && (
-          <Image src={constellation.iconUrl} alt={constellation.name} width={30} height={30} />
+          <Image src={constellation.iconUrl} alt={constellation.name} width={40} height={40} />
         )}
       </div>
     </MouseFollowTooltip>
@@ -111,19 +111,38 @@ export function BuildStatsSummary({
   // Recomputed on every render from whatever's currently picked -- cheap
   // enough (a handful of stat rows summed across at most 1 weapon + 5
   // artifacts) that memoizing would be premature. See final-stats.ts's own
-  // comment on what this totals (and deliberately doesn't).
-  const finalStats = orderedFinalStats(computeFinalStats({ character, weapon, artifacts }));
+  // comment on what this totals (and deliberately doesn't). allStats
+  // (fullStatsList, not orderedFinalStats) includes every conditional
+  // stat regardless of value -- the hover-only "Full Stats" tooltip below
+  // is meant to show literally everything, 0s included, not just what's
+  // currently active. baseStats backs that same tooltip's own base/added
+  // split for ATK/HP/DEF specifically (see computeFinalStats's own
+  // comment on why only those 3).
+  const { totals, baseStats } = computeFinalStats({ character, weapon, artifacts });
+  const allStats = fullStatsList(totals);
+  // Record<string, number> view of baseStats -- lets the tooltip below
+  // look a stat name up without TypeScript narrowing it to the literal
+  // ATK/HP/DEF keys first.
+  const baseStatsByName: Record<string, number> = baseStats;
 
   // The 7 "necessary" stats (HP/ATK/DEF/EM/Crit Rate/Crit DMG/ER) --
-  // always present in finalStats (see FINAL_STATS_PRIMARY_ORDER's own
-  // comment), shown directly on the Character Stats box's own face. Every
-  // other computed stat (elemental DMG%/RES%, Healing Bonus%, Shield
-  // Strength%, ...) only shows up when it's actually nonzero for this
-  // build, so it moves to the hover-only full list instead of competing
-  // for space on the box face for what's usually nothing.
-  const primaryStats = FINAL_STATS_PRIMARY_ORDER.map((statName) => finalStats.find((s) => s.statName === statName)).filter(
+  // always present in allStats (see FINAL_STATS_PRIMARY_ORDER's own
+  // comment), shown directly on the Stats box's own face.
+  const primaryStats = FINAL_STATS_PRIMARY_ORDER.map((statName) => allStats.find((s) => s.statName === statName)).filter(
     (s): s is { statName: string; value: number } => s !== undefined
   );
+
+  // Plus an 8th, conditional stat: the character's own ascension stat
+  // (e.g. Alhaitham's Dendro DMG%), when it isn't already one of the 7
+  // above (e.g. Bennett's is Energy Recharge%, already included -- no 8th
+  // row for him). Always shown once it qualifies, even at 0 (see
+  // computeFinalStats's own comment on why this is always in the result
+  // at all once it doesn't collide with a primary name).
+  const ascensionStat =
+    character.ascensionStatName && !FINAL_STATS_PRIMARY_ORDER.includes(character.ascensionStatName)
+      ? allStats.find((s) => s.statName === character.ascensionStatName)
+      : undefined;
+  if (ascensionStat) primaryStats.push(ascensionStat);
 
   // The 3 combat talents, each paired with its own level, in the same
   // fixed order the progression editor shows them in.
@@ -176,7 +195,16 @@ export function BuildStatsSummary({
   })();
 
   return (
-    <div className="mt-4 flex h-full gap-3">
+    // No mt-4 here -- the gap between this and the weapon/artifact row
+    // above is provided by the caller's own flex `gap-4` instead now
+    // (see BuildCatalog/BuildEditor), not a margin on this root element.
+    // A margin here would have been real overflow, not just a stray
+    // visual quirk: h-full makes this element exactly as tall as its
+    // flex-1 parent already is, and ANY margin-top on top of that pushes
+    // its bottom edge that same distance past the parent's own bottom --
+    // past the splash art's own bottom edge this is meant to line up
+    // with, not just "slightly off" by a rounding error.
+    <div className="flex h-full gap-3">
       {/* Column 1: Character Stats -- a narrow vertical list of just the 7
           "necessary" stats (FINAL_STATS_PRIMARY_ORDER), not the full grid
           this used to always show. Hovering the whole box reveals every
@@ -189,25 +217,48 @@ export function BuildStatsSummary({
           since it should stay exactly as tall as its own 3 boxes. */}
       <MouseFollowTooltip
         wrapperClassName="relative block h-full w-64 shrink-0"
+        // Widened from the default w-80 -- allStats lists every stat
+        // (26 rows) one per line now (not a 2-column grid), which needs
+        // more room than a typical tooltip to read comfortably.
+        widthClassName="w-96"
         content={
-          finalStats.length === 0 ? (
-            <p className="text-gray-300">No stats yet.</p>
-          ) : (
-            <>
-              <p className="text-base font-semibold text-yellow-100">Full Stats</p>
-              <ul className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 whitespace-nowrap text-gray-300">
-                {finalStats.map(({ statName, value }) => (
+          <>
+            <p className="text-lg font-semibold text-yellow-100">Full Stats</p>
+            {/* Every stat (26 of them), 0s included -- not just the
+                nonzero subset the Stats box itself shows -- one per
+                line, same text-base size as that box's own list, not
+                the tooltip's usual smaller default text. ATK/HP/DEF
+                specifically split into their own base (character growth
+                curve, + weapon base ATK for ATK) in the normal body
+                color, and a highlighted "+ X" for everything else
+                (%/flat bonuses from any source) added on top -- see
+                computeFinalStats's own comment on why only these 3 get
+                this treatment. */}
+            <ul className="mt-2 flex flex-col gap-0.5 whitespace-nowrap text-base text-gray-300">
+              {allStats.map(({ statName, value }) => {
+                const base = statName in baseStatsByName ? baseStatsByName[statName] : undefined;
+                return (
                   <li key={statName}>
-                    {statName}: {formatStatValue(statName, value)}
+                    {statName}:{" "}
+                    {base !== undefined ? (
+                      <>
+                        {formatStatValue(statName, base)}{" "}
+                        <span className="font-semibold text-yellow-100">
+                          + {formatStatValue(statName, value - base)}
+                        </span>
+                      </>
+                    ) : (
+                      formatStatValue(statName, value)
+                    )}
                   </li>
-                ))}
-              </ul>
-            </>
-          )
+                );
+              })}
+            </ul>
+          </>
         }
       >
         <div className="flex h-full flex-col rounded border bg-black p-4 text-base">
-          <p className="text-lg font-semibold text-foreground">Character Stats</p>
+          <p className="text-lg font-semibold text-foreground">Stats</p>
           {primaryStats.length === 0 ? (
             <p className="mt-2 text-gray-400">No stats yet.</p>
           ) : (
@@ -216,7 +267,7 @@ export function BuildStatsSummary({
             // ends up giving this box (tracking the splash art's own
             // height), instead of bunching at the top with growing dead
             // space below as that height grows.
-            <ul className="mt-5 flex flex-1 flex-col justify-between whitespace-nowrap">
+            <ul className="mt-4 flex flex-1 flex-col justify-between whitespace-nowrap">
               {primaryStats.map(({ statName, value }) => (
                 <li key={statName}>
                   {statName}: {formatStatValue(statName, value)}
@@ -231,12 +282,14 @@ export function BuildStatsSummary({
           its own full-width "horizontal" box (wide icon row, not square)
           stacked vertically -- replaces the earlier 3-across grid row now
           that Character Stats is its own narrow column alongside this one
-          rather than a full-width row above it. self-start -- opts out of
-          this row's own stretch (which Column 1 uses, see its own
-          comment), so this stays exactly as tall as its own 3 boxes
-          instead of stretching down to match them with empty space
-          inside each box. */}
-      <div className="flex flex-1 flex-col gap-3 self-start">
+          rather than a full-width row above it. No self-start here
+          anymore -- this column now stretches to match Column 1's own
+          h-full height (the row's default stretch). Talents/
+          Constellations keep their own natural (short) height; Artifact
+          Set Effects is the one that grows (flex-1 below) to absorb
+          whatever's left, so ITS OWN bottom edge -- not just this
+          column's outer box -- ends up level with Character Stats'. */}
+      <div className="flex flex-1 flex-col gap-3">
         <div className="rounded border bg-black p-4 text-base">
           <p className="text-lg font-semibold text-foreground">Talents</p>
           {/* Same icon row the progression editor's own
@@ -273,7 +326,7 @@ export function BuildStatsSummary({
         </div>
 
         {activeSetEffects.length === 0 ? (
-          <div className="rounded border bg-black p-4 text-base">
+          <div className="flex-1 rounded border bg-black p-4 text-base">
             <p className="text-lg font-semibold text-foreground">Artifact Set Effects</p>
             <p className="mt-2 text-gray-400">No 2-piece or 4-piece set bonus active yet.</p>
           </div>
@@ -281,8 +334,13 @@ export function BuildStatsSummary({
           // One tooltip for the WHOLE box -- hovering anywhere over it
           // shows every active set's full 2pc/4pc text at once, rather
           // than needing to hover each name individually to see its own.
+          // flex-1 on the wrapper (not just the box inside it) -- this IS
+          // the flex item in column 2's own flex-col, so it's the one
+          // that needs to grow; h-full on the box inside then fills
+          // whatever that resolves to, same pattern as Column 1's own
+          // tooltip-wrapped box.
           <MouseFollowTooltip
-            wrapperClassName="relative block"
+            wrapperClassName="relative block flex-1"
             content={
               <div className="space-y-3">
                 {activeSetEffects.map((effect, index) => (
@@ -304,7 +362,7 @@ export function BuildStatsSummary({
               </div>
             }
           >
-            <div className="rounded border bg-black p-4 text-base">
+            <div className="flex h-full flex-col rounded border bg-black p-4 text-base">
               <p className="text-lg font-semibold text-foreground">Artifact Set Effects</p>
               {/* One set per row -- just the set name + its own
                   highest piece threshold, no individual hover
