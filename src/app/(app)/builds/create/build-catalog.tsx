@@ -40,10 +40,19 @@ function TalentIcon({ talent, level }: { talent: TalentOption; level?: number })
         </>
       }
     >
-      <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-gray-600 bg-black/30">
-        {talent.iconUrl && <Image src={talent.iconUrl} alt={talent.name} width={30} height={30} />}
+      <div className="relative h-9 w-9">
+        {/* overflow-hidden lives on this INNER wrapper (clipping the icon
+            art into a circle) rather than the outer relative div -- the
+            level badge below is a sibling of this, not a child, so it
+            isn't clipped by it, and can hang at the circle's own bottom
+            point. */}
+        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-gray-600 bg-black/30">
+          {talent.iconUrl && <Image src={talent.iconUrl} alt={talent.name} width={30} height={30} />}
+        </div>
         {level !== undefined && (
-          <span className="absolute -bottom-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-gray-600 bg-black px-1 text-[9px] font-semibold leading-none text-white">
+          // Plain text, no badge background/border -- just the number,
+          // centered at the circle's own bottom point.
+          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold leading-none text-white">
             {level}
           </span>
         )}
@@ -477,11 +486,11 @@ export function BuildCatalog({
                       dragged continuously, which doesn't apply to this page's
                       discrete character/weapon/artifact picks. */}
                   <div className="mt-4 rounded border bg-black p-3 text-sm">
-                    <p className="font-medium text-foreground">Stats</p>
+                    <p className="font-medium text-foreground">Character Stats</p>
                     {finalStats.length === 0 ? (
                       <p className="mt-1 text-gray-400">No stats yet.</p>
                     ) : (
-                      <ul className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 whitespace-nowrap sm:grid-cols-3 md:grid-cols-4">
+                      <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 whitespace-nowrap sm:grid-cols-3 md:grid-cols-4">
                         {finalStats.map(({ statName, value }) => (
                           <li key={statName}>
                             {statName}: {formatStatValue(statName, value)}
@@ -491,25 +500,27 @@ export function BuildCatalog({
                     )}
                   </div>
 
-                  {/* Two more boxes, same dark treatment as Stats above --
-                      the character's own level/talents/constellations on
-                      the left, the build's currently-active artifact set
-                      effects (if any) on the right. grid-cols-1 below sm
-                      stacks them instead of squeezing both to half width on
-                      a narrow screen. */}
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Three more boxes, same dark treatment as Stats above --
+                      the character's own talents, their own constellations,
+                      and the build's currently-active artifact set effects
+                      (if any). grid-cols-1 below sm stacks them instead of
+                      squeezing all three onto one cramped row. No "Lv. X/Y"
+                      line repeated in any of these -- that's shown directly
+                      on the splash art itself (CharacterSlotPicker's own
+                      top-left level badge). items-start -- a grid row
+                      otherwise stretches every item to the row's tallest
+                      (Active Set Effects, once its own text wraps to
+                      several lines), leaving Talents/Constellations
+                      stretched well past their own one-icon-row content. */}
+                  <div className="mt-3 grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
                     <div className="rounded border bg-black p-3 text-sm">
-                      {/* No "Character" header and no Lv. X/Y line here --
-                          both now shown directly on the splash art itself
-                          (CharacterSlotPicker's own name overlay and
-                          top-left level badge), so repeating either here
-                          would just be stale duplication. */}
+                      <p className="font-medium text-foreground">Talents</p>
                       {/* Same icon row the progression editor's own
                           TalentsSection uses -- combat talents (with their
                           own level, as a corner badge) first, then Passives
                           (no level), both in one row since this summary
                           doesn't need the editor's own sliders/spacing. */}
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
                         {combatTalents.map(({ talent, level }) => (
                           <TalentIcon key={talent.slot} talent={talent} level={level} />
                         ))}
@@ -517,11 +528,15 @@ export function BuildCatalog({
                           <TalentIcon key={talent.slot} talent={talent} />
                         ))}
                       </div>
+                    </div>
+
+                    <div className="rounded border bg-black p-3 text-sm">
+                      <p className="font-medium text-foreground">Constellations</p>
                       {/* Same lit/unlit icon row as the editor's own
                           ConstellationIcons -- always all 6, not just the
                           unlocked ones, so the row also shows at a glance
                           how many are left. */}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
                         {character.constellations.map((c) => (
                           <ConstellationIcon
                             key={c.number}

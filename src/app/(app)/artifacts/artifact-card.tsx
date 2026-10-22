@@ -5,26 +5,16 @@ import Image from "next/image";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
-import { formatStatValue } from "@/lib/stat-format";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 
 // Shared visual card for the owned-artifacts list, the add-artifact
 // catalog, and the build creation/editing artifact picker -- same
-// rarity-gradient-square/badge/overlay treatment WeaponCard uses. Two
-// different ways to show more than the icon alone, used by different call
-// sites depending on whether they deal with one piece/set at a time or a
-// whole grid to compare:
-// - mainStatName/substats: a plain stat block always visible below the
-//   icon, picker-only (see ArtifactSlotPicker's own comment) -- picking a
-//   build artifact means telling several same-set pieces apart at a
-//   glance, which a hover tooltip can't do for more than one card at once.
-// - tooltipContent: the owned list's (that piece's own main stat/
-//   substats) and the add-catalog's (the set's 2pc/4pc effect text) own
-//   hover detail, shown via the same MouseFollowTooltip WeaponCard uses --
-//   fine there since those two only ever deal with one piece/set at a
-//   time, not a side-by-side comparison.
-// Never both at once in practice, though nothing enforces that at the
-// type level.
+// rarity-gradient-square/badge/overlay treatment WeaponCard uses, down to
+// mainStatName's own position (bottom gradient overlay, under the name)
+// matching WeaponCard's secondaryStatName exactly. Substat detail (and,
+// for the add-catalog, 2pc/4pc effect text) is hover-only, via
+// tooltipContent -- same MouseFollowTooltip WeaponCard uses for its own
+// hoverDetail.
 export function ArtifactCard({
   setName,
   slot,
@@ -32,7 +22,6 @@ export function ArtifactCard({
   iconUrl,
   level,
   mainStatName,
-  substats,
   actionLabel,
   onAction,
   danger = false,
@@ -52,8 +41,11 @@ export function ArtifactCard({
   iconUrl: string | null;
   // Owned-artifacts list and picker only.
   level?: number;
+  // Owned-artifacts list and picker only -- same bottom-overlay text line
+  // WeaponCard's own secondaryStatName renders, just the stat's name, no
+  // value (the value needs level+rarity to compute, which varies by call
+  // site -- tooltipContent is where callers that already have it show it).
   mainStatName?: string;
-  substats?: { statTypeName: string; value: number }[];
   actionLabel?: string;
   onAction?: () => void;
   danger?: boolean;
@@ -71,13 +63,6 @@ export function ArtifactCard({
   // bulk-delete's own red/gray distinction always wins there.
   borderClassName?: string;
 }) {
-  // The picker's own stat block needs the icon area to stay shorter
-  // (aspect-[4/3]) so two cards' worth of stat text underneath don't push
-  // the grid too tall; everyone else (owned list, catalog) has no stat
-  // block below at all, so the icon area gets the full WeaponCard-style
-  // aspect-square treatment instead.
-  const hasStatBlock = mainStatName !== undefined;
-
   // Same loaded-flag/spinner-overlay technique as SplashImage (not reused
   // directly -- that component hardcodes sizes="100vw" and a plain
   // object-fit className, neither of which fits this card's own tailored
@@ -103,9 +88,7 @@ export function ArtifactCard({
           : undefined
       }
       aria-pressed={selected !== undefined ? selected : undefined}
-      className={`relative w-full overflow-hidden rounded-xl shadow ${
-        hasStatBlock ? "aspect-[4/3]" : "aspect-square"
-      } ${
+      className={`relative aspect-square w-full overflow-hidden rounded-xl shadow ${
         // Same :not(:has(button:hover)) trick as WeaponCard -- the action
         // button lives inside this same div, so a plain hover:opacity-90
         // would also dim the whole card while hovering the button.
@@ -149,7 +132,12 @@ export function ArtifactCard({
       )}
 
       <div className="absolute inset-x-0 bottom-0 space-y-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
-        {showSetName && <p className="truncate text-center text-sm font-semibold text-white">{setName}</p>}
+        {(showSetName || mainStatName) && (
+          <div>
+            {showSetName && <p className="truncate text-center text-sm font-semibold text-white">{setName}</p>}
+            {mainStatName && <p className="truncate text-center text-xs text-gray-300">{mainStatName}</p>}
+          </div>
+        )}
         {actionLabel && onAction && (
           <div className="flex items-center justify-center">
             <button
@@ -171,29 +159,18 @@ export function ArtifactCard({
   );
 
   return (
-    <li className="@container relative">
+    <li className="relative">
       {tooltipContent ? (
-        <MouseFollowTooltip wrapperClassName="relative block w-full" content={tooltipContent}>
+        // widthClassName widened from the default w-80 -- the substat grid
+        // (2 columns of "Name +Value" text, e.g. "Energy Recharge% +5.8")
+        // was wrapping names onto a second line at that width. Same
+        // w-[28rem] WeaponCard's own tooltip already uses, for the same
+        // "enough room for a full stat line" reasoning.
+        <MouseFollowTooltip wrapperClassName="relative block w-full" widthClassName="w-[28rem]" content={tooltipContent}>
           {cardBody}
         </MouseFollowTooltip>
       ) : (
         cardBody
-      )}
-
-      {hasStatBlock && (
-        <div className="bg-background px-2 py-1.5">
-          <p className="-mx-2 mb-2.5 truncate bg-foreground/10 px-2 pb-1 pt-1.5 text-xs text-foreground">
-            <span className="text-gray-400">MAIN STAT:</span> <span className="font-semibold">{mainStatName}</span>
-          </p>
-          <p className="mb-1.5 text-[10px] uppercase tracking-wide text-gray-400">Substats</p>
-          <div className="grid min-h-[4.5rem] grid-cols-1 gap-x-2 gap-y-1 @[18rem]:min-h-[2.5rem] @[18rem]:grid-cols-2">
-            {(substats ?? []).map((substat) => (
-              <p key={substat.statTypeName} className="truncate text-[11px] leading-tight text-foreground/75">
-                {substat.statTypeName} +{formatStatValue(substat.statTypeName, substat.value)}
-              </p>
-            ))}
-          </div>
-        </div>
       )}
     </li>
   );

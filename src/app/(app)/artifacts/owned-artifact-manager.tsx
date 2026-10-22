@@ -387,6 +387,7 @@ export function OwnedArtifactManager({
             slot={artifact.slot}
             rarity={artifact.rarity}
             level={artifact.level}
+            mainStatName={artifact.mainStatName}
             iconUrl={artifact.iconUrl}
             onSelect={() =>
               selectMode ? setSelectedIds((prev) => toggleInSet(prev, artifact.id)) : setEditingId(artifact.id)

@@ -246,20 +246,18 @@ export function ArtifactSlotPicker({
   return (
     <>
       {selected ? (
-        // Plain aspect-square icon (mainStatName/substats deliberately
-        // omitted -- passing either switches ArtifactCard into its
-        // always-visible stat-block mode, which doesn't fit a slot this
-        // compact) with a level badge and the same hover tooltip the
-        // modal grid's own cards use (buildTooltipContent: set name,
-        // level, main stat, every substat) -- same "badges + hover, not
-        // an inline block" treatment WeaponSlotPicker's own selected
-        // display uses.
+        // Plain aspect-square icon with a level badge, the main-stat-name
+        // text line (same bottom-overlay position WeaponCard's own
+        // secondaryStatName uses), and the same hover tooltip the modal
+        // grid's own cards use for substat detail (buildTooltipContent:
+        // set name, level, main stat, every substat).
         <ul className={`${boxSizeClassName} shrink-0`}>
           <ArtifactCard
             setName={selected.setName}
             slot={slot}
             rarity={selected.rarity}
             level={selected.level}
+            mainStatName={selected.mainStatName}
             iconUrl={selected.iconUrl}
             tooltipContent={buildTooltipContent(selected)}
             onSelect={() => setOpen(true)}
@@ -296,10 +294,14 @@ export function ArtifactSlotPicker({
               onChange={(event) => setSortKey(event.target.value as SortKey)}
               className="h-[38px] rounded border bg-white px-2 text-sm text-black"
             >
+              {/* Same order as the owned-artifacts page's own dropdown --
+                  "Added" first, matching its own default sortKey, so the
+                  selected option sits at the top of the opened list
+                  instead of the bottom. */}
+              <option value="obtained">Sort: Added</option>
               <option value="name">Sort: Name</option>
               <option value="rarity">Sort: Rarity</option>
               <option value="level">Sort: Level</option>
-              <option value="obtained">Sort: Added</option>
               {SORTABLE_STAT_NAMES.map((name) => (
                 <option key={name} value={name}>
                   Sort: {name}
@@ -359,6 +361,7 @@ export function ArtifactSlotPicker({
                 slot={slot}
                 rarity={artifact.rarity}
                 level={artifact.level}
+                mainStatName={artifact.mainStatName}
                 iconUrl={artifact.iconUrl}
                 tooltipContent={buildTooltipContent(artifact)}
                 onSelect={() => select(artifact.ownedArtifactId)}

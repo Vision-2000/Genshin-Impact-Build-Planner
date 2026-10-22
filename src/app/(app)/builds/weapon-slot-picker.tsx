@@ -164,15 +164,12 @@ export function WeaponSlotPicker({
             // after a character narrowed the candidates to one type.
             weaponType={selected.weaponType}
             rarity={selected.rarity}
-            // Shown even with the name itself hidden (showName below) --
-            // WeaponCard renders this independently of showName.
             secondaryStatName={selected.secondaryStatName}
             iconUrl={selected.iconUrl}
             level={selected.level}
             refinement={selected.refinement}
             hoverDetail={selected.hoverDetail}
             onSelect={() => setOpen(true)}
-            showName={false}
             showWeaponTypeBadge={false}
             borderClassName={cardBorderClassName}
           />
@@ -201,7 +198,6 @@ export function WeaponSlotPicker({
             secondaryStatName={null}
             iconUrl={DEFAULT_WEAPON[weaponType].iconUrl}
             onSelect={() => setOpen(true)}
-            showName={false}
             showWeaponTypeBadge={false}
             borderClassName={cardBorderClassName}
           />
@@ -224,11 +220,15 @@ export function WeaponSlotPicker({
               onChange={(event) => setSortKey(event.target.value as SortKey)}
               className="h-[38px] rounded border bg-white px-2 text-sm text-black"
             >
+              {/* Same order as the owned-weapons page's own dropdown --
+                  "Added" first, matching its own default sortKey, so the
+                  selected option sits at the top of the opened list
+                  instead of the bottom. */}
+              <option value="obtained">Sort: Added</option>
               <option value="name">Sort: Name</option>
               <option value="rarity">Sort: Rarity</option>
               <option value="refinement">Sort: Refinement</option>
               <option value="level">Sort: Level</option>
-              <option value="obtained">Sort: Added</option>
             </select>
             <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
             <select
@@ -289,7 +289,6 @@ export function WeaponSlotPicker({
                 secondaryStatName={null}
                 iconUrl={DEFAULT_WEAPON[weaponType].iconUrl}
                 onSelect={() => select(null)}
-                showName={false}
                 showWeaponTypeBadge={false}
                 borderClassName=""
               />
@@ -309,7 +308,6 @@ export function WeaponSlotPicker({
                 level={weapon.level}
                 hoverDetail={weapon.hoverDetail}
                 onSelect={() => select(weapon.ownedWeaponId)}
-                showName={false}
                 showWeaponTypeBadge={false}
                 borderClassName=""
               />

@@ -111,10 +111,11 @@ export function WeaponCard({
   onAction?: () => void;
   danger?: boolean;
   onSelect?: () => void;
-  // The choose-weapon picker's grid is dense enough (up to 5 columns) that
-  // the name mostly just truncates -- it's still available on hover via the
-  // title attribute below. The other two call sites (owned weapons,
-  // add-weapon catalog) keep the visible name.
+  // No current call site passes false -- every one (owned weapons,
+  // add-weapon catalog, the build weapon picker's own selected display and
+  // modal grid) keeps the visible name, truncating at this card's own
+  // dense grid sizes same as everywhere else. Kept as an override point
+  // rather than removed outright, same as showWeaponTypeBadge below.
   showName?: boolean;
   // Every candidate in the picker already matches the character's own
   // weapon type (see WeaponSlotPicker), so the badge would never say
@@ -199,9 +200,21 @@ export function WeaponCard({
         </span>
       )}
 
-      {(level !== undefined || refinement !== undefined) && (
+      {/* Level moves to top-left (alone) when there's no weapon-type badge
+          sharing that corner (every build-picker call site --
+          showWeaponTypeBadge is always false there), refinement to
+          top-right (alone) -- otherwise both stay grouped at top-right,
+          same as before, since top-left is already taken by the
+          weapon-type badge on the owned-weapons page and add-catalog. */}
+      {!showWeaponTypeBadge && level !== undefined && (
+        <span className="absolute left-2 top-2 flex h-8 items-center justify-center rounded-md bg-black/70 px-2 shadow">
+          <span className="mt-0.5 text-sm font-semibold leading-none text-white">Lv.{level}</span>
+        </span>
+      )}
+
+      {(refinement !== undefined || (showWeaponTypeBadge && level !== undefined)) && (
         <div className="absolute right-2 top-2 flex items-center gap-1.5">
-          {level !== undefined && (
+          {showWeaponTypeBadge && level !== undefined && (
             <span className="flex h-8 items-center justify-center rounded-md bg-black/70 px-2 shadow">
               <span className="mt-0.5 text-sm font-semibold leading-none text-white">Lv.{level}</span>
             </span>
