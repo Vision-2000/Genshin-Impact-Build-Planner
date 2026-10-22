@@ -21,7 +21,10 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { href: "/weapons", label: "Weapons", children: [{ href: "/weapons/add", label: "Add" }] },
   { href: "/artifacts", label: "Artifacts", children: [{ href: "/artifacts/add", label: "Add" }] },
-  { href: "/builds", label: "Builds", children: [{ href: "/builds/create", label: "Create" }] },
+  // No "Create" child route -- creating a build now opens a modal directly
+  // on this page (see OwnedBuildManager's own "Create build" button)
+  // instead of navigating to a dedicated /builds/create page.
+  { href: "/builds", label: "Builds" },
   { href: "/teams", label: "Teams" },
   { href: "/rosters", label: "Rosters" },
   { href: "/lineups", label: "Lineups" },

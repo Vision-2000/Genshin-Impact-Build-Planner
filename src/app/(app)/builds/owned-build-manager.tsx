@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
@@ -16,12 +16,17 @@ import { PaginationControls } from "../pagination-controls";
 import { ElementFilterRow } from "../characters/element-filter-row";
 import { updateBuildName, updateBuildWeapon, setBuildArtifact, deleteBuild, getBuildContainerNames } from "./actions";
 import { ArtifactSlotPicker } from "./artifact-slot-picker";
+import { CharacterSlotPicker } from "./character-slot-picker";
 import { WeaponSlotPicker } from "./weapon-slot-picker";
+import { BuildStatsSummary } from "./build-stats-summary";
+import { BuildCatalog, readDraft, DRAFT_KEY } from "./build-catalog";
 import {
   filterAndSortBuilds,
+  activeSetEffectsFromArtifacts,
   type BuildItem,
   type BuildSortKey,
   type OwnedArtifactOption,
+  type OwnedCharacterOption,
   type OwnedWeaponOption,
 } from "./filter-sort";
 
@@ -31,6 +36,12 @@ const PAGE_SIZE = 60;
 // -- same RARITIES the owned characters page itself filters by, since a
 // build's own rarity filter is really its character's.
 const RARITIES = [5, 4];
+// Compact size for the edit modal's own weapon/artifact slots -- same
+// fixed-size reasoning (and same value) as BuildCatalog's own
+// SLOT_SIZE_CLASS: both forms sit inside a width-capped Modal, so a fixed
+// size that's guaranteed to fit alongside 5 artifact slots at the modal's
+// own max width is more robust than anything viewport-relative.
+const EDITOR_SLOT_SIZE_CLASS = "h-[7.5rem] w-[7.5rem]";
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -39,61 +50,47 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   return next;
 }
 
-function PencilIcon() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10.5 2.5l3 3L6 13l-3.5 1L4 10.5z" />
-    </svg>
-  );
-}
+// Same per-slot shape as BuildCatalog's own SlotSelections -- a staged pick
+// per artifact slot, not yet committed to the server.
+type SlotSelections = Partial<Record<ArtifactSlot, number>>;
 
-function TrashIcon() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2.5 4h11M6 4V2.5h4V4M4 4l.6 9.5h6.8L12 4" />
-    </svg>
-  );
-}
+// What BuildEditor's own Save button hands back -- every field staged
+// locally while the modal is open, committed together only on that click
+// (see BuildEditor's own top comment on why this replaced per-field
+// autosave).
+type BuildEditDraft = {
+  name: string;
+  ownedWeaponId: number | null;
+  slots: SlotSelections;
+};
 
 // Display-only grid card, same treatment as the other pages: character
-// portrait as the hero image, element badge, rarity-tinted border. Below it,
-// a compact readout of the weapon and all 5 artifact slots so the whole
-// loadout is visible without opening anything. Edit/delete are hover/focus
-// revealed buttons, not a click on the card itself, since editing is rare
-// next to just glancing at a build.
+// portrait as the hero image, rarity-tinted border. Below it, the weapon
+// icon and a flower icon per active artifact set effect. Clicking the card
+// opens the edit modal (same click-to-open pattern as WeaponCard/
+// ArtifactCard); deleting a build happens from inside that modal
+// (BuildEditor's own "Delete build" button), not on the card itself.
 function BuildCard({
   build,
   isActive,
   onEdit,
-  onDelete,
 }: {
   build: BuildItem;
   isActive: boolean;
   onEdit: () => void;
-  onDelete: () => void;
 }) {
   return (
-    <li className="group relative">
+    <li className="relative">
       <div
-        className={`w-full overflow-hidden rounded-xl border-8 shadow ${
+        onClick={onEdit}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onEdit();
+        }}
+        className={`w-full cursor-pointer overflow-hidden rounded-xl border-8 shadow hover:opacity-90 ${
           isActive ? "border-blue-500" : "border-gray-600"
         } ${rarityGradientClasses(build.characterRarity)}`}
       >
@@ -146,127 +143,148 @@ function BuildCard({
           </div>
         </div>
       </div>
-
-      <div
-        className={`absolute right-1.5 top-1.5 z-20 flex gap-1 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 ${
-          isActive ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={`Edit ${build.name}`}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow hover:bg-black"
-        >
-          <PencilIcon />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={`Delete ${build.name}`}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow hover:bg-red-600"
-        >
-          <TrashIcon />
-        </button>
-      </div>
     </li>
   );
 }
 
+// Same form BuildCatalog itself uses to CREATE a build (name field,
+// CharacterSlotPicker/WeaponSlotPicker/ArtifactSlotPicker, then the shared
+// BuildStatsSummary) -- editing reuses it wholesale rather than keeping a
+// separate, simpler edit layout, so a build looks and behaves the same way
+// whether you're creating or editing one. The one deliberate difference:
+// CharacterSlotPicker is `locked` here -- a build's character is fixed at
+// creation (see Build's own schema comment), so this is the one field that
+// stays read-only. Every other field is staged locally (name/weapon/
+// artifacts) and committed together only when Save is pressed -- same
+// deferred-until-submit contract as BuildCatalog's own create form, not
+// the per-field autosave this replaced. Closing the modal any other way
+// (Escape, a backdrop click) discards the local state untouched, so no
+// change ever reaches the server unless Save was actually clicked.
 function BuildEditor({
   build,
-  weaponType,
+  character,
   weapons,
   artifacts,
-  onUpdateName,
-  onUpdateWeapon,
-  onUpdateArtifact,
+  onSave,
   onDelete,
 }: {
   build: BuildItem;
-  weaponType: WeaponType;
+  character: OwnedCharacterOption;
   weapons: OwnedWeaponOption[];
   artifacts: OwnedArtifactOption[];
-  onUpdateName: (name: string) => void;
-  onUpdateWeapon: (ownedWeaponId: number | null) => void;
-  onUpdateArtifact: (slot: ArtifactSlot, ownedArtifactId: number | null) => void;
+  onSave: (draft: BuildEditDraft) => void;
   onDelete: () => void;
 }) {
   const [name, setName] = useState(build.name);
+  const [weaponId, setWeaponId] = useState(build.ownedWeaponId);
+  const [slots, setSlots] = useState<SlotSelections>(() => {
+    const initial: SlotSelections = {};
+    for (const a of build.artifacts) {
+      if (a.ownedArtifactId !== null) initial[a.slot] = a.ownedArtifactId;
+    }
+    return initial;
+  });
+
+  const weapon = weaponId !== null ? weapons.find((w) => w.ownedWeaponId === weaponId) : undefined;
+  const selectedArtifacts = SLOTS.map((slot) => {
+    const ownedArtifactId = slots[slot];
+    return ownedArtifactId !== undefined ? artifacts.find((a) => a.ownedArtifactId === ownedArtifactId) : undefined;
+  }).filter((a): a is OwnedArtifactOption => a !== undefined);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg p-1.5 ${rarityGradientClasses(build.characterRarity)}`}
-        >
-          {build.characterIconUrl && <Image src={build.characterIconUrl} alt="" width={56} height={56} />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-medium">{build.characterName}</p>
-        </div>
-      </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        Name:
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          onBlur={() => {
-            const trimmed = name.trim();
-            if (trimmed && trimmed !== build.name) onUpdateName(trimmed);
-            else setName(build.name);
-          }}
-          className="h-8 min-w-0 flex-1 rounded border bg-white px-2 text-sm text-black"
-        />
-      </label>
-
-      <div className="space-y-2">
-        <p className="text-sm font-medium">Weapon</p>
-        <div className="flex flex-wrap gap-2">
-          <WeaponSlotPicker
-            weaponType={weaponType}
-            weapons={weapons}
-            value={build.ownedWeaponId}
-            onChange={onUpdateWeapon}
+      {/* Same top row shape as BuildCatalog's own (name + form-level
+          actions) -- Delete alongside Save here, since this form has both:
+          deleting is still immediate (a separately confirmed, already-
+          destructive action, not part of the staged draft), Save is what
+          commits the staged name/weapon/artifacts. */}
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
+        <label className="block text-base">
+          Name:
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="ml-1 h-8 rounded border bg-white px-2 text-base text-black"
           />
-        </div>
-        <p className="text-sm font-medium">Artifacts</p>
-        <div className="flex flex-wrap gap-2">
-          {SLOTS.map((slot) => {
-            const current = build.artifacts.find((a) => a.slot === slot);
-            return (
-              <ArtifactSlotPicker
-                key={slot}
-                slot={slot}
-                artifacts={artifacts}
-                value={current?.ownedArtifactId ?? null}
-                onChange={(ownedArtifactId) => onUpdateArtifact(slot, ownedArtifactId)}
-              />
-            );
-          })}
+        </label>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded border border-red-600 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white"
+          >
+            Delete build
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave({ name: name.trim() || build.name, ownedWeaponId: weaponId, slots })}
+            className="rounded border border-white bg-black px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-800"
+          >
+            Save build
+          </button>
         </div>
       </div>
 
-      <div className="border-t pt-3">
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded border border-red-600 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-600 hover:text-white"
-        >
-          Delete build
-        </button>
+      <div className="flex w-full flex-col sm:flex-row">
+        <CharacterSlotPicker characters={[character]} value={character.ownedCharacterId} onChange={() => {}} locked />
+
+        <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
+          <div className="flex flex-wrap gap-8">
+            <div>
+              <p className="mb-1 text-base font-medium">Weapon</p>
+              <WeaponSlotPicker
+                weaponType={character.weaponType}
+                weapons={weapons}
+                value={weaponId}
+                onChange={setWeaponId}
+                boxSizeClassName={EDITOR_SLOT_SIZE_CLASS}
+                cardBorderClassName=""
+              />
+            </div>
+
+            <div>
+              <p className="mb-1 text-base font-medium">Artifacts</p>
+              <div className="flex gap-2">
+                {SLOTS.map((slot) => (
+                  <ArtifactSlotPicker
+                    key={slot}
+                    slot={slot}
+                    artifacts={artifacts}
+                    value={slots[slot] ?? null}
+                    onChange={(ownedArtifactId) =>
+                      setSlots((prev) => ({ ...prev, [slot]: ownedArtifactId ?? undefined }))
+                    }
+                    boxSizeClassName={EDITOR_SLOT_SIZE_CLASS}
+                    cardBorderClassName=""
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* min-h-0 -- without it, a flex child's default min-height:
+              auto would floor this at its own content height, ignoring
+              flex-1 whenever that content is shorter than the splash art
+              next to it (the whole point here -- see BuildStatsSummary's
+              own h-full). */}
+          <div className="min-h-0 flex-1">
+            <BuildStatsSummary character={character} weapon={weapon ?? null} artifacts={selectedArtifacts} />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
 export function OwnedBuildManager({
+  characters,
   weapons,
   artifacts,
   initialBuilds,
 }: {
+  characters: OwnedCharacterOption[];
   weapons: OwnedWeaponOption[];
   artifacts: OwnedArtifactOption[];
   initialBuilds: BuildItem[];
@@ -301,6 +319,21 @@ export function OwnedBuildManager({
   const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  // Reopens the "create build" modal on mount if a draft was left behind
+  // by BuildCatalog's own sessionStorage persistence -- e.g. the user
+  // followed a picker's own "add it" link to a different page (unmounting
+  // this component entirely) and came back via the browser Back button.
+  // Starts false (SSR-safe) and flips true in an effect for the same
+  // reason BuildCatalog's own draft-restore effect does: sessionStorage
+  // only exists on the client.
+  useEffect(() => {
+    if (readDraft()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCreating(true);
+    }
+  }, []);
 
   const filtered = filterAndSortBuilds(builds, {
     search,
@@ -312,63 +345,70 @@ export function OwnedBuildManager({
   });
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
   const editingBuild = editingId === null ? null : (builds.find((b) => b.id === editingId) ?? null);
+  const editingCharacter = editingBuild
+    ? (characters.find((c) => c.ownedCharacterId === editingBuild.ownedCharacterId) ?? null)
+    : null;
   const activeId = editingId ?? pendingDeleteId;
 
-  function handleUpdateName(buildId: number, name: string) {
+  // Commits BuildEditor's own staged draft all at once, only once Save is
+  // actually clicked -- compares each field against the build's own
+  // current (server-persisted) value and only calls the matching action
+  // for whatever genuinely changed, rather than unconditionally re-writing
+  // all three every time. Optimistically applies the full new state (incl.
+  // a client-side activeSetEffects recompute, see
+  // activeSetEffectsFromArtifacts) immediately, then rolls the whole thing
+  // back if any one of the server calls fails.
+  function handleSaveEdit(build: BuildItem, draft: BuildEditDraft) {
     const previous = builds;
-    setBuilds((prev) => prev.map((b) => (b.id === buildId ? { ...b, name } : b)));
-    startTransition(() => {
-      updateBuildName(buildId, name).catch(() => setBuilds(previous));
-    });
-  }
 
-  function handleUpdateWeapon(build: BuildItem, ownedWeaponId: number | null) {
-    const previous = builds;
-    const weapon = ownedWeaponId ? weapons.find((w) => w.ownedWeaponId === ownedWeaponId) : undefined;
+    const weapon =
+      draft.ownedWeaponId !== null ? weapons.find((w) => w.ownedWeaponId === draft.ownedWeaponId) : undefined;
+    const nextArtifacts = SLOTS.map((slot) => {
+      const ownedArtifactId = draft.slots[slot] ?? null;
+      const option = ownedArtifactId !== null ? artifacts.find((a) => a.ownedArtifactId === ownedArtifactId) : undefined;
+      return {
+        slot,
+        ownedArtifactId,
+        setName: option?.setName ?? null,
+        mainStatName: option?.mainStatName ?? null,
+        iconUrl: option?.iconUrl ?? null,
+      };
+    });
+    const nextSelectedArtifacts = nextArtifacts
+      .map((a) => (a.ownedArtifactId !== null ? artifacts.find((o) => o.ownedArtifactId === a.ownedArtifactId) : undefined))
+      .filter((a): a is OwnedArtifactOption => a !== undefined);
+
     setBuilds((prev) =>
       prev.map((b) =>
         b.id === build.id
           ? {
               ...b,
-              ownedWeaponId,
+              name: draft.name,
+              ownedWeaponId: draft.ownedWeaponId,
               weaponName: weapon?.name ?? null,
               weaponIconUrl: weapon?.iconUrl ?? null,
               weaponRefinement: weapon?.refinement ?? null,
               weaponRarity: weapon?.rarity ?? null,
+              artifacts: nextArtifacts,
+              activeSetEffects: activeSetEffectsFromArtifacts(nextSelectedArtifacts),
             }
           : b
       )
     );
-    startTransition(() => {
-      updateBuildWeapon(build.id, ownedWeaponId).catch(() => setBuilds(previous));
-    });
-  }
+    setEditingId(null);
 
-  function handleUpdateArtifact(build: BuildItem, slot: ArtifactSlot, ownedArtifactId: number | null) {
-    const previous = builds;
-    const option = ownedArtifactId ? artifacts.find((a) => a.ownedArtifactId === ownedArtifactId) : undefined;
-    setBuilds((prev) =>
-      prev.map((b) =>
-        b.id === build.id
-          ? {
-              ...b,
-              artifacts: b.artifacts.map((a) =>
-                a.slot === slot
-                  ? {
-                      slot,
-                      ownedArtifactId,
-                      setName: option?.setName ?? null,
-                      mainStatName: option?.mainStatName ?? null,
-                      iconUrl: option?.iconUrl ?? null,
-                    }
-                  : a
-              ),
-            }
-          : b
-      )
-    );
-    startTransition(() => {
-      setBuildArtifact(build.id, slot, ownedArtifactId).catch(() => setBuilds(previous));
+    startTransition(async () => {
+      try {
+        if (draft.name !== build.name) await updateBuildName(build.id, draft.name);
+        if (draft.ownedWeaponId !== build.ownedWeaponId) await updateBuildWeapon(build.id, draft.ownedWeaponId);
+        for (const slot of SLOTS) {
+          const nextId = draft.slots[slot] ?? null;
+          const currentId = build.artifacts.find((a) => a.slot === slot)?.ownedArtifactId ?? null;
+          if (nextId !== currentId) await setBuildArtifact(build.id, slot, nextId);
+        }
+      } catch {
+        setBuilds(previous);
+      }
     });
   }
 
@@ -400,26 +440,49 @@ export function OwnedBuildManager({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          type="text"
-          placeholder="Search by build or character name..."
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search by build or character name..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
+          />
+          <select
+            value={sortKey}
+            onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
+            className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+          >
+            <option value="obtained">Sort: Added</option>
+            <option value="character">Sort: Character</option>
+          </select>
+          <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            // A deliberate click here is a fresh session, not a
+            // continuation of whatever draft the mount effect above might
+            // otherwise restore -- clear it first so BuildCatalog starts
+            // blank. Returning to a leftover draft (e.g. after following a
+            // picker's own "add it" link and coming back) goes through
+            // that mount effect instead, never through this click handler.
+            try {
+              sessionStorage.removeItem(DRAFT_KEY);
+            } catch {
+              // Ignore -- worst case the draft (if any) gets restored anyway.
+            }
+            setCreating(true);
           }}
-          className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
-        />
-        <select
-          value={sortKey}
-          onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
-          className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
         >
-          <option value="obtained">Sort: Added</option>
-          <option value="character">Sort: Character</option>
-        </select>
-        <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+          <span className="text-base leading-none">+</span> Create build
+        </button>
       </div>
 
       {/* Same character-page filters (element/weapon type/rarity), just
@@ -459,7 +522,6 @@ export function OwnedBuildManager({
             build={build}
             isActive={build.id === activeId}
             onEdit={() => setEditingId(build.id)}
-            onDelete={() => handleDelete(build.id)}
           />
         ))}
         {pageItems.length === 0 && (
@@ -469,21 +531,34 @@ export function OwnedBuildManager({
 
       <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
 
-      <Modal open={editingBuild !== null} onClose={() => setEditingId(null)}>
-        {editingBuild && (
+      <Modal
+        open={editingBuild !== null}
+        onClose={() => setEditingId(null)}
+        maxWidthClassName="max-w-7xl"
+        hideCloseButton
+      >
+        {editingBuild && editingCharacter && (
           <BuildEditor
             key={editingBuild.id}
             build={editingBuild}
-            weaponType={editingBuild.characterWeaponType}
+            character={editingCharacter}
             weapons={weapons}
             artifacts={artifacts}
-            onUpdateName={(name) => handleUpdateName(editingBuild.id, name)}
-            onUpdateWeapon={(ownedWeaponId) => handleUpdateWeapon(editingBuild, ownedWeaponId)}
-            onUpdateArtifact={(slot, ownedArtifactId) => handleUpdateArtifact(editingBuild, slot, ownedArtifactId)}
+            onSave={(draft) => handleSaveEdit(editingBuild, draft)}
             onDelete={() => handleDelete(editingBuild.id)}
           />
         )}
       </Modal>
+
+      {creating && (
+        <BuildCatalog
+          characters={characters}
+          weapons={weapons}
+          artifacts={artifacts}
+          onCreated={(build) => setBuilds((prev) => [...prev, build])}
+          onClose={() => setCreating(false)}
+        />
+      )}
     </div>
   );
 }

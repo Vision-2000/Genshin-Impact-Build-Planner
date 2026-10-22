@@ -257,17 +257,19 @@ export function ArtifactSlotPicker({
   return (
     <>
       {selected ? (
-        // Plain aspect-square icon with a level badge, the main-stat-name
-        // text line (same bottom-overlay position WeaponCard's own
-        // secondaryStatName uses), and the same hover tooltip the modal
-        // grid's own cards use for substat detail (buildTooltipContent:
-        // set name, level, main stat, every substat).
+        // Plain aspect-square icon with the main-stat-name text line (same
+        // bottom-overlay position WeaponCard's own secondaryStatName
+        // uses), and the same hover tooltip the modal grid's own cards use
+        // for substat detail (buildTooltipContent: set name, level, main
+        // stat, every substat) -- no level badge on the face itself, this
+        // box renders too small now (see BuildCatalog/BuildEditor's own
+        // SLOT_SIZE_CLASS) for it to add anything the tooltip doesn't
+        // already say.
         <ul className={`${boxSizeClassName} shrink-0`}>
           <ArtifactCard
             setName={selected.setName}
             slot={slot}
             rarity={selected.rarity}
-            level={selected.level}
             mainStatName={selected.mainStatName}
             iconUrl={selected.iconUrl}
             tooltipContent={buildTooltipContent(selected)}

@@ -272,8 +272,19 @@ export function computeFinalStats({ character, weapon, artifacts }: FinalStatsIn
 
 // Fixed display order -- ATK/HP/DEF/EM/Crit/ER first (always present),
 // then every conditional stat that actually made it into the result
-// (see CONDITIONAL_STAT_NAMES), in that same fixed order.
-const FINAL_STATS_PRIMARY_ORDER = ["HP", "ATK", "DEF", "Elemental Mastery", "Crit Rate%", "Crit DMG%", "Energy Recharge%"];
+// (see CONDITIONAL_STAT_NAMES), in that same fixed order. Exported so
+// BuildStatsSummary can show just these 7 "necessary" stats always
+// visible, with the rest (CONDITIONAL_STAT_NAMES) folded into a hover-only
+// full list instead -- see its own comment.
+export const FINAL_STATS_PRIMARY_ORDER = [
+  "HP",
+  "ATK",
+  "DEF",
+  "Elemental Mastery",
+  "Crit Rate%",
+  "Crit DMG%",
+  "Energy Recharge%",
+];
 
 export function orderedFinalStats(totals: Record<string, number>): { statName: string; value: number }[] {
   const ordered: { statName: string; value: number }[] = [];

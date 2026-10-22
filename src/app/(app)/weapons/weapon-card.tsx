@@ -111,17 +111,21 @@ export function WeaponCard({
   onAction?: () => void;
   danger?: boolean;
   onSelect?: () => void;
-  // No current call site passes false -- every one (owned weapons,
-  // add-weapon catalog, the build weapon picker's own selected display and
-  // modal grid) keeps the visible name, truncating at this card's own
-  // dense grid sizes same as everywhere else. Kept as an override point
-  // rather than removed outright, same as showWeaponTypeBadge below.
+  // false only for the build weapon picker's own compact SELECTED display
+  // (WeaponSlotPicker) -- that box now renders small (see BuildCatalog/
+  // BuildEditor's own SLOT_SIZE_CLASS), with no room for a name alongside
+  // the icon; the full name is still one hover away via hoverDetail. Every
+  // other call site (owned weapons, add-weapon catalog, the picker's own
+  // modal grid) keeps it, truncating at this card's own dense grid sizes
+  // same as everywhere else.
   showName?: boolean;
   // Every candidate in the picker already matches the character's own
   // weapon type (see WeaponSlotPicker), so the badge would never say
   // anything the user doesn't already know there.
   showWeaponTypeBadge?: boolean;
-  // Owned-weapons page only -- shown as a plain top-right badge.
+  // Owned-weapons page only -- shown as a plain top-right badge. Also
+  // undefined for the build weapon picker's own compact selected display
+  // now, same "no room, it's one hover away" reasoning as showName above.
   level?: number;
   // Both the owned-weapons page (this copy's own current level/
   // ascension/refinement) and the add-catalog (this weapon's own
@@ -130,8 +134,11 @@ export function WeaponCard({
   // constellation/talent hovers -- not a fixed overlay baked into the
   // card itself, which left the passive text cramped (and briefly
   // blocked the card's own action button, sitting underneath it in the
-  // same spot). Undefined only for pickers, where this wouldn't mean
-  // anything extra beyond the refinement/level already on the card face.
+  // same spot). Undefined for pickers' own modal grid, where this wouldn't
+  // mean anything extra beyond the refinement/level already on the card
+  // face -- but the build weapon picker's own compact selected display
+  // (WeaponSlotPicker) DOES still pass this, now its only source of detail
+  // once level/refinement/name are gone from the card face itself.
   hoverDetail?: WeaponHoverDetail;
   // Owned-weapons page's bulk-delete select mode only -- same red-border
   // treatment CharacterCard's showOwnershipBorder uses for green, just a

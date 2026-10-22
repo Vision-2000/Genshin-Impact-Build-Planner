@@ -166,11 +166,15 @@ export function WeaponSlotPicker({
             rarity={selected.rarity}
             secondaryStatName={selected.secondaryStatName}
             iconUrl={selected.iconUrl}
-            level={selected.level}
-            refinement={selected.refinement}
             hoverDetail={selected.hoverDetail}
             onSelect={() => setOpen(true)}
             showWeaponTypeBadge={false}
+            // No level/refinement badge, no name -- this box renders small
+            // now (see BuildCatalog/BuildEditor's own compact
+            // SLOT_SIZE_CLASS/EDITOR_SLOT_SIZE_CLASS), too little room for
+            // that much text at once. All of it's still one hover away via
+            // hoverDetail above.
+            showName={false}
             borderClassName={cardBorderClassName}
           />
         </ul>
@@ -199,6 +203,7 @@ export function WeaponSlotPicker({
             iconUrl={DEFAULT_WEAPON[weaponType].iconUrl}
             onSelect={() => setOpen(true)}
             showWeaponTypeBadge={false}
+            showName={false}
             borderClassName={cardBorderClassName}
           />
         </ul>

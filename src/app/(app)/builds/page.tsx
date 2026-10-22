@@ -2,23 +2,47 @@ import type { Metadata } from "next";
 import { ArtifactSetPiece } from "@/generated/prisma/enums";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { travelerDisplayName } from "@/lib/character-scaling";
 import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import { HelpButton } from "@/components/help-button";
 import { slotIconUrl } from "../artifacts/filter-sort";
-import { CreateBuildLink } from "./create-build-link";
 import { OwnedBuildManager } from "./owned-build-manager";
-import { toBuildItem, type OwnedWeaponOption, type OwnedArtifactOption } from "./filter-sort";
+import {
+  toBuildItem,
+  type OwnedCharacterOption,
+  type OwnedWeaponOption,
+  type OwnedArtifactOption,
+} from "./filter-sort";
 
 export const metadata: Metadata = {
   title: "Builds",
 };
 
-const HELP_TEXT = `This page shows the builds you've assembled for your owned characters. Click a card to rename it or change its weapon/artifacts; delete removes it (and pulls it out of any team or roster it's in).`;
+const HELP_TEXT = `This page shows the builds you've assembled for your owned characters. Click "Create build" to assemble a new one; click an existing card to rename it, change its weapon/artifacts, or delete it (deleting pulls it out of any team or roster it's in).`;
 
 export default async function BuildsPage() {
   const profile = await requireActiveProfile();
 
-  const [ownedWeapons, ownedArtifacts, builds] = await Promise.all([
+  const [ownedCharacters, ownedWeapons, ownedArtifacts, builds] = await Promise.all([
+    prisma.ownedCharacter.findMany({
+      where: { gameProfileId: profile.id, isOwned: true },
+      include: {
+        character: {
+          include: {
+            ascensionStat: true,
+            // Passives have no level/ascension gate in this schema (see
+            // final-stats.ts's own comment) -- every talent's own bonus
+            // rows are always active once the character is owned.
+            talents: { include: { statBonuses: { include: { statType: true } } } },
+            // Filtered by OwnedCharacter.constellation at compute time
+            // (final-stats.ts), not here -- every row is fetched regardless
+            // of how many are actually unlocked.
+            constellations: { include: { statBonuses: { include: { statType: true } } } },
+          },
+        },
+      },
+      orderBy: { character: { name: "asc" } },
+    }),
     prisma.ownedWeapon.findMany({
       where: { gameProfileId: profile.id },
       include: {
@@ -53,6 +77,53 @@ export default async function BuildsPage() {
     }),
   ]);
 
+  const characterOptions: OwnedCharacterOption[] = ownedCharacters.map((owned) => ({
+    ownedCharacterId: owned.id,
+    characterId: owned.characterId,
+    name: travelerDisplayName(owned.character.name),
+    iconUrl: owned.character.iconUrl,
+    splashUrl: owned.character.splashUrl,
+    weaponType: owned.character.weaponType,
+    element: owned.character.element,
+    rarity: owned.character.rarity,
+    baseHp: owned.character.baseHp,
+    baseAttack: owned.character.baseAttack,
+    baseDefense: owned.character.baseDefense,
+    maxAscensionHp: owned.character.maxAscensionHp,
+    maxAscensionAttack: owned.character.maxAscensionAttack,
+    maxAscensionDefense: owned.character.maxAscensionDefense,
+    baseElementalMastery: owned.character.baseElementalMastery,
+    ascensionStatName: owned.character.ascensionStat?.name ?? null,
+    level: owned.level,
+    ascensionPhase: owned.ascensionPhase,
+    constellation: owned.constellation,
+    normalAttackLevel: owned.normalAttackLevel,
+    skillLevel: owned.skillLevel,
+    burstLevel: owned.burstLevel,
+    talentStatBonuses: owned.character.talents.flatMap((talent) =>
+      talent.statBonuses.map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value }))
+    ),
+    constellationStatBonuses: owned.character.constellations.flatMap((constellation) =>
+      constellation.statBonuses.map((bonus) => ({
+        statTypeName: bonus.statType.name,
+        value: bonus.value,
+        number: constellation.number,
+      }))
+    ),
+    talents: owned.character.talents.map((talent) => ({
+      slot: talent.slot,
+      name: talent.name,
+      iconUrl: talent.iconUrl,
+      description: talent.description,
+    })),
+    constellations: owned.character.constellations.map((c) => ({
+      number: c.number,
+      name: c.name,
+      iconUrl: c.iconUrl,
+      description: c.description,
+    })),
+  }));
+
   const weaponOptions: OwnedWeaponOption[] = ownedWeapons.map((owned) => ({
     ownedWeaponId: owned.id,
     name: owned.weapon.name,
@@ -84,6 +155,7 @@ export default async function BuildsPage() {
     setName: owned.artifactSet.name,
     mainStatName: owned.mainStat.name,
     iconUrl: slotIconUrl(owned.artifactSet, owned.slot),
+    flowerIconUrl: owned.artifactSet.flowerIconUrl,
     rarity: owned.artifactSet.rarity,
     level: owned.level,
     substats: owned.substats.map((s) => ({ statTypeName: s.statType.name, value: s.value })),
@@ -111,9 +183,13 @@ export default async function BuildsPage() {
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-300">Managing builds for {profile.name}</p>
         </div>
-        <CreateBuildLink />
       </div>
-      <OwnedBuildManager weapons={weaponOptions} artifacts={artifactOptions} initialBuilds={buildItems} />
+      <OwnedBuildManager
+        characters={characterOptions}
+        weapons={weaponOptions}
+        artifacts={artifactOptions}
+        initialBuilds={buildItems}
+      />
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ export function Modal({
   maxWidthClassName = "max-w-md",
   fitContent = false,
   closeButtonClassName = "text-gray-500 hover:bg-black/5 hover:text-foreground",
+  hideCloseButton = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -40,6 +41,12 @@ export function Modal({
   // content (see owned-character-manager.tsx, weapon-progression-form.tsx)
   // -- those pass a white-based override instead.
   closeButtonClassName?: string;
+  // true hides the top-right X entirely -- for content (e.g. the owned-
+  // builds create/edit forms) whose own top row already has a form-level
+  // action button right where the X would otherwise sit, with no width to
+  // spare for both. Closing still works via Escape or a backdrop click
+  // either way; this only removes the one redundant affordance.
+  hideCloseButton?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -64,17 +71,19 @@ export function Modal({
         aria-modal="true"
         className={`relative max-h-[90vh] overflow-y-auto rounded-lg border bg-background p-5 text-foreground shadow-lg ${fitContent ? "w-fit" : "w-full"} ${maxWidthClassName}`}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className={`absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded ${closeButtonClassName}`}
-        >
-          <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
-        </button>
-        {title && <div className="mb-4 pr-10 text-base font-semibold">{title}</div>}
+        {!hideCloseButton && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className={`absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded ${closeButtonClassName}`}
+          >
+            <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        )}
+        {title && <div className={`mb-4 text-base font-semibold ${hideCloseButton ? "" : "pr-10"}`}>{title}</div>}
         {children}
       </div>
     </div>

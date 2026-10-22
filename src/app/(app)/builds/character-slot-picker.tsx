@@ -78,6 +78,7 @@ export function CharacterSlotPicker({
   onChange,
   autoOpen,
   onOpenChange,
+  locked = false,
 }: {
   characters: OwnedCharacterOption[];
   value: number | null;
@@ -91,6 +92,14 @@ export function CharacterSlotPicker({
   // entirely.
   autoOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  // Owned-builds edit modal only -- a build's character can't be changed
+  // after creation, so this strips the splash's own click-to-open
+  // affordance entirely (no onClick/cursor-pointer/hover/keyboard
+  // activation) and the "Choose character" modal below is simply never
+  // triggered. Unlike WeaponSlotPicker's weaponType-null disabled state,
+  // this isn't "nothing to narrow candidates by yet" -- there's a real,
+  // known character here, it's just not editable.
+  locked?: boolean;
 }) {
   const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
@@ -159,7 +168,7 @@ export function CharacterSlotPicker({
           either an intentional seam against the form's right column, or
           already covered by the label's own pt-2 below. */}
       <div className="flex w-full shrink-0 flex-col gap-1 pb-2 pl-2 sm:w-96">
-        <p className="pt-2 text-sm font-medium">Character</p>
+        <p className="pt-2 text-base font-medium">Character</p>
         {selected ? (
           // aspect-[3/4] (not flex-1/min-h-64) -- a fixed height derived
           // from this column's own width, independent of whatever height
@@ -168,16 +177,22 @@ export function CharacterSlotPicker({
           // looking squished once that row's own boxes shrank (see
           // BuildCatalog's own SLOT_SIZE_CLASS).
           <div
-            onClick={() => setOpen(true)}
-            role="button"
-            tabIndex={0}
-            title="Choose character"
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              setOpen(true);
-            }}
-            className={`relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-lg shadow hover:opacity-90 ${elementBackgroundClass(selected.element)}`}
+            onClick={locked ? undefined : () => setOpen(true)}
+            role={locked ? undefined : "button"}
+            tabIndex={locked ? undefined : 0}
+            title={locked ? undefined : "Choose character"}
+            onKeyDown={
+              locked
+                ? undefined
+                : (event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    setOpen(true);
+                  }
+            }
+            className={`relative aspect-[3/4] w-full overflow-hidden rounded-lg shadow ${
+              locked ? "" : "cursor-pointer hover:opacity-90"
+            } ${elementBackgroundClass(selected.element)}`}
           >
             {selected.splashUrl && (
               // key={selected.splashUrl} remounts SplashImage fresh whenever
@@ -207,15 +222,17 @@ export function CharacterSlotPicker({
         ) : (
           <button
             type="button"
-            onClick={() => setOpen(true)}
-            title="Choose character"
-            className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90"
+            onClick={locked ? undefined : () => setOpen(true)}
+            disabled={locked}
+            title={locked ? undefined : "Choose character"}
+            className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-foreground/10 p-1 hover:opacity-90 disabled:opacity-40"
           >
             <BlinkingPlusIcon />
           </button>
         )}
       </div>
 
+      {!locked && (
       <Modal open={open} onClose={() => setOpen(false)} title="Choose character" maxWidthClassName="max-w-4xl">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -287,6 +304,7 @@ export function CharacterSlotPicker({
           {filtered.length === 0 && <p className="p-2 text-sm text-gray-500">No characters match this search.</p>}
         </div>
       </Modal>
+      )}
     </>
   );
 }

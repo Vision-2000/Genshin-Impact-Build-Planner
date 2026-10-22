@@ -109,6 +109,13 @@ export type OwnedArtifactOption = {
   setName: string;
   mainStatName: string;
   iconUrl: string | null;
+  // The set's own flower icon specifically -- distinct from `iconUrl`
+  // above, which is this PIECE's own slot icon (e.g. a Feather's own art
+  // for a Feather piece). Backs the owned-builds card's own flower-icon
+  // active-set-effects summary, which always shows a set's flower art
+  // regardless of which slot the build actually has equipped from it --
+  // see activeSetEffectsFromArtifacts below.
+  flowerIconUrl: string | null;
   rarity: number;
   level: number;
   substats: StatBonusItem[];
@@ -248,6 +255,39 @@ function computeActiveSetEffects(buildArtifacts: BuildRow["buildArtifacts"]): Ac
       existing.count += 1;
     } else {
       setPieceCounts.set(set.id, { setName: set.name, flowerIconUrl: set.flowerIconUrl, rarity: set.rarity, count: 1 });
+    }
+  }
+  return [...setPieceCounts.values()]
+    .filter((s) => s.count >= 2)
+    .map((s) => ({
+      setName: s.setName,
+      flowerIconUrl: s.flowerIconUrl,
+      rarity: s.rarity,
+      maxPiece: (s.count >= 4 ? 4 : 2) as 2 | 4,
+    }));
+}
+
+// Same grouping as toBuildItem's own computeActiveSetEffects, but over
+// already-flattened OwnedArtifactOption rows instead of a Prisma row shape
+// -- used client-side (owned-build-manager.tsx's own save handler) to
+// recompute a build's activeSetEffects optimistically right after an edit,
+// without waiting on a server refetch.
+export function activeSetEffectsFromArtifacts(artifacts: OwnedArtifactOption[]): ActiveSetEffectItem[] {
+  const setPieceCounts = new Map<
+    number,
+    { setName: string; flowerIconUrl: string | null; rarity: number; count: number }
+  >();
+  for (const artifact of artifacts) {
+    const existing = setPieceCounts.get(artifact.artifactSetId);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      setPieceCounts.set(artifact.artifactSetId, {
+        setName: artifact.setName,
+        flowerIconUrl: artifact.flowerIconUrl,
+        rarity: artifact.rarity,
+        count: 1,
+      });
     }
   }
   return [...setPieceCounts.values()]
