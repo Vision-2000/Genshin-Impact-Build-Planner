@@ -18,22 +18,31 @@ function buildItem(overrides: Partial<BuildItem>): BuildItem {
     weaponRefinement: null,
     weaponRarity: null,
     artifacts: [],
+    activeSetEffects: [],
+    createdAt: 0,
     ...overrides,
   };
 }
 
-const baseFilters = { search: "", sortKey: "name" as const, sortDirection: "asc" as const };
+const baseFilters = {
+  search: "",
+  elementFilter: new Set<Element>(),
+  weaponTypeFilter: new Set<WeaponType>(),
+  rarityFilter: new Set<number>(),
+  sortKey: "obtained" as const,
+  sortDirection: "asc" as const,
+};
 
 describe("filterAndSortBuilds", () => {
   const builds: BuildItem[] = [
-    buildItem({ id: 1, name: "Main DPS", characterName: "Hu Tao" }),
-    buildItem({ id: 2, name: "Support", characterName: "Kazuha" }),
-    buildItem({ id: 3, name: "Alt Build", characterName: "Hu Tao" }),
+    buildItem({ id: 1, name: "Main DPS", characterName: "Hu Tao", createdAt: 100 }),
+    buildItem({ id: 2, name: "Support", characterName: "Kazuha", createdAt: 300 }),
+    buildItem({ id: 3, name: "Alt Build", characterName: "Hu Tao", createdAt: 200 }),
   ];
 
-  it("returns everything sorted by name with no filters applied", () => {
+  it("returns everything sorted by obtained (newest first) with no filters applied", () => {
     const result = filterAndSortBuilds(builds, baseFilters);
-    expect(result.map((b) => b.name)).toEqual(["Alt Build", "Main DPS", "Support"]);
+    expect(result.map((b) => b.name)).toEqual(["Support", "Alt Build", "Main DPS"]);
   });
 
   it("filters by case-insensitive, whitespace-trimmed build name", () => {
@@ -61,9 +70,9 @@ describe("filterAndSortBuilds", () => {
     expect(result).toEqual([]);
   });
 
-  it("sorts by name descending", () => {
+  it("sorts by obtained oldest-first when direction is desc", () => {
     const result = filterAndSortBuilds(builds, { ...baseFilters, sortDirection: "desc" });
-    expect(result.map((b) => b.name)).toEqual(["Support", "Main DPS", "Alt Build"]);
+    expect(result.map((b) => b.name)).toEqual(["Main DPS", "Alt Build", "Support"]);
   });
 
   it("sorts by character descending, breaking ties by build name ascending", () => {
@@ -73,5 +82,54 @@ describe("filterAndSortBuilds", () => {
       "Hu Tao: Alt Build",
       "Hu Tao: Main DPS",
     ]);
+  });
+
+  // Same character-page filters (element/weapon type/rarity) as the owned
+  // characters page itself -- matched against each build's own character,
+  // since a build IS a character (see filterAndSortBuilds's own comment).
+  describe("character-page filters", () => {
+    const mixedBuilds: BuildItem[] = [
+      buildItem({
+        id: 1,
+        name: "Pyro Polearm 5-star",
+        characterElement: Element.Pyro,
+        characterWeaponType: WeaponType.Polearm,
+        characterRarity: 5,
+      }),
+      buildItem({
+        id: 2,
+        name: "Hydro Sword 4-star",
+        characterElement: Element.Hydro,
+        characterWeaponType: WeaponType.Sword,
+        characterRarity: 4,
+      }),
+    ];
+
+    it("filters by element", () => {
+      const result = filterAndSortBuilds(mixedBuilds, { ...baseFilters, elementFilter: new Set([Element.Hydro]) });
+      expect(result.map((b) => b.name)).toEqual(["Hydro Sword 4-star"]);
+    });
+
+    it("filters by weapon type", () => {
+      const result = filterAndSortBuilds(mixedBuilds, {
+        ...baseFilters,
+        weaponTypeFilter: new Set([WeaponType.Polearm]),
+      });
+      expect(result.map((b) => b.name)).toEqual(["Pyro Polearm 5-star"]);
+    });
+
+    it("filters by rarity", () => {
+      const result = filterAndSortBuilds(mixedBuilds, { ...baseFilters, rarityFilter: new Set([4]) });
+      expect(result.map((b) => b.name)).toEqual(["Hydro Sword 4-star"]);
+    });
+
+    it("combines multiple filters (AND, not OR)", () => {
+      const result = filterAndSortBuilds(mixedBuilds, {
+        ...baseFilters,
+        elementFilter: new Set([Element.Pyro]),
+        rarityFilter: new Set([4]),
+      });
+      expect(result).toEqual([]);
+    });
   });
 });

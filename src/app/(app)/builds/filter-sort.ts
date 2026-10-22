@@ -138,6 +138,19 @@ export type BuildArtifactSlotItem = {
   iconUrl: string | null;
 };
 
+// One entry per distinct equipped set that's reached its 2pc threshold --
+// backs the owned-builds card's own flower-icon summary (1 icon for a
+// single active 4pc set, 2 for two different active 2pc sets, etc.),
+// mirroring the same consolidation BuildCatalog's own activeSetEffects
+// already does for the create-build page. Grouped by artifactSetId, not
+// setName, same "id is the stable key" reasoning as OwnedArtifactOption.
+export type ActiveSetEffectItem = {
+  setName: string;
+  flowerIconUrl: string | null;
+  rarity: number;
+  maxPiece: 2 | 4;
+};
+
 export type BuildItem = {
   id: number;
   name: string;
@@ -153,6 +166,10 @@ export type BuildItem = {
   weaponRefinement: number | null;
   weaponRarity: number | null;
   artifacts: BuildArtifactSlotItem[];
+  activeSetEffects: ActiveSetEffectItem[];
+  // "obtained" sort -- epoch ms, same convention as every owned page's own
+  // createdAt.
+  createdAt: number;
 };
 
 const SLOTS = Object.values(ArtifactSlot);
@@ -170,6 +187,7 @@ type BuildRow = {
   name: string;
   ownedCharacterId: number;
   ownedWeaponId: number | null;
+  createdAt: Date;
   ownedCharacter: {
     character: { name: string; iconUrl: string | null; element: Element; rarity: number; weaponType: WeaponType };
   };
@@ -179,7 +197,11 @@ type BuildRow = {
   } | null;
   buildArtifacts: {
     slot: ArtifactSlot;
-    ownedArtifact: { id: number; artifactSet: { name: string } & ArtifactSetIcons; mainStat: { name: string } };
+    ownedArtifact: {
+      id: number;
+      artifactSet: { id: number; name: string; rarity: number } & ArtifactSetIcons;
+      mainStat: { name: string };
+    };
   }[];
 };
 
@@ -209,20 +231,56 @@ export function toBuildItem(row: BuildRow): BuildItem {
         iconUrl: artifact ? slotIconUrl(artifact.artifactSet, slot) : null,
       };
     }),
+    activeSetEffects: computeActiveSetEffects(row.buildArtifacts),
+    createdAt: row.createdAt.getTime(),
   };
 }
 
-export type BuildSortKey = "name" | "character";
+function computeActiveSetEffects(buildArtifacts: BuildRow["buildArtifacts"]): ActiveSetEffectItem[] {
+  const setPieceCounts = new Map<
+    number,
+    { setName: string; flowerIconUrl: string | null; rarity: number; count: number }
+  >();
+  for (const ba of buildArtifacts) {
+    const set = ba.ownedArtifact.artifactSet;
+    const existing = setPieceCounts.get(set.id);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      setPieceCounts.set(set.id, { setName: set.name, flowerIconUrl: set.flowerIconUrl, rarity: set.rarity, count: 1 });
+    }
+  }
+  return [...setPieceCounts.values()]
+    .filter((s) => s.count >= 2)
+    .map((s) => ({
+      setName: s.setName,
+      flowerIconUrl: s.flowerIconUrl,
+      rarity: s.rarity,
+      maxPiece: (s.count >= 4 ? 4 : 2) as 2 | 4,
+    }));
+}
+
+// "name" (build name) dropped in favor of "obtained" -- a user-typed build
+// name isn't a very meaningful thing to alphabetize, unlike when it was
+// created or which character it's for.
+export type BuildSortKey = "obtained" | "character";
 
 export type BuildFilters = {
   search: string;
+  // Same character-page filters (element/weapon type/rarity), matched
+  // against the build's own character -- a build IS a character, so
+  // filtering by the character's own attributes is exactly filtering the
+  // build list by them too.
+  elementFilter: ReadonlySet<Element>;
+  weaponTypeFilter: ReadonlySet<WeaponType>;
+  rarityFilter: ReadonlySet<number>;
   sortKey: BuildSortKey;
   sortDirection: SortDirection;
 };
 
 export function filterAndSortBuilds(
   builds: BuildItem[],
-  { search, sortKey, sortDirection }: BuildFilters
+  { search, elementFilter, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: BuildFilters
 ): BuildItem[] {
   let result = builds;
 
@@ -232,6 +290,15 @@ export function filterAndSortBuilds(
       (build) => build.name.toLowerCase().includes(query) || build.characterName.toLowerCase().includes(query)
     );
   }
+  if (elementFilter.size > 0) {
+    result = result.filter((build) => elementFilter.has(build.characterElement));
+  }
+  if (weaponTypeFilter.size > 0) {
+    result = result.filter((build) => weaponTypeFilter.has(build.characterWeaponType));
+  }
+  if (rarityFilter.size > 0) {
+    result = result.filter((build) => rarityFilter.has(build.characterRarity));
+  }
 
   const direction = sortDirection === "desc" ? -1 : 1;
 
@@ -239,6 +306,8 @@ export function filterAndSortBuilds(
     if (sortKey === "character") {
       return direction * a.characterName.localeCompare(b.characterName) || a.name.localeCompare(b.name);
     }
-    return direction * a.name.localeCompare(b.name);
+    // "obtained" -- same -direction (forward = newest first) convention
+    // every other owned page's own "obtained" sort uses.
+    return -direction * (a.createdAt - b.createdAt) || a.name.localeCompare(b.name);
   });
 }

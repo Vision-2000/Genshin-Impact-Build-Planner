@@ -2,17 +2,18 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
-import { ArtifactSlot, WeaponType } from "@/generated/prisma/enums";
-import { ARTIFACT_SLOT_ICON_URL } from "@/lib/artifact-slot-icons";
+import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { paginate } from "@/lib/paginate";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
+import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import type { SortDirection } from "@/lib/sort";
 import { PaginationControls } from "../pagination-controls";
-import { ELEMENT_ICON_URL } from "../characters/element-icons";
+import { ElementFilterRow } from "../characters/element-filter-row";
 import { updateBuildName, updateBuildWeapon, setBuildArtifact, deleteBuild, getBuildContainerNames } from "./actions";
 import { ArtifactSlotPicker } from "./artifact-slot-picker";
 import { WeaponSlotPicker } from "./weapon-slot-picker";
@@ -26,6 +27,17 @@ import {
 
 const SLOTS = Object.values(ArtifactSlot);
 const PAGE_SIZE = 60;
+// Playable characters are only ever seeded at 4-5 star (see prisma/seed.ts)
+// -- same RARITIES the owned characters page itself filters by, since a
+// build's own rarity filter is really its character's.
+const RARITIES = [5, 4];
+
+function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
+  const next = new Set(set);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
 
 function PencilIcon() {
   return (
@@ -96,15 +108,6 @@ function BuildCard({
             />
           )}
 
-          <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
-            <Image
-              src={ELEMENT_ICON_URL[build.characterElement]}
-              alt={build.characterElement}
-              width={26}
-              height={26}
-            />
-          </span>
-
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
             <p className="truncate text-center text-sm font-semibold text-white">{build.name}</p>
             <p className="truncate text-center text-xs text-gray-300">{build.characterName}</p>
@@ -115,38 +118,31 @@ function BuildCard({
           <div className="flex items-center gap-2">
             {build.weaponIconUrl ? (
               <div
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded p-0.5 ${rarityGradientClasses(build.weaponRarity ?? 1)}`}
+                className={`flex h-16 w-16 shrink-0 items-center justify-center rounded p-0.5 ${rarityGradientClasses(build.weaponRarity ?? 1)}`}
               >
-                <Image src={build.weaponIconUrl} alt="" width={22} height={22} />
+                <Image src={build.weaponIconUrl} alt="" width={52} height={52} />
               </div>
             ) : (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-foreground/10 text-xs text-gray-400">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-foreground/10 text-xs text-gray-400">
                 —
               </div>
             )}
-            <p className="truncate text-xs text-foreground/80">
-              {build.weaponName ? `${build.weaponName} R${build.weaponRefinement}` : "No weapon"}
-            </p>
-          </div>
 
-          <div className="flex items-center gap-1.5">
-            {build.artifacts.map((artifact) => (
-              <div
-                key={artifact.slot}
-                title={artifact.setName ?? `${artifact.slot}: empty`}
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                  artifact.iconUrl ? "bg-black/70" : "bg-foreground/10"
-                }`}
-              >
-                <Image
-                  src={artifact.iconUrl ?? ARTIFACT_SLOT_ICON_URL[artifact.slot]}
-                  alt={artifact.slot}
-                  width={artifact.iconUrl ? 20 : 16}
-                  height={artifact.iconUrl ? 20 : 16}
-                  className={artifact.iconUrl ? "" : "opacity-40"}
-                />
+            {build.activeSetEffects.length > 0 && (
+              <div className="ml-auto flex items-center gap-1.5">
+                {build.activeSetEffects.map((effect) => (
+                  <div
+                    key={effect.setName}
+                    title={`${effect.setName} (${effect.maxPiece}pc)`}
+                    className={`flex h-16 w-16 shrink-0 items-center justify-center rounded p-0.5 ${rarityGradientClasses(effect.rarity)}`}
+                  >
+                    {effect.flowerIconUrl && (
+                      <Image src={effect.flowerIconUrl} alt={effect.setName} width={50} height={50} />
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -294,13 +290,26 @@ export function OwnedBuildManager({
   const { confirm } = useDialogs();
 
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<BuildSortKey>("name");
+  const [elementFilter, setElementFilter] = useState<Set<Element>>(new Set());
+  const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
+  const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
+  // "obtained" (not "name") -- matches the owned pages' own default
+  // exactly, not just offering the same option (see BuildSortKey's own
+  // comment on why build name isn't one of the options at all anymore).
+  const [sortKey, setSortKey] = useState<BuildSortKey>("obtained");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
-  const filtered = filterAndSortBuilds(builds, { search, sortKey, sortDirection });
+  const filtered = filterAndSortBuilds(builds, {
+    search,
+    elementFilter,
+    weaponTypeFilter,
+    rarityFilter,
+    sortKey,
+    sortDirection,
+  });
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
   const editingBuild = editingId === null ? null : (builds.find((b) => b.id === editingId) ?? null);
   const activeId = editingId ?? pendingDeleteId;
@@ -400,18 +409,44 @@ export function OwnedBuildManager({
             setSearch(event.target.value);
             setPage(1);
           }}
-          className="rounded border bg-white px-3 py-2 text-sm text-black"
+          className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
         />
         <select
           value={sortKey}
           onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
           className="h-[38px] rounded border bg-white px-2 text-sm text-black"
         >
-          <option value="name">Sort: Name</option>
+          <option value="obtained">Sort: Added</option>
           <option value="character">Sort: Character</option>
         </select>
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
       </div>
+
+      {/* Same character-page filters (element/weapon type/rarity), just
+          matched against each build's own character -- see
+          filterAndSortBuilds's own comment. */}
+      <ElementFilterRow
+        elementFilter={elementFilter}
+        onToggle={(element) => {
+          setElementFilter((prev) => toggleInSet(prev, element));
+          setPage(1);
+        }}
+      />
+      <WeaponTypeFilterRow
+        weaponTypeFilter={weaponTypeFilter}
+        onToggle={(weaponType) => {
+          setWeaponTypeFilter((prev) => toggleInSet(prev, weaponType));
+          setPage(1);
+        }}
+      />
+      <RarityFilterRow
+        rarities={RARITIES}
+        rarityFilter={rarityFilter}
+        onToggle={(rarity) => {
+          setRarityFilter((prev) => toggleInSet(prev, rarity));
+          setPage(1);
+        }}
+      />
 
       <p className="text-sm text-gray-500 dark:text-gray-300">
         {filtered.length} build{filtered.length === 1 ? "" : "s"}
