@@ -97,6 +97,18 @@ export default async function CreateBuildPage() {
         number: constellation.number,
       }))
     ),
+    talents: owned.character.talents.map((talent) => ({
+      slot: talent.slot,
+      name: talent.name,
+      iconUrl: talent.iconUrl,
+      description: talent.description,
+    })),
+    constellations: owned.character.constellations.map((c) => ({
+      number: c.number,
+      name: c.name,
+      iconUrl: c.iconUrl,
+      description: c.description,
+    })),
   }));
 
   const weaponOptions: OwnedWeaponOption[] = ownedWeapons.map((owned) => ({
@@ -141,6 +153,8 @@ export default async function CreateBuildPage() {
     fourPieceStatBonuses: owned.artifactSet.statBonuses
       .filter((bonus) => bonus.piece === ArtifactSetPiece.Four)
       .map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value })),
+    twoPieceEffect: owned.artifactSet.twoPieceEffect,
+    fourPieceEffect: owned.artifactSet.fourPieceEffect,
     createdAt: owned.createdAt.getTime(),
   }));
 

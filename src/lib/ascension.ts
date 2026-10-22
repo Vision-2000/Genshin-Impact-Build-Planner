@@ -87,6 +87,26 @@ export function isValidCharacterLevelAscension(level: number, ascensionPhase: nu
 
 // Like maxLevelForAscensionPhase, but phase 6's ceiling is 100 for
 // characters (still 90 for weapons, via the unmodified function above).
+// This is right for CLAMPING a level back into range when the ascension
+// phase changes (returning to phase 6 should let an existing 95/100 back
+// in, not force it down to 90) -- it is NOT right for display: it reports
+// 100 for every level in phase 6 alike, so a level-90 phase-6 character
+// would read "Lv. 90/100", wrongly implying 95 and 100 were already
+// reachable by just continuing to level up. See characterLevelDisplayCap
+// below for the display case.
 export function characterMaxLevelForAscensionPhase(ascensionPhase: number): number {
   return ascensionPhase === MAX_ASCENSION_PHASE ? CHARACTER_MAX_LEVEL : maxLevelForAscensionPhase(ascensionPhase);
+}
+
+// The denominator for a "Lv. X/Y" display -- the highest level reachable
+// without ascending again (maxLevelForAscensionPhase's own phase-aware
+// cap: 20/40/50/60/70/80/90), UNLESS the character has already gone past
+// it via one of the two character-only extra levels (95/100, only
+// reachable at the final phase -- see CHARACTER_EXTRA_LEVELS). At those
+// two levels there's nowhere further to go within the same phase (95->100
+// is its own separate jump, not a continuous range), so the cap just
+// mirrors the level itself: 90/90, 95/95, 100/100 -- never 90/100.
+export function characterLevelDisplayCap(level: number, ascensionPhase: number): number {
+  const phaseMax = maxLevelForAscensionPhase(ascensionPhase);
+  return level > phaseMax ? level : phaseMax;
 }

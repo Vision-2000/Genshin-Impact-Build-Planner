@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
-import { characterMaxLevelForAscensionPhase } from "@/lib/ascension";
+import { characterLevelDisplayCap } from "@/lib/ascension";
 import { ELEMENT_ICON_URL } from "./element-icons";
 
 // Owned-page-only progression snapshot -- always passed as one object since
@@ -144,7 +144,7 @@ export function CharacterCard({
         {progression && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/85 p-2 text-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             <p className="text-sm font-semibold text-white">
-              Lv. {progression.level}/{characterMaxLevelForAscensionPhase(progression.ascensionPhase)}
+              Lv. {progression.level}/{characterLevelDisplayCap(progression.level, progression.ascensionPhase)}
             </p>
             {/* Constellation/talent levels are per-element -- level/ascension
                 is all that's shared across a Traveler gender, so the

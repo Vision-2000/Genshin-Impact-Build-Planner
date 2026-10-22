@@ -148,7 +148,6 @@ export function ArtifactSlotPicker({
   autoOpen,
   onOpenChange,
   boxSizeClassName = "h-56 w-56",
-  showStats = true,
   cardBorderClassName,
 }: {
   slot: ArtifactSlot;
@@ -168,19 +167,12 @@ export function ArtifactSlotPicker({
   // default 224x224 (e.g. BuildCatalog's own top row, once it needs to fit
   // all 5 of these alongside the weapon slot and name/save) -- only affects
   // this closed/empty slot, never the modal's own grid, which stays full
-  // size for picking regardless. Keep this reasonably sized rather than
-  // shrinking too far -- ArtifactCard's own stat block has a minimum
-  // height that doesn't shrink with width, so going much narrower than
-  // ~w-32 starts coming out tall and narrow instead of square (see the
-  // "selected" card's own comment below) -- unless showStats is also off.
+  // size for picking regardless. Safe to shrink this as far as needed --
+  // the selected display is always a plain aspect-square icon with a
+  // hover tooltip for stat detail (see buildTooltipContent below), not
+  // ArtifactCard's own always-visible stat block, which is what used to
+  // set a practical lower bound here.
   boxSizeClassName?: string;
-  // false drops the main stat/substat block below the icon on the selected
-  // display, same plain-icon treatment WeaponCard already has -- e.g.
-  // BuildCatalog's own compact slot, where that block (plus its own
-  // minimum height) doesn't fit well at a much smaller box size. Default
-  // true keeps the existing behavior (e.g. the owned-build edit modal),
-  // where the stat block is what actually tells two same-set pieces apart.
-  showStats?: boolean;
   // Forwarded to ArtifactCard's own borderClassName for the selected
   // display only -- e.g. BuildCatalog's own compact artifact slot, where
   // ArtifactCard's usual 8px border reads as too heavy at a much smaller
@@ -254,19 +246,22 @@ export function ArtifactSlotPicker({
   return (
     <>
       {selected ? (
-        // boxSizeClassName's own h-* is a no-op here (ArtifactCard's own
-        // aspect ratio drives its actual height), but see this component's
-        // own prop comment on why going too narrow still comes out tall
-        // and narrow regardless, from the stat block's own minimum height.
+        // Plain aspect-square icon (mainStatName/substats deliberately
+        // omitted -- passing either switches ArtifactCard into its
+        // always-visible stat-block mode, which doesn't fit a slot this
+        // compact) with a level badge and the same hover tooltip the
+        // modal grid's own cards use (buildTooltipContent: set name,
+        // level, main stat, every substat) -- same "badges + hover, not
+        // an inline block" treatment WeaponSlotPicker's own selected
+        // display uses.
         <ul className={`${boxSizeClassName} shrink-0`}>
           <ArtifactCard
             setName={selected.setName}
             slot={slot}
             rarity={selected.rarity}
-            level={showStats ? selected.level : undefined}
-            mainStatName={showStats ? selected.mainStatName : undefined}
+            level={selected.level}
             iconUrl={selected.iconUrl}
-            substats={showStats ? selected.substats : undefined}
+            tooltipContent={buildTooltipContent(selected)}
             onSelect={() => setOpen(true)}
             showSetName={false}
             showSlotBadge={false}

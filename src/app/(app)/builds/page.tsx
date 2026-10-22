@@ -93,6 +93,8 @@ export default async function BuildsPage() {
     fourPieceStatBonuses: owned.artifactSet.statBonuses
       .filter((bonus) => bonus.piece === ArtifactSetPiece.Four)
       .map((bonus) => ({ statTypeName: bonus.statType.name, value: bonus.value })),
+    twoPieceEffect: owned.artifactSet.twoPieceEffect,
+    fourPieceEffect: owned.artifactSet.fourPieceEffect,
     createdAt: owned.createdAt.getTime(),
   }));
 

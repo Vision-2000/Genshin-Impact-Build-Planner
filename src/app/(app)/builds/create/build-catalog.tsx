@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ArtifactSlot } from "@/generated/prisma/enums";
+import { ArtifactSlot, type Element, TalentSlot } from "@/generated/prisma/enums";
 import { useToast, Toast } from "@/components/toast";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { formatStatValue } from "@/lib/stat-format";
+import { elementGlowClasses } from "@/lib/element-colors";
+import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
+import { TaggedText } from "@/components/tagged-text";
 import { createBuild } from "../actions";
 import { ArtifactSlotPicker } from "../artifact-slot-picker";
 import { CharacterSlotPicker } from "../character-slot-picker";
@@ -13,6 +17,79 @@ import { WeaponSlotPicker } from "../weapon-slot-picker";
 import { computeFinalStats, orderedFinalStats } from "../final-stats";
 import type { CreateBuildErrors } from "../schemas";
 import type { OwnedArtifactOption, OwnedCharacterOption, OwnedWeaponOption } from "../filter-sort";
+
+type TalentOption = OwnedCharacterOption["talents"][number];
+type ConstellationOption = OwnedCharacterOption["constellations"][number];
+
+// Same circular icon + hover tooltip (name + description, TaggedText for
+// its <gold>/<element> highlight tags) the character progression editor's
+// own TooltipIcon uses for every talent -- `level` renders as a small
+// corner badge for the 3 combat talents (the editor shows theirs next to a
+// slider instead, which doesn't apply to this read-only summary);
+// undefined for a Passive, which has no level to show, same as the
+// editor's own PassiveTalentIcon.
+function TalentIcon({ talent, level }: { talent: TalentOption; level?: number }) {
+  return (
+    <MouseFollowTooltip
+      content={
+        <>
+          <p className="text-base font-semibold text-yellow-100">{talent.name}</p>
+          <p className="mt-1.5 whitespace-pre-line text-gray-300">
+            <TaggedText text={talent.description} />
+          </p>
+        </>
+      }
+    >
+      <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-gray-600 bg-black/30">
+        {talent.iconUrl && <Image src={talent.iconUrl} alt={talent.name} width={30} height={30} />}
+        {level !== undefined && (
+          <span className="absolute -bottom-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-gray-600 bg-black px-1 text-[9px] font-semibold leading-none text-white">
+            {level}
+          </span>
+        )}
+      </div>
+    </MouseFollowTooltip>
+  );
+}
+
+// Same lit/unlit treatment as the editor's own ConstellationIcons -- lit
+// (unlocked) uses the character's own element glow border and full-color
+// art, unlit is grayscaled and dimmed. Read-only here (no onClick/toggle),
+// since this box only ever reflects the character's own saved progression.
+function ConstellationIcon({
+  constellation,
+  lit,
+  element,
+}: {
+  constellation: ConstellationOption;
+  lit: boolean;
+  element: Element;
+}) {
+  return (
+    <MouseFollowTooltip
+      content={
+        <>
+          <p className="text-base font-semibold text-yellow-100">
+            C{constellation.number} · {constellation.name}
+          </p>
+          <p className="mt-1.5 whitespace-pre-line text-gray-300">
+            <TaggedText text={constellation.description} />
+          </p>
+        </>
+      }
+    >
+      <div
+        className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 ${
+          lit ? elementGlowClasses(element) : "border-gray-600 bg-black/30 opacity-50 grayscale"
+        }`}
+      >
+        {constellation.iconUrl && (
+          <Image src={constellation.iconUrl} alt={constellation.name} width={30} height={30} />
+        )}
+      </div>
+    </MouseFollowTooltip>
+  );
+}
 
 const SLOTS = Object.values(ArtifactSlot);
 
@@ -164,6 +241,51 @@ export function BuildCatalog({
       )
     : [];
 
+  // The 3 combat talents, each paired with its own level, in the same
+  // fixed order the progression editor shows them in.
+  const combatTalents = character
+    ? [
+        { slot: TalentSlot.NormalAttack, level: character.normalAttackLevel },
+        { slot: TalentSlot.Skill, level: character.skillLevel },
+        { slot: TalentSlot.Burst, level: character.burstLevel },
+      ]
+        .map(({ slot, level }) => {
+          const talent = character.talents.find((t) => t.slot === slot);
+          return talent ? { talent, level } : undefined;
+        })
+        .filter((t): t is { talent: TalentOption; level: number } => t !== undefined)
+    : [];
+
+  // Every Passive, in slot order -- no level to pair with these, same as
+  // the editor's own PassiveTalentIcon.
+  const passiveTalents = character
+    ? character.talents.filter((t) => t.slot !== TalentSlot.NormalAttack && t.slot !== TalentSlot.Skill && t.slot !== TalentSlot.Burst)
+    : [];
+
+  // Every distinct equipped set with 2+ (or 4+) pieces, paired with that
+  // set's own real 2pc/4pc effect TEXT -- not just the stat-bonus subset
+  // final-stats.ts totals, since most 4pc effects (and some 2pc ones) are
+  // conditional/proc-based and have no stat bonus row at all. Mirrors
+  // final-stats.ts's own setPieceCounts grouping.
+  const activeSetEffects = (() => {
+    const counts = new Map<number, number>();
+    for (const artifact of selectedArtifacts) {
+      counts.set(artifact.artifactSetId, (counts.get(artifact.artifactSetId) ?? 0) + 1);
+    }
+    const seenSets = new Set<number>();
+    const effects: { setName: string; piece: "2-Piece" | "4-Piece"; text: string }[] = [];
+    for (const artifact of selectedArtifacts) {
+      if (seenSets.has(artifact.artifactSetId)) continue;
+      seenSets.add(artifact.artifactSetId);
+      const count = counts.get(artifact.artifactSetId) ?? 0;
+      if (count >= 2) effects.push({ setName: artifact.setName, piece: "2-Piece", text: artifact.twoPieceEffect });
+      if (count >= 4 && artifact.fourPieceEffect) {
+        effects.push({ setName: artifact.setName, piece: "4-Piece", text: artifact.fourPieceEffect });
+      }
+    }
+    return effects;
+  })();
+
   function resetForm() {
     setCharacterId(null);
     setName("");
@@ -309,10 +431,8 @@ export function BuildCatalog({
                     onOpenChange={setWeaponPickerOpen}
                     boxSizeClassName={SLOT_SIZE_CLASS}
                     // "" -- the usual 8px gray border reads as too thick at
-                    // this compact size. showStats=false drops the
-                    // refinement badge too -- no extra info at this size.
+                    // this compact size.
                     cardBorderClassName=""
-                    showStats={false}
                   />
                 </div>
 
@@ -333,10 +453,12 @@ export function BuildCatalog({
                           setArtifactPickerOpenSlots((prev) => ({ ...prev, [slot]: open }))
                         }
                         boxSizeClassName={SLOT_SIZE_CLASS}
-                        // Icon only, no stat block, no border -- matches
-                        // the Weapon slot's own plain-icon treatment at
-                        // this size.
-                        showStats={false}
+                        // Icon only, no border -- matches the Weapon slot's
+                        // own plain-icon treatment at this size. Main stat/
+                        // substats/level are still shown, via the level
+                        // badge and hover tooltip ArtifactSlotPicker's own
+                        // selected display always provides now (see its
+                        // own comment).
                         cardBorderClassName=""
                       />
                     ))}
@@ -345,28 +467,91 @@ export function BuildCatalog({
               </div>
 
               {character && (
-                // Same dark stat box treatment as the character progression
-                // editor's own BaseStatsSection (owned-character-manager.tsx)
-                // -- rounded bg-black box, "Stats" header, "Name: value"
-                // lines -- rather than this page's earlier ad hoc dt/dd grid.
-                // No StatLine ghost-text sizing trick here, unlike that box:
-                // that trick exists to stop the box reflowing as a slider is
-                // dragged continuously, which doesn't apply to this page's
-                // discrete character/weapon/artifact picks.
-                <div className="mt-4 rounded border bg-black p-3 text-sm">
-                  <p className="font-medium text-foreground">Stats</p>
-                  {finalStats.length === 0 ? (
-                    <p className="mt-1 text-gray-400">No stats yet.</p>
-                  ) : (
-                    <ul className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 whitespace-nowrap sm:grid-cols-3 md:grid-cols-4">
-                      {finalStats.map(({ statName, value }) => (
-                        <li key={statName}>
-                          {statName}: {formatStatValue(statName, value)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                <>
+                  {/* Same dark stat box treatment as the character progression
+                      editor's own BaseStatsSection (owned-character-manager.tsx)
+                      -- rounded bg-black box, "Stats" header, "Name: value"
+                      lines -- rather than this page's earlier ad hoc dt/dd grid.
+                      No StatLine ghost-text sizing trick here, unlike that box:
+                      that trick exists to stop the box reflowing as a slider is
+                      dragged continuously, which doesn't apply to this page's
+                      discrete character/weapon/artifact picks. */}
+                  <div className="mt-4 rounded border bg-black p-3 text-sm">
+                    <p className="font-medium text-foreground">Stats</p>
+                    {finalStats.length === 0 ? (
+                      <p className="mt-1 text-gray-400">No stats yet.</p>
+                    ) : (
+                      <ul className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 whitespace-nowrap sm:grid-cols-3 md:grid-cols-4">
+                        {finalStats.map(({ statName, value }) => (
+                          <li key={statName}>
+                            {statName}: {formatStatValue(statName, value)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Two more boxes, same dark treatment as Stats above --
+                      the character's own level/talents/constellations on
+                      the left, the build's currently-active artifact set
+                      effects (if any) on the right. grid-cols-1 below sm
+                      stacks them instead of squeezing both to half width on
+                      a narrow screen. */}
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded border bg-black p-3 text-sm">
+                      {/* No "Character" header and no Lv. X/Y line here --
+                          both now shown directly on the splash art itself
+                          (CharacterSlotPicker's own name overlay and
+                          top-left level badge), so repeating either here
+                          would just be stale duplication. */}
+                      {/* Same icon row the progression editor's own
+                          TalentsSection uses -- combat talents (with their
+                          own level, as a corner badge) first, then Passives
+                          (no level), both in one row since this summary
+                          doesn't need the editor's own sliders/spacing. */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {combatTalents.map(({ talent, level }) => (
+                          <TalentIcon key={talent.slot} talent={talent} level={level} />
+                        ))}
+                        {passiveTalents.map((talent) => (
+                          <TalentIcon key={talent.slot} talent={talent} />
+                        ))}
+                      </div>
+                      {/* Same lit/unlit icon row as the editor's own
+                          ConstellationIcons -- always all 6, not just the
+                          unlocked ones, so the row also shows at a glance
+                          how many are left. */}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {character.constellations.map((c) => (
+                          <ConstellationIcon
+                            key={c.number}
+                            constellation={c}
+                            lit={c.number <= character.constellation}
+                            element={character.element}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded border bg-black p-3 text-sm">
+                      <p className="font-medium text-foreground">Active Set Effects</p>
+                      {activeSetEffects.length === 0 ? (
+                        <p className="mt-1 text-gray-400">No 2-piece or 4-piece set bonus active yet.</p>
+                      ) : (
+                        <ul className="mt-1 space-y-2">
+                          {activeSetEffects.map((effect) => (
+                            <li key={`${effect.setName}-${effect.piece}`}>
+                              <p className="text-foreground">
+                                {effect.setName} ({effect.piece})
+                              </p>
+                              <p className="text-gray-400">{effect.text}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>

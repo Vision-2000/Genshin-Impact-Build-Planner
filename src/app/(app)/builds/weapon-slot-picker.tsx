@@ -61,7 +61,6 @@ export function WeaponSlotPicker({
   onOpenChange,
   boxSizeClassName = "h-56 w-56",
   cardBorderClassName,
-  showStats = true,
 }: {
   // null only for BuildCatalog's own "no character chosen yet" state --
   // every candidate then spans every weapon type instead of just one (see
@@ -88,11 +87,6 @@ export function WeaponSlotPicker({
   // usual 8px border reads as too heavy at a much smaller box size.
   // Undefined keeps WeaponCard's own default.
   cardBorderClassName?: string;
-  // false drops the refinement badge on the selected display -- e.g.
-  // BuildCatalog's own compact slot, matching ArtifactSlotPicker's own
-  // showStats (main stat/level) for the same "no extra info at this size"
-  // reasoning. Default true keeps the existing behavior everywhere else.
-  showStats?: boolean;
 }) {
   const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
@@ -170,12 +164,13 @@ export function WeaponSlotPicker({
             // after a character narrowed the candidates to one type.
             weaponType={selected.weaponType}
             rarity={selected.rarity}
-            // showStats=false also drops this -- WeaponCard renders it
-            // independently of showName, so it still showed even with the
-            // name itself already hidden.
-            secondaryStatName={showStats ? selected.secondaryStatName : null}
+            // Shown even with the name itself hidden (showName below) --
+            // WeaponCard renders this independently of showName.
+            secondaryStatName={selected.secondaryStatName}
             iconUrl={selected.iconUrl}
-            refinement={showStats ? selected.refinement : undefined}
+            level={selected.level}
+            refinement={selected.refinement}
+            hoverDetail={selected.hoverDetail}
             onSelect={() => setOpen(true)}
             showName={false}
             showWeaponTypeBadge={false}

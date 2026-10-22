@@ -9,6 +9,7 @@ import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import { SplashImage } from "@/components/splash-image";
+import { characterLevelDisplayCap } from "@/lib/ascension";
 import { elementBackgroundClass } from "@/lib/element-colors";
 import type { SortDirection } from "@/lib/sort";
 import { ElementFilterRow } from "../characters/element-filter-row";
@@ -185,6 +186,23 @@ export function CharacterSlotPicker({
               // whatever was shown before.
               <SplashImage key={selected.splashUrl} src={selected.splashUrl} objectFit="cover" />
             )}
+
+            {/* Top-left level badge -- same dark-badge treatment WeaponCard's
+                own level badge uses (top-right there; there's no competing
+                weapon-type badge here to share the corner with, so this one
+                sits top-left instead). */}
+            <span className="absolute left-2 top-2 flex h-8 items-center justify-center rounded-md bg-black/70 px-2 shadow">
+              <span className="mt-0.5 text-sm font-semibold leading-none text-white">
+                Lv.{selected.level}/{characterLevelDisplayCap(selected.level, selected.ascensionPhase)}
+              </span>
+            </span>
+
+            {/* Name overlay -- same bottom gradient + centered name
+                CharacterCard's own square cards use, just scaled up
+                (text-2xl, not text-lg) for this column's own larger size. */}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-10">
+              <p className="truncate text-center text-2xl font-semibold text-white">{selected.name}</p>
+            </div>
           </div>
         ) : (
           <button

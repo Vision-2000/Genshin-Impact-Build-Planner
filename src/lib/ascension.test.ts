@@ -8,6 +8,7 @@ import {
   validAscensionPhasesForCharacterLevel,
   isValidCharacterLevelAscension,
   characterMaxLevelForAscensionPhase,
+  characterLevelDisplayCap,
 } from "./ascension";
 
 describe("validAscensionPhasesForLevel", () => {
@@ -128,5 +129,24 @@ describe("characterMaxLevelForAscensionPhase", () => {
   it("matches maxLevelForAscensionPhase for phases 0-5", () => {
     expect(characterMaxLevelForAscensionPhase(0)).toBe(20);
     expect(characterMaxLevelForAscensionPhase(5)).toBe(80);
+  });
+});
+
+describe("characterLevelDisplayCap", () => {
+  // Regression guard for a real bug: a level-90 phase-6 character's "Lv.
+  // X/Y" badge showed "90/100" (via characterMaxLevelForAscensionPhase,
+  // which is right for CLAMPING but wrong for display -- see its own
+  // comment). 90/95/100 are three separate resting points, not a
+  // continuous range, so each must pair with itself, never with 100.
+  it("pairs each of the three phase-6 resting levels with itself, not a flat 100", () => {
+    expect(characterLevelDisplayCap(90, 6)).toBe(90);
+    expect(characterLevelDisplayCap(95, 6)).toBe(95);
+    expect(characterLevelDisplayCap(100, 6)).toBe(100);
+  });
+
+  it("still reports the real phase cap for a level short of it", () => {
+    expect(characterLevelDisplayCap(15, 0)).toBe(20);
+    expect(characterLevelDisplayCap(45, 2)).toBe(50);
+    expect(characterLevelDisplayCap(85, 6)).toBe(90);
   });
 });

@@ -1,4 +1,4 @@
-import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
+import { ArtifactSlot, Element, TalentSlot, WeaponType } from "@/generated/prisma/enums";
 import type { SortDirection } from "@/lib/sort";
 import { travelerDisplayName } from "@/lib/character-scaling";
 import type { WeaponHoverDetail } from "@/lib/weapon-hover-detail";
@@ -43,6 +43,22 @@ export type OwnedCharacterOption = {
   burstLevel: number;
   talentStatBonuses: StatBonusItem[];
   constellationStatBonuses: (StatBonusItem & { number: number })[];
+  // Every talent's own name/slot (all 4-7 of them, Passives included) --
+  // backs BuildCatalog's own "Character" summary box -- an icon row shown
+  // the same lit/unlit way the progression editor's own TooltipIcon/
+  // ConstellationIcons show them, not a plain name list. Passives are
+  // included too (iconUrl/description cover them the same as combat
+  // talents; only normalAttackLevel/skillLevel/burstLevel above don't
+  // apply to them, same as the editor's own PassiveTalentIcon). description
+  // carries the raw <gold>/<element> tags (see TaggedText) -- rendered,
+  // never shown raw.
+  talents: { slot: TalentSlot; name: string; iconUrl: string | null; description: string }[];
+  // Every constellation's own data (all 6, same "already fetched for the
+  // stat bonuses above" reasoning) -- BuildCatalog's own "Character"
+  // summary box shows all 6 as icons, lit (number <= constellation) vs
+  // unlit, same as the editor's own ConstellationIcons, not just a
+  // filtered name list.
+  constellations: { number: number; name: string; iconUrl: string | null; description: string }[];
 };
 
 export type OwnedWeaponOption = {
@@ -101,6 +117,14 @@ export type OwnedArtifactOption = {
   // separately.
   twoPieceStatBonuses: StatBonusItem[];
   fourPieceStatBonuses: StatBonusItem[];
+  // The set's own 2pc/4pc effect TEXT (not just its stat-bonus subset) --
+  // backs BuildCatalog's own "Active Set Effects" summary box, which shows
+  // the real in-game description even for a conditional/proc-based effect
+  // that has no stat-bonus row at all (most 4pc effects, and some 2pc
+  // ones). fourPieceEffect is null for the handful of sets with no 4pc
+  // effect of their own (see ArtifactSet.fourPieceEffect).
+  twoPieceEffect: string;
+  fourPieceEffect: string | null;
   // "obtained" sort parity with the owned-artifacts page (see OwnedSortKey
   // there) -- epoch ms, same as OwnedArtifactItem.createdAt.
   createdAt: number;
