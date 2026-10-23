@@ -368,13 +368,13 @@ export function BuildStatsSummary({
           // whatever that resolves to, same pattern as Column 1's own
           // tooltip-wrapped box.
           <MouseFollowTooltip
-            // min-h-0 -- without it, a flex item's default min-height: auto
-            // floors this at its own content height, so 2 active set
-            // effects (one line taller than 1) can force this box past
-            // whatever flex-1 actually allocated it, pushing its bottom
-            // past the splash art's own bottom edge. Same fix as
-            // owned-build-manager.tsx's own min-h-0 flex-1 wrapper, one
-            // level up.
+            /* min-h-0 -- without it, a flex item's default min-height: auto
+               floors this at its own content height, so 2 active set
+               effects (one line taller than 1) can force this box past
+               whatever flex-1 actually allocated it, pushing its bottom
+               past the splash art's own bottom edge. Same fix as
+               owned-build-manager.tsx's own min-h-0 flex-1 wrapper, one
+               level up. */
             wrapperClassName="relative block min-h-0 flex-1"
             content={
               <div className="space-y-3">
