@@ -247,13 +247,13 @@ export function BuildCatalog({
                 body below. */}
             <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
               <div>
-                <label className="block text-base">
+                <label className="block text-sm">
                   Name:
                   <input
                     type="text"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
-                    className="ml-1 h-8 rounded border bg-white px-2 text-base text-black"
+                    className="ml-1 rounded border bg-white px-2 py-1 text-sm text-black"
                   />
                 </label>
                 {errors.name && <p className="text-sm text-red-600">{errors.name[0]}</p>}
@@ -264,7 +264,7 @@ export function BuildCatalog({
                 type="button"
                 onClick={handleSubmit}
                 disabled={!character}
-                className="rounded border border-white bg-black px-3 py-1 text-base text-white hover:bg-gray-800 disabled:opacity-50"
+                className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
               >
                 Save build
               </button>

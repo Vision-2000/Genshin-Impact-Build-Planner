@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Image from "next/image";
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
+import { DEFAULT_WEAPON, DEFAULT_WEAPON_RARITY } from "@/lib/default-weapon";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { paginate } from "@/lib/paginate";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
@@ -113,17 +114,21 @@ function BuildCard({
 
         <div className="space-y-1.5 bg-background px-2 py-1.5">
           <div className="flex items-center gap-2">
-            {build.weaponIconUrl ? (
-              <div
-                className={`flex h-16 w-16 shrink-0 items-center justify-center rounded p-0.5 ${rarityGradientClasses(build.weaponRarity ?? 1)}`}
-              >
-                <Image src={build.weaponIconUrl} alt="" width={52} height={52} />
-              </div>
-            ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-foreground/10 text-xs text-gray-400">
-                —
-              </div>
-            )}
+            {/* No real weapon chosen falls back to the character's own
+                1-star starter weapon -- same as WeaponSlotPicker's empty
+                state (see DEFAULT_WEAPON's own comment), not a blank slot. */}
+            <div
+              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded p-0.5 ${rarityGradientClasses(
+                build.weaponIconUrl ? (build.weaponRarity ?? 1) : DEFAULT_WEAPON_RARITY
+              )}`}
+            >
+              <Image
+                src={build.weaponIconUrl ?? DEFAULT_WEAPON[build.characterWeaponType].iconUrl}
+                alt=""
+                width={52}
+                height={52}
+              />
+            </div>
 
             {build.activeSetEffects.length > 0 && (
               <div className="ml-auto flex items-center gap-1.5">
@@ -199,13 +204,13 @@ function BuildEditor({
           destructive action, not part of the staged draft), Save is what
           commits the staged name/weapon/artifacts. */}
       <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
-        <label className="block text-base">
+        <label className="block text-sm">
           Name:
           <input
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="ml-1 h-8 rounded border bg-white px-2 text-base text-black"
+            className="ml-1 rounded border bg-white px-2 py-1 text-sm text-black"
           />
         </label>
 
@@ -220,7 +225,7 @@ function BuildEditor({
           <button
             type="button"
             onClick={() => onSave({ name: name.trim() || build.name, ownedWeaponId: weaponId, slots })}
-            className="rounded border border-white bg-black px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-800"
+            className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
           >
             Save build
           </button>
@@ -284,11 +289,16 @@ function BuildEditor({
 }
 
 export function OwnedBuildManager({
+  header,
   characters,
   weapons,
   artifacts,
   initialBuilds,
 }: {
+  // The page's own title block -- rendered on the same row as "Create
+  // build", same header shape every other page uses (see page.tsx's own
+  // comment on why that row lives in here).
+  header: ReactNode;
   characters: OwnedCharacterOption[];
   weapons: OwnedWeaponOption[];
   artifacts: OwnedArtifactOption[];
@@ -444,29 +454,9 @@ export function OwnedBuildManager({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search by build or character name..."
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
-          />
-          <select
-            value={sortKey}
-            onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
-            className="h-[38px] rounded border bg-white px-2 text-sm text-black"
-          >
-            <option value="obtained">Sort: Added</option>
-            <option value="character">Sort: Character</option>
-          </select>
-          <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
-        </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        {header}
 
         <button
           type="button"
@@ -490,80 +480,104 @@ export function OwnedBuildManager({
         </button>
       </div>
 
-      {/* Same character-page filters (element/weapon type/rarity), just
-          matched against each build's own character -- see
-          filterAndSortBuilds's own comment. */}
-      <ElementFilterRow
-        elementFilter={elementFilter}
-        onToggle={(element) => {
-          setElementFilter((prev) => toggleInSet(prev, element));
-          setPage(1);
-        }}
-      />
-      <WeaponTypeFilterRow
-        weaponTypeFilter={weaponTypeFilter}
-        onToggle={(weaponType) => {
-          setWeaponTypeFilter((prev) => toggleInSet(prev, weaponType));
-          setPage(1);
-        }}
-      />
-      <RarityFilterRow
-        rarities={RARITIES}
-        rarityFilter={rarityFilter}
-        onToggle={(rarity) => {
-          setRarityFilter((prev) => toggleInSet(prev, rarity));
-          setPage(1);
-        }}
-      />
-
-      <p className="text-sm text-gray-500 dark:text-gray-300">
-        {filtered.length} build{filtered.length === 1 ? "" : "s"}
-      </p>
-
-      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {pageItems.map((build) => (
-          <BuildCard
-            key={build.id}
-            build={build}
-            isActive={build.id === activeId}
-            onEdit={() => setEditingId(build.id)}
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search by build or character name..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
           />
-        ))}
-        {pageItems.length === 0 && (
-          <p className="col-span-full text-sm text-gray-500">No builds match these filters.</p>
-        )}
-      </ul>
+          <select
+            value={sortKey}
+            onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
+            className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+          >
+            <option value="obtained">Sort: Added</option>
+            <option value="character">Sort: Character</option>
+          </select>
+          <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+        </div>
 
-      <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
+        {/* Same character-page filters (element/weapon type/rarity), just
+            matched against each build's own character -- see
+            filterAndSortBuilds's own comment. */}
+        <ElementFilterRow
+          elementFilter={elementFilter}
+          onToggle={(element) => {
+            setElementFilter((prev) => toggleInSet(prev, element));
+            setPage(1);
+          }}
+        />
+        <WeaponTypeFilterRow
+          weaponTypeFilter={weaponTypeFilter}
+          onToggle={(weaponType) => {
+            setWeaponTypeFilter((prev) => toggleInSet(prev, weaponType));
+            setPage(1);
+          }}
+        />
+        <RarityFilterRow
+          rarities={RARITIES}
+          rarityFilter={rarityFilter}
+          onToggle={(rarity) => {
+            setRarityFilter((prev) => toggleInSet(prev, rarity));
+            setPage(1);
+          }}
+        />
 
-      <Modal
-        open={editingBuild !== null}
-        onClose={() => setEditingId(null)}
-        maxWidthClassName="max-w-7xl"
-        hideCloseButton
-      >
-        {editingBuild && editingCharacter && (
-          <BuildEditor
-            key={editingBuild.id}
-            build={editingBuild}
-            character={editingCharacter}
+        <p className="text-sm text-gray-500 dark:text-gray-300">
+          {filtered.length} build{filtered.length === 1 ? "" : "s"}
+        </p>
+
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {pageItems.map((build) => (
+            <BuildCard
+              key={build.id}
+              build={build}
+              isActive={build.id === activeId}
+              onEdit={() => setEditingId(build.id)}
+            />
+          ))}
+          {pageItems.length === 0 && (
+            <p className="col-span-full text-sm text-gray-500">No builds match these filters.</p>
+          )}
+        </ul>
+
+        <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
+
+        <Modal
+          open={editingBuild !== null}
+          onClose={() => setEditingId(null)}
+          maxWidthClassName="max-w-7xl"
+          hideCloseButton
+        >
+          {editingBuild && editingCharacter && (
+            <BuildEditor
+              key={editingBuild.id}
+              build={editingBuild}
+              character={editingCharacter}
+              weapons={weapons}
+              artifacts={artifacts}
+              onSave={(draft) => handleSaveEdit(editingBuild, draft)}
+              onDelete={() => handleDelete(editingBuild.id)}
+            />
+          )}
+        </Modal>
+
+        {creating && (
+          <BuildCatalog
+            characters={characters}
             weapons={weapons}
             artifacts={artifacts}
-            onSave={(draft) => handleSaveEdit(editingBuild, draft)}
-            onDelete={() => handleDelete(editingBuild.id)}
+            onCreated={(build) => setBuilds((prev) => [...prev, build])}
+            onClose={() => setCreating(false)}
           />
         )}
-      </Modal>
-
-      {creating && (
-        <BuildCatalog
-          characters={characters}
-          weapons={weapons}
-          artifacts={artifacts}
-          onCreated={(build) => setBuilds((prev) => [...prev, build])}
-          onClose={() => setCreating(false)}
-        />
-      )}
+      </div>
     </div>
   );
 }

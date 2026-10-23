@@ -174,22 +174,27 @@ export default async function BuildsPage() {
 
   return (
     <div className="min-h-full bg-primary-page">
-      <div className="mx-auto max-w-[110rem] space-y-3 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">Builds</h1>
-            <HelpButton title="Builds page help" text={HELP_TEXT} />
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-300">Managing builds for {profile.name}</p>
-        </div>
-      </div>
-      <OwnedBuildManager
-        characters={characterOptions}
-        weapons={weaponOptions}
-        artifacts={artifactOptions}
-        initialBuilds={buildItems}
-      />
+      <div className="mx-auto max-w-[110rem] p-4">
+        {/* The title block is handed to OwnedBuildManager rather than
+            rendered here -- unlike the other pages' header-row button (a
+            plain <Link> to a sibling route), "Create build" opens a modal
+            driven by client state, so the row that holds both has to live
+            inside the client component. */}
+        <OwnedBuildManager
+          header={
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold">Builds</h1>
+                <HelpButton title="Builds page help" text={HELP_TEXT} />
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-300">Managing builds for {profile.name}</p>
+            </div>
+          }
+          characters={characterOptions}
+          weapons={weaponOptions}
+          artifacts={artifactOptions}
+          initialBuilds={buildItems}
+        />
       </div>
     </div>
   );
