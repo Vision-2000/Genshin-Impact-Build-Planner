@@ -390,27 +390,30 @@ export function OwnedArtifactManager({
         )}
       </div>
 
-      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-        {pageItems.map((artifact) => (
-          <ArtifactCard
-            key={artifact.id}
-            setName={artifact.setName}
-            slot={artifact.slot}
-            rarity={artifact.rarity}
-            level={artifact.level}
-            mainStatName={artifact.mainStatName}
-            iconUrl={artifact.iconUrl}
-            onSelect={() =>
-              selectMode ? setSelectedIds((prev) => toggleInSet(prev, artifact.id)) : setEditingId(artifact.id)
-            }
-            selected={selectMode ? selectedIds.has(artifact.id) : undefined}
-            tooltipContent={buildTooltipContent(artifact)}
-          />
-        ))}
-        {pageItems.length === 0 && (
-          <p className="col-span-full text-sm text-gray-500">No artifacts match these filters.</p>
-        )}
-      </ul>
+      {/* Empty-state message replaces the <ul> rather than sitting inside
+          it -- a <ul> may only directly contain <li>. */}
+      {pageItems.length === 0 ? (
+        <p className="text-sm text-gray-500">No artifacts match these filters.</p>
+      ) : (
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+          {pageItems.map((artifact) => (
+            <ArtifactCard
+              key={artifact.id}
+              setName={artifact.setName}
+              slot={artifact.slot}
+              rarity={artifact.rarity}
+              level={artifact.level}
+              mainStatName={artifact.mainStatName}
+              iconUrl={artifact.iconUrl}
+              onSelect={() =>
+                selectMode ? setSelectedIds((prev) => toggleInSet(prev, artifact.id)) : setEditingId(artifact.id)
+              }
+              selected={selectMode ? selectedIds.has(artifact.id) : undefined}
+              tooltipContent={buildTooltipContent(artifact)}
+            />
+          ))}
+        </ul>
+      )}
 
       <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
 

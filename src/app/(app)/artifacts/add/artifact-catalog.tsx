@@ -137,36 +137,41 @@ export function ArtifactCatalog({
         {filtered.length} set{filtered.length === 1 ? "" : "s"}
       </p>
 
-      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-        {filtered.map((set) => {
-          const previewIcon = set.flowerIconUrl ?? set.featherIconUrl ?? set.circletIconUrl;
-          return (
-            <ArtifactCard
-              key={set.id}
-              setName={set.name}
-              rarity={set.rarity}
-              iconUrl={previewIcon}
-              onSelect={() => setAddingSetId(set.id)}
-              tooltipContent={
-                <>
-                  <p className="text-base font-semibold text-yellow-100">{set.name}</p>
-                  <p className="mt-2 text-gray-300">
-                    <span className="font-semibold text-yellow-100">2pc: </span>
-                    {set.twoPieceEffect}
-                  </p>
-                  {set.fourPieceEffect && (
+      {/* Empty-state message replaces the <ul> rather than sitting inside
+          it -- a <ul> may only directly contain <li>. */}
+      {filtered.length === 0 ? (
+        <p className="text-sm text-gray-500">No sets match this search.</p>
+      ) : (
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+          {filtered.map((set) => {
+            const previewIcon = set.flowerIconUrl ?? set.featherIconUrl ?? set.circletIconUrl;
+            return (
+              <ArtifactCard
+                key={set.id}
+                setName={set.name}
+                rarity={set.rarity}
+                iconUrl={previewIcon}
+                onSelect={() => setAddingSetId(set.id)}
+                tooltipContent={
+                  <>
+                    <p className="text-base font-semibold text-yellow-100">{set.name}</p>
                     <p className="mt-2 text-gray-300">
-                      <span className="font-semibold text-yellow-100">4pc: </span>
-                      {set.fourPieceEffect}
+                      <span className="font-semibold text-yellow-100">2pc: </span>
+                      {set.twoPieceEffect}
                     </p>
-                  )}
-                </>
-              }
-            />
-          );
-        })}
-        {filtered.length === 0 && <p className="col-span-full text-sm text-gray-500">No sets match this search.</p>}
-      </ul>
+                    {set.fourPieceEffect && (
+                      <p className="mt-2 text-gray-300">
+                        <span className="font-semibold text-yellow-100">4pc: </span>
+                        {set.fourPieceEffect}
+                      </p>
+                    )}
+                  </>
+                }
+              />
+            );
+          })}
+        </ul>
+      )}
 
       <Modal
         open={addingSet !== null}

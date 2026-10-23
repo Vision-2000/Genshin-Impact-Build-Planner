@@ -202,7 +202,9 @@ function BuildEditor({
           actions) -- Delete alongside Save here, since this form has both:
           deleting is still immediate (a separately confirmed, already-
           destructive action, not part of the staged draft), Save is what
-          commits the staged name/weapon/artifacts. */}
+          commits the staged name/weapon/artifacts. Same Delete/Save
+          styling and placement as WeaponProgressionForm/
+          ArtifactProgressionForm (solid red, directly left of Save). */}
       <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
         <label className="block text-sm">
           Name:
@@ -218,7 +220,7 @@ function BuildEditor({
           <button
             type="button"
             onClick={onDelete}
-            className="rounded border border-red-600 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white"
+            className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
           >
             Delete build
           </button>
@@ -533,19 +535,23 @@ export function OwnedBuildManager({
           {filtered.length} build{filtered.length === 1 ? "" : "s"}
         </p>
 
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {pageItems.map((build) => (
-            <BuildCard
-              key={build.id}
-              build={build}
-              isActive={build.id === activeId}
-              onEdit={() => setEditingId(build.id)}
-            />
-          ))}
-          {pageItems.length === 0 && (
-            <p className="col-span-full text-sm text-gray-500">No builds match these filters.</p>
-          )}
-        </ul>
+        {/* The empty-state message replaces the <ul> rather than sitting
+            inside it -- a <ul> may only directly contain <li>, and a <p>
+            there reads to screen readers as a one-item list. */}
+        {pageItems.length === 0 ? (
+          <p className="text-sm text-gray-500">No builds match these filters.</p>
+        ) : (
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {pageItems.map((build) => (
+              <BuildCard
+                key={build.id}
+                build={build}
+                isActive={build.id === activeId}
+                onEdit={() => setEditingId(build.id)}
+              />
+            ))}
+          </ul>
+        )}
 
         <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
 
