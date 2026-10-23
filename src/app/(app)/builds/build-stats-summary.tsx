@@ -163,10 +163,15 @@ export function BuildStatsSummary({
     (t) => t.slot !== TalentSlot.NormalAttack && t.slot !== TalentSlot.Skill && t.slot !== TalentSlot.Burst
   );
 
-  // One entry per distinct equipped set with 2+ pieces (not one per
-  // threshold -- a 4-piece set already implies its own 2pc bonus too, so
-  // it gets a single "<set name> 4" entry covering both, rather than two
-  // separate "<set name> 2"/"<set name> 4" entries for the same set).
+  // One entry per distinct equipped set with 2+ pieces -- still grouped
+  // this way (not one per threshold) since the tooltip below shows a
+  // single block per SET with both its 2pc and 4pc text together when
+  // both apply. The box's own face (its <ul> below) un-groups this back
+  // into one row per threshold reached instead of collapsing a 4pc set
+  // into a single "<set name> 4" row -- showing its own 2pc row too reads
+  // better, and incidentally means the max-2-active-sets case (two
+  // separate 2pc sets) and the single-4pc-set case now both render as 2
+  // rows, not 1, so a bare 1-row face is rarer than before.
   // twoPieceEffect/fourPieceEffect carry the real effect TEXT -- not just
   // the stat-bonus subset final-stats.ts totals, since most 4pc effects
   // (and some 2pc ones) are conditional/proc-based and have no stat bonus
@@ -257,7 +262,11 @@ export function BuildStatsSummary({
           </>
         }
       >
-        <div className="flex h-full flex-col rounded border bg-black p-4 text-base">
+        {/* pt-2 (not p-4 on every side) -- same "shave fixed overhead, not
+            content" lever as the Artifact Set Effects box below, applied
+            uniformly across all 4 boxes rather than singling that one out,
+            so they still read as a consistent set. */}
+        <div className="flex h-full flex-col rounded border bg-black p-4 pt-2 text-base">
           <p className="text-lg font-semibold text-foreground">Stats</p>
           {primaryStats.length === 0 ? (
             <p className="mt-2 text-gray-400">No stats yet.</p>
@@ -288,9 +297,18 @@ export function BuildStatsSummary({
           Constellations keep their own natural (short) height; Artifact
           Set Effects is the one that grows (flex-1 below) to absorb
           whatever's left, so ITS OWN bottom edge -- not just this
-          column's outer box -- ends up level with Character Stats'. */}
-      <div className="flex flex-1 flex-col gap-3">
-        <div className="rounded border bg-black p-4 text-base">
+          column's outer box -- ends up level with Character Stats'.
+          min-h-0 -- this column is ALSO a flex item (of the outer row),
+          and min-height: auto's content-based floor applies at every
+          nested flex level independently, not just the innermost one --
+          without this, this column's own automatic minimum height (summed
+          from Talents + Constellations + Set Effects' natural content
+          height) could still floor IT taller than Column 1's h-full, even
+          with min-h-0 already on the Set Effects wrapper below. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        {/* pt-2 -- see Column 1's own Stats box comment on this same
+            uniform trim. */}
+        <div className="rounded border bg-black p-4 pt-2 text-base">
           <p className="text-lg font-semibold text-foreground">Talents</p>
           {/* Same icon row the progression editor's own
               TalentsSection uses -- combat talents (with their
@@ -307,7 +325,9 @@ export function BuildStatsSummary({
           </div>
         </div>
 
-        <div className="rounded border bg-black p-4 text-base">
+        {/* pt-2 -- see Column 1's own Stats box comment on this same
+            uniform trim. */}
+        <div className="rounded border bg-black p-4 pt-2 text-base">
           <p className="text-lg font-semibold text-foreground">Constellations</p>
           {/* Same lit/unlit icon row as the editor's own
               ConstellationIcons -- always all 6, not just the
@@ -326,9 +346,17 @@ export function BuildStatsSummary({
         </div>
 
         {activeSetEffects.length === 0 ? (
-          <div className="flex-1 rounded border bg-black p-4 text-base">
+          // pt-2 -- see Column 1's own Stats box comment on this same
+          // uniform trim.
+          <div className="flex h-full flex-1 flex-col rounded border bg-black p-4 pt-2 text-base">
             <p className="text-lg font-semibold text-foreground">Artifact Set Effects</p>
-            <p className="mt-2 text-gray-400">No 2-piece or 4-piece set bonus active yet.</p>
+            {/* flex-1 flex-col justify-center min-h-0 -- the title stays
+                pinned at the top like every other box's own title; only
+                this line centers within whatever's left below it, same as
+                the active-effects box's own wrapper below. */}
+            <div className="flex min-h-0 flex-1 flex-col justify-center">
+              <p className="text-gray-400">No 2-piece or 4-piece set bonus active yet.</p>
+            </div>
           </div>
         ) : (
           // One tooltip for the WHOLE box -- hovering anywhere over it
@@ -340,7 +368,14 @@ export function BuildStatsSummary({
           // whatever that resolves to, same pattern as Column 1's own
           // tooltip-wrapped box.
           <MouseFollowTooltip
-            wrapperClassName="relative block flex-1"
+            // min-h-0 -- without it, a flex item's default min-height: auto
+            // floors this at its own content height, so 2 active set
+            // effects (one line taller than 1) can force this box past
+            // whatever flex-1 actually allocated it, pushing its bottom
+            // past the splash art's own bottom edge. Same fix as
+            // owned-build-manager.tsx's own min-h-0 flex-1 wrapper, one
+            // level up.
+            wrapperClassName="relative block min-h-0 flex-1"
             content={
               <div className="space-y-3">
                 {activeSetEffects.map((effect, index) => (
@@ -362,30 +397,63 @@ export function BuildStatsSummary({
               </div>
             }
           >
-            <div className="flex h-full flex-col rounded border bg-black p-4 text-base">
+            {/* pt-2/pb-2 (not p-4 on every side) -- top/bottom padding are
+                fixed overhead that doesn't depend on content, same lever as
+                the ul's own gap-y-0.5 below (see its comment): every px
+                reclaimed here is one more px of room for the 2nd
+                active-set-effect row under this box's fixed ceiling. pt-2
+                also matches the uniform trim applied to all 4 boxes (see
+                Column 1's own Stats box comment). */}
+            <div className="flex h-full flex-col rounded border bg-black p-4 pt-2 pb-2 text-base">
               <p className="text-lg font-semibold text-foreground">Artifact Set Effects</p>
               {/* One set per row -- just the set name + its own
                   highest piece threshold, no individual hover
                   here anymore, see the single box-wide tooltip
-                  above. */}
-              <ul className="mt-2 flex flex-col gap-y-1">
-                {activeSetEffects.map((effect) => (
-                  <li key={effect.setName} className="flex items-center gap-1.5 text-foreground">
-                    {/* mt-0.5 -- same fix used elsewhere in
-                        this app for a badge sitting next to
-                        plain text: Arial's own line-height
-                        metrics aren't split evenly above/
-                        below the glyphs, so items-center
-                        alone still left this text reading
-                        slightly above true center next to
-                        the badge. */}
-                    <span className="mt-0.5">{effect.setName}</span>
-                    <span className="flex h-5 w-5 items-center justify-center rounded border border-gray-600 bg-black/70 text-xs font-semibold leading-none text-white">
-                      {effect.maxPiece}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                  above.
+                  flex-1 flex-col justify-center min-h-0 on this wrapper --
+                  the title above stays pinned at the top like every other
+                  box's own title; only the list itself centers within
+                  whatever's left below it (shrinking/growing with 1 vs 2
+                  active effects), instead of sitting glued to the title
+                  with all the leftover space dumped below. min-h-0 --
+                  same reasoning as everywhere else in this chain: without
+                  it, this wrapper's own content-based floor could still
+                  force it (and the box) taller than the fixed ceiling. */}
+              <div className="flex min-h-0 flex-1 flex-col justify-center">
+                {/* gap-y-2 -- the centering wrapper above (justify-center)
+                    absorbs any leftover height as space AROUND the list,
+                    not within it, so with 2 rows crammed together at
+                    gap-y-0.5 this just redistributes some of that same
+                    leftover space to between the rows instead. If a
+                    future case ends up genuinely tight on room, dial this
+                    back down toward gap-y-0.5 rather than touching pt-2/
+                    pb-2 again. */}
+                <ul className="flex flex-col gap-y-2">
+                  {/* flatMap, not map -- a 4pc-active set shows its own 2pc
+                      row too (see activeSetEffects' own comment above on
+                      why), so each effect can contribute 1 or 2 rows here,
+                      not always exactly 1. */}
+                  {activeSetEffects.flatMap((effect) => {
+                    const pieces: (2 | 4)[] = effect.maxPiece === 4 ? [2, 4] : [2];
+                    return pieces.map((piece) => (
+                      <li key={`${effect.setName}-${piece}`} className="flex items-center gap-1.5 text-foreground">
+                        {/* mt-0.5 -- same fix used elsewhere in
+                            this app for a badge sitting next to
+                            plain text: Arial's own line-height
+                            metrics aren't split evenly above/
+                            below the glyphs, so items-center
+                            alone still left this text reading
+                            slightly above true center next to
+                            the badge. */}
+                        <span className="mt-0.5">{effect.setName}</span>
+                        <span className="flex h-5 w-5 items-center justify-center rounded border border-gray-600 bg-black/70 text-xs font-semibold leading-none text-white">
+                          {piece}
+                        </span>
+                      </li>
+                    ));
+                  })}
+                </ul>
+              </div>
             </div>
           </MouseFollowTooltip>
         )}
