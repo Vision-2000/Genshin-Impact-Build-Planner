@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { WeaponType } from "@/generated/prisma/enums";
 import { WEAPON_TYPE_ICON_URL } from "@/lib/weapon-type-icons";
@@ -152,6 +153,16 @@ export function WeaponCard({
   // delete's own red/gray distinction always wins there.
   borderClassName?: string;
 }) {
+  // Same loaded-flag/spinner-overlay technique as ArtifactCard/CharacterCard
+  // (not reused directly -- there's no shared non-hook helper for a Hook
+  // like this) -- a freshly-added weapon's icon has no browser cache to
+  // fall back on and otherwise renders nothing at all while it's in
+  // flight. key={iconUrl} below resets this back to "not loaded" if this
+  // card is ever reused for a different icon -- the one call site that
+  // actually does that is WeaponSlotPicker's own compact SELECTED display,
+  // where choosing a different weapon reuses the same card instance.
+  const [loaded, setLoaded] = useState(false);
+
   const cardBody = (
     <div
       onClick={onSelect}
@@ -186,13 +197,29 @@ export function WeaponCard({
       } ${rarityGradientClasses(rarity)}`}
     >
       {iconUrl && (
-        <Image
-          src={iconUrl}
-          alt={name}
-          fill
-          sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-          className="object-cover"
-        />
+        <>
+          {/* Always rendered, never conditionally removed -- opacity
+              toggled by a class instead, so the very first client render
+              (loaded still false, same as the server) produces an
+              identical tree. Structurally adding/removing this node based
+              on load state caused a hydration mismatch for any image that
+              happened to resolve from cache fast enough to flip loaded
+              before hydration's diff settled. */}
+          <div
+            className={`absolute inset-0 flex items-center justify-center transition-opacity ${loaded ? "opacity-0" : "opacity-100"}`}
+          >
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+          </div>
+          <Image
+            key={iconUrl}
+            src={iconUrl}
+            alt={name}
+            fill
+            sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+            className="object-cover"
+            onLoad={() => setLoaded(true)}
+          />
+        </>
       )}
 
       {showWeaponTypeBadge && (

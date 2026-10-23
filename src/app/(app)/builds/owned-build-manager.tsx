@@ -80,6 +80,16 @@ function BuildCard({
   isActive: boolean;
   onEdit: () => void;
 }) {
+  // Same loaded-flag/spinner-overlay technique as CharacterCard/
+  // ArtifactCard/WeaponCard -- a freshly-started dev server (or just a
+  // cold browser cache) has never fetched this portrait before, and Image
+  // renders nothing at all while it's in flight, reading as a wall of
+  // blank cards on a page full of builds. No key={build.characterIconUrl}
+  // reset here -- unlike WeaponCard, this component is never reused for a
+  // different build's icon in place (each card is keyed by build.id at
+  // the list level, same as CharacterCard's own reasoning).
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   return (
     <li className="relative">
       <div
@@ -97,13 +107,29 @@ function BuildCard({
       >
         <div className="relative aspect-[4/3] w-full">
           {build.characterIconUrl && (
-            <Image
-              src={build.characterIconUrl}
-              alt=""
-              fill
-              sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-              className="object-cover"
-            />
+            <>
+              {/* Always rendered, never conditionally removed -- opacity
+                  toggled by a class instead, so the very first client
+                  render (imageLoaded still false, same as the server)
+                  produces an identical tree. Structurally adding/removing
+                  this node based on load state caused a hydration
+                  mismatch for any image that happened to resolve from
+                  cache fast enough to flip imageLoaded before hydration's
+                  diff settled. */}
+              <div
+                className={`absolute inset-0 flex items-center justify-center transition-opacity ${imageLoaded ? "opacity-0" : "opacity-100"}`}
+              >
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+              </div>
+              <Image
+                src={build.characterIconUrl}
+                alt=""
+                fill
+                sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
+                className="object-cover"
+                onLoad={() => setImageLoaded(true)}
+              />
+            </>
           )}
 
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
