@@ -121,6 +121,10 @@ function buildTooltipContent(artifact: OwnedArtifactOption) {
 function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
   return (
     <li>
+      {/* border border-white -- matches the real ArtifactCard entries
+          in this same grid now, for consistency, not because this
+          card's own light bg-foreground/10 fill has the same
+          blends-into-black problem those have. */}
       <div
         onClick={onSelect}
         role="button"
@@ -130,7 +134,7 @@ function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
           event.preventDefault();
           onSelect();
         }}
-        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl bg-foreground/10 shadow hover:opacity-90"
+        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border border-white bg-foreground/10 shadow hover:opacity-90"
       >
         <span className="text-lg font-semibold text-gray-400">None</span>
       </div>
@@ -156,6 +160,7 @@ export function ArtifactSlotPicker({
   artifacts,
   value,
   onChange,
+  disabled = false,
   autoOpen,
   onOpenChange,
   boxSizeClassName = "h-56 w-56",
@@ -165,6 +170,13 @@ export function ArtifactSlotPicker({
   artifacts: OwnedArtifactOption[];
   value: number | null;
   onChange: (ownedArtifactId: number | null) => void;
+  // BuildCatalog's own "no character chosen yet" state only -- mirrors
+  // WeaponSlotPicker's weaponType-null gating (same reasoning: nothing
+  // meaningful to pick yet), except artifacts have no narrowing value of
+  // their own to double as that signal, so this is a plain explicit flag
+  // instead. Always false (the default) for the owned-build edit modal's
+  // own call site, where the character is locked and never null.
+  disabled?: boolean;
   // Same as WeaponSlotPicker/CharacterSlotPicker's own autoOpen/
   // onOpenChange -- lets BuildCatalog's sessionStorage draft reopen this
   // picker after a remount (e.g. following this picker's own "add one on
@@ -279,6 +291,23 @@ export function ArtifactSlotPicker({
             borderClassName={cardBorderClassName}
           />
         </ul>
+      ) : disabled ? (
+        // Same dashed/muted/cursor-not-allowed treatment as
+        // WeaponSlotPicker's own weaponType-null disabled state -- not a
+        // <button> there either (no click handler, no keyboard focus), a
+        // disabled native control still needs explicit styling to read as
+        // inert. Unlike that one, this keeps the slot's own icon visible
+        // (just dimmed along with the rest of the box, no separate
+        // opacity-30 of its own) rather than an empty box -- losing which
+        // slot is which (flower/feather/sands/goblet/circlet) reads as a
+        // bigger loss here than it would for a single weapon slot.
+        <div
+          title="Pick a character first"
+          aria-disabled="true"
+          className={`relative flex ${boxSizeClassName} shrink-0 cursor-not-allowed items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-500 bg-foreground/5 opacity-40`}
+        >
+          <Image src={ARTIFACT_SLOT_ICON_URL[slot]} alt="" fill className="object-contain p-1" />
+        </div>
       ) : (
         <button
           type="button"
@@ -380,7 +409,11 @@ export function ArtifactSlotPicker({
                 onSelect={() => select(artifact.ownedArtifactId)}
                 showSetName={false}
                 showSlotBadge={false}
-                borderClassName=""
+                // border border-white -- same thin-border fix as the
+                // compact slot card (marks where the card ends against
+                // its own near-black bottom gradient, which otherwise
+                // blends into this modal's own dark background).
+                borderClassName="border border-white"
               />
             ))}
           </ul>

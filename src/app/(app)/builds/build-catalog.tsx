@@ -186,10 +186,19 @@ export function BuildCatalog({
     // different weapon type -- an already-chosen weapon might not even be
     // the right type anymore, so clear it (and the weapon picker's own
     // open state) rather than silently carry over a mismatched choice.
-    // Artifacts aren't character-specific, so they're left alone.
     setCharacterId(nextCharacterId);
     setWeaponId(null);
     setWeaponPickerOpen(false);
+    // Artifacts aren't character-specific -- switching between two real
+    // characters leaves them alone, same as before. But clearing back to
+    // NO character disables the artifact pickers entirely (see
+    // ArtifactSlotPicker's own disabled prop below), so any already-
+    // chosen pieces are cleared too rather than leaving a selection the
+    // UI no longer lets you see or change.
+    if (nextCharacterId === null) {
+      setSlots({});
+      setArtifactPickerOpenSlots({});
+    }
   }
 
   function handleSubmit() {
@@ -222,8 +231,22 @@ export function BuildCatalog({
     });
   }
 
+  // Explicit close (backdrop click, Escape, a future close button) --
+  // not the same as unmounting by navigating away via a picker's own
+  // "add it" link, which leaves the sessionStorage draft alone on
+  // purpose so returning via Back still restores it (see DRAFT_KEY's own
+  // comment and OwnedBuildManager's own restore effect). An explicit
+  // close means the user is done with this draft, so it's cleared here
+  // too -- otherwise it would silently resurrect itself (reopening this
+  // modal half-filled) the next time OwnedBuildManager mounts, including
+  // on a plain page refresh, not just a Back navigation.
+  function handleClose() {
+    sessionStorage.removeItem(DRAFT_KEY);
+    onClose();
+  }
+
   return (
-    <Modal open onClose={onClose} maxWidthClassName="max-w-7xl" hideCloseButton>
+    <Modal open onClose={handleClose} maxWidthClassName="max-w-7xl" hideCloseButton>
       <div className="space-y-4">
         {characters.length === 0 ? (
           <p className="text-base text-gray-500">
@@ -322,9 +345,13 @@ export function BuildCatalog({
                       autoOpen={weaponPickerOpen}
                       onOpenChange={setWeaponPickerOpen}
                       boxSizeClassName={SLOT_SIZE_CLASS}
-                      // "" -- the usual 8px gray border reads as too thick at
-                      // this compact size.
-                      cardBorderClassName=""
+                      // border border-white (not the usual 8px gray) --
+                      // thin enough not to read as too thick at this
+                      // compact size, but still enough to mark where the
+                      // card ends: its own bottom gradient overlay fades
+                      // to near-black, which otherwise blends invisibly
+                      // into the page's own black background.
+                      cardBorderClassName="border border-white"
                     />
                   </div>
 
@@ -340,18 +367,25 @@ export function BuildCatalog({
                           onChange={(ownedArtifactId) =>
                             setSlots((prev) => ({ ...prev, [slot]: ownedArtifactId ?? undefined }))
                           }
+                          // Same reasoning as WeaponSlotPicker's own
+                          // weaponType={character?.weaponType ?? null} --
+                          // nothing meaningful to pick until a character
+                          // is actually chosen.
+                          disabled={!character}
                           autoOpen={artifactPickerOpenSlots[slot] ?? false}
                           onOpenChange={(open) =>
                             setArtifactPickerOpenSlots((prev) => ({ ...prev, [slot]: open }))
                           }
                           boxSizeClassName={SLOT_SIZE_CLASS}
-                          // Icon only, no border -- matches the Weapon slot's
-                          // own plain-icon treatment at this size. Main stat/
-                          // substats/level are still shown, via the level
-                          // badge and hover tooltip ArtifactSlotPicker's own
+                          // border border-white -- same thin-border fix as
+                          // the Weapon slot above, same reason (marks
+                          // where the card ends against its own near-
+                          // black bottom gradient). Main stat/substats/
+                          // level are still shown, via the level badge
+                          // and hover tooltip ArtifactSlotPicker's own
                           // selected display always provides now (see its
                           // own comment).
-                          cardBorderClassName=""
+                          cardBorderClassName="border border-white"
                         />
                       ))}
                     </div>
