@@ -199,6 +199,17 @@ export function BuildStatsSummary({
     return effects;
   })();
 
+  // Flattened, one entry per rendered row (not per set) -- a 4pc-active
+  // set contributes its own 2pc row too (see activeSetEffects' own
+  // comment above on why), so this can be longer than activeSetEffects
+  // itself. Hoisted out of the JSX below so both the row count (the
+  // isOnlyRow nudge below) and the per-row index (the first-row-only
+  // vertical nudge below) are available without computing this twice.
+  const activeSetEffectRows = activeSetEffects.flatMap((effect) => {
+    const pieces: (2 | 4)[] = effect.maxPiece === 4 ? [2, 4] : [2];
+    return pieces.map((piece) => ({ setName: effect.setName, piece }));
+  });
+
   return (
     // No mt-4 here -- the gap between this and the weapon/artifact row
     // above is provided by the caller's own flex `gap-4` instead now
@@ -276,7 +287,7 @@ export function BuildStatsSummary({
             // ends up giving this box (tracking the splash art's own
             // height), instead of bunching at the top with growing dead
             // space below as that height grows.
-            <ul className="mt-4 flex flex-1 flex-col justify-between whitespace-nowrap">
+            <ul className="mt-2 flex flex-1 flex-col justify-between whitespace-nowrap">
               {primaryStats.map(({ statName, value }) => (
                 <li key={statName}>
                   {statName}: {formatStatValue(statName, value)}
@@ -429,29 +440,38 @@ export function BuildStatsSummary({
                     back down toward gap-y-0.5 rather than touching pt-2/
                     pb-2 again. */}
                 <ul className="flex flex-col gap-y-2">
-                  {/* flatMap, not map -- a 4pc-active set shows its own 2pc
-                      row too (see activeSetEffects' own comment above on
-                      why), so each effect can contribute 1 or 2 rows here,
-                      not always exactly 1. */}
-                  {activeSetEffects.flatMap((effect) => {
-                    const pieces: (2 | 4)[] = effect.maxPiece === 4 ? [2, 4] : [2];
-                    return pieces.map((piece) => (
-                      <li key={`${effect.setName}-${piece}`} className="flex items-center gap-1.5 text-foreground">
-                        {/* mt-0.5 -- same fix used elsewhere in
-                            this app for a badge sitting next to
-                            plain text: Arial's own line-height
-                            metrics aren't split evenly above/
-                            below the glyphs, so items-center
-                            alone still left this text reading
-                            slightly above true center next to
-                            the badge. */}
-                        <span className="mt-0.5">{effect.setName}</span>
-                        <span className="flex h-5 w-5 items-center justify-center rounded border border-gray-600 bg-black/70 text-xs font-semibold leading-none text-white">
-                          {piece}
+                  {activeSetEffectRows.map((row, index) => (
+                    <li key={`${row.setName}-${row.piece}`} className="flex items-center gap-1.5 text-foreground">
+                      {/* mt-0.5 -- same fix used elsewhere in
+                          this app for a badge sitting next to
+                          plain text: Arial's own line-height
+                          metrics aren't split evenly above/
+                          below the glyphs, so items-center
+                          alone still left this text reading
+                          slightly above true center next to
+                          the badge. */}
+                      <span className="mt-0.5">{row.setName}</span>
+                      <span className="flex h-5 w-5 items-center justify-center rounded border border-gray-600 bg-black/70 text-xs font-semibold leading-none text-white">
+                        {/* mt-0.5 only on the first row -- the 2nd row's
+                            own badge already lands centered on its own
+                            (applying the same nudge to both rows pushed
+                            the 2nd one down too far, since the two rows
+                            don't share the same sub-pixel vertical
+                            offset -- see the surrounding centering
+                            wrapper's own comment). ml-px only in the
+                            1-row case -- with only one row, the badge
+                            reads as sitting slightly left of true
+                            horizontal center; with 2 rows that isn't
+                            visible, so this only applies when this is
+                            the sole row. */}
+                        <span
+                          className={`${index === 0 ? "mt-0.5" : ""} ${activeSetEffectRows.length === 1 ? "ml-px" : ""}`}
+                        >
+                          {row.piece}
                         </span>
+                      </span>
                       </li>
-                    ));
-                  })}
+                    ))}
                 </ul>
               </div>
             </div>
