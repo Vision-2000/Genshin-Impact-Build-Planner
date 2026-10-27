@@ -526,7 +526,7 @@ export function OwnedBuildManager({
               setSearch(event.target.value);
               setPage(1);
             }}
-            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
+            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
           />
           <select
             value={sortKey}
