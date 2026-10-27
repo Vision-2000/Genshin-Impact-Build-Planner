@@ -1,14 +1,23 @@
+import { Element, WeaponType } from "@/generated/prisma/enums";
 import type { OverlapCheckBuild } from "@/lib/overlap";
 
 export const MAX_TEAM_SIZE = 4;
 
 // A build as available for selection, carrying everything detectOverlaps
-// needs plus what the UI needs to display it.
+// needs plus what the UI needs to display it. element/rarity/weaponType
+// (the character's own, not stored on Build itself) are here so
+// BuildSlotPicker can render each candidate as a CharacterCard without a
+// second lookup -- the owned-builds page's own BuildItem doesn't need
+// these (it uses BuildCard, not CharacterCard), which is why this is its
+// own type rather than reusing that one.
 export type BuildOption = {
   buildId: number;
   name: string;
   characterName: string;
   characterIconUrl: string | null;
+  element: Element;
+  rarity: number;
+  weaponType: WeaponType;
   ownedCharacterId: number;
   exclusivityGroup: string | null;
   ownedWeaponId: number | null;

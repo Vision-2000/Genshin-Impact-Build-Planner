@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Image from "next/image";
+import { useState, useTransition, type ReactNode } from "react";
 import { paginate } from "@/lib/paginate";
-import { detectOverlaps } from "@/lib/overlap";
+import { Modal } from "@/components/modal";
 import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild } from "./actions";
 import type { CreateTeamErrors } from "./schemas";
 import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type TeamItem } from "./filter-sort";
+import { BuildSlotPicker } from "./build-slot-picker";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 9;
+// Compact size for a team card's own 4 slots -- smaller than the usual
+// 224x224 default (same reasoning as Builds' own SLOT_SIZE_CLASS): a card
+// needs to fit 4 of these side by side, plus its own name row, inside a
+// grid cell.
+const SLOT_SIZE_CLASS = "h-28 w-28";
 
 function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
   const [draft, setDraft] = useState(value);
@@ -25,95 +30,99 @@ function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: s
         if (trimmed && trimmed !== value) onCommit(trimmed);
         else setDraft(value);
       }}
-      className="min-w-0 flex-1 rounded border bg-white px-2 py-1 text-sm font-medium text-black"
+      className="min-w-0 flex-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-medium text-black"
     />
   );
 }
 
+// A team's own 4 build slots, each a BuildSlotPicker -- array position IS
+// slot identity here (members[0] is slot 0, etc.), which has no deeper
+// meaning than "whatever order the server returned them in", same as any
+// other unordered-by-design list in this app. A slot past team.members
+// .length is simply empty (buildId null). This replaces the earlier
+// "members list + a <select> to add one" layout -- matches the slot-
+// picker pattern Builds already established for weapon/artifact, rather
+// than a one-off control just for this page.
 function TeamCard({
   team,
   builds,
   onUpdateName,
-  onAddBuild,
-  onRemoveBuild,
+  onSlotChange,
   onDelete,
 }: {
   team: TeamItem;
   builds: BuildOption[];
   onUpdateName: (name: string) => void;
-  onAddBuild: (buildId: number) => void;
-  onRemoveBuild: (buildId: number) => void;
+  onSlotChange: (oldBuildId: number | null, newBuildId: number | null) => void;
   onDelete: () => void;
 }) {
-  const memberBuildIds = new Set(team.members.map((m) => m.buildId));
-  const currentOverlapBuilds = team.members
-    .map((member) => builds.find((build) => build.buildId === member.buildId))
-    .filter((build): build is BuildOption => !!build)
-    .map(toOverlapCheckBuild);
-
-  const isFull = team.members.length >= MAX_TEAM_SIZE;
-  const availableBuilds = isFull
-    ? []
-    : builds.filter((build) => {
-        if (memberBuildIds.has(build.buildId)) return false;
-        return detectOverlaps([...currentOverlapBuilds, toOverlapCheckBuild(build)]).length === 0;
-      });
+  const slotBuildIds: (number | null)[] = [
+    ...team.members.map((m) => m.buildId),
+    ...Array(Math.max(0, MAX_TEAM_SIZE - team.members.length)).fill(null),
+  ].slice(0, MAX_TEAM_SIZE);
 
   return (
-    <li className="space-y-2 rounded border p-3">
-      <div className="flex items-center gap-3">
+    <li className="space-y-3 rounded-xl border p-4">
+      <div className="flex items-center justify-between gap-2">
         <TeamNameInput value={team.name} onCommit={onUpdateName} />
-        <span className="text-xs text-gray-500">
-          {team.members.length}/{MAX_TEAM_SIZE}
-        </span>
-        <button type="button" onClick={onDelete} className="text-xs text-red-600 underline">
-          Delete
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-gray-500">
+            {team.members.length}/{MAX_TEAM_SIZE}
+          </span>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded bg-red-600 px-3 pb-1 pt-2 text-xs font-semibold text-white hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
-      <ul className="space-y-1">
-        {team.members.map((member) => (
-          <li key={member.buildId} className="flex items-center gap-2 text-xs">
-            {member.characterIconUrl && <Image src={member.characterIconUrl} alt="" width={24} height={24} />}
-            <span>
-              {member.characterName} — {member.name}
-            </span>
-            <button
-              type="button"
-              onClick={() => onRemoveBuild(member.buildId)}
-              className="text-red-600 underline"
-            >
-              Remove
-            </button>
-          </li>
-        ))}
-        {team.members.length === 0 && <p className="text-xs text-gray-500">No builds yet.</p>}
-      </ul>
+      <div className="flex flex-wrap gap-2">
+        {slotBuildIds.map((buildId, index) => {
+          // Every OTHER filled slot's own build, excluding this slot's own
+          // current pick -- fed to this slot's own BuildSlotPicker so it
+          // can filter out any candidate that would conflict (duplicate
+          // character, shared exclusivityGroup, shared weapon, shared
+          // artifact) with the rest of the team. A build appearing twice
+          // in slotBuildIds can't happen in practice (detectOverlaps
+          // already blocks reusing the same character, which the same
+          // build always has), so no separate dedup is needed here.
+          const otherBuilds = slotBuildIds
+            .filter((id, otherIndex) => otherIndex !== index && id !== null)
+            .map((id) => builds.find((b) => b.buildId === id))
+            .filter((b): b is BuildOption => b !== undefined)
+            .map(toOverlapCheckBuild);
 
-      {!isFull && (
-        <select
-          defaultValue=""
-          onChange={(event) => {
-            if (event.target.value) onAddBuild(Number(event.target.value));
-            event.target.value = "";
-          }}
-          className="rounded border bg-white px-2 py-1 text-xs text-black"
-        >
-          <option value="" disabled>
-            + Add build
-          </option>
-          {availableBuilds.map((build) => (
-            <option key={build.buildId} value={build.buildId}>
-              {build.characterName} — {build.name}
-            </option>
-          ))}
-        </select>
-      )}
+          return (
+            <BuildSlotPicker
+              key={index}
+              builds={builds}
+              otherOverlapBuilds={otherBuilds}
+              value={buildId}
+              onChange={(newBuildId) => onSlotChange(buildId, newBuildId)}
+              boxSizeClassName={SLOT_SIZE_CLASS}
+            />
+          );
+        })}
+      </div>
     </li>
   );
 }
 
-export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; initialTeams: TeamItem[] }) {
+export function TeamManager({
+  header,
+  builds,
+  initialTeams,
+}: {
+  // The page's own title block -- same reasoning as OwnedBuildManager's
+  // own header prop (see page.tsx's own comment): "Create team" opens a
+  // modal driven by client state, so the row holding both lives here.
+  header: ReactNode;
+  builds: BuildOption[];
+  initialTeams: TeamItem[];
+}) {
   const [teams, setTeams] = useState(initialTeams);
   const [, startTransition] = useTransition();
   const { confirm, notify } = useDialogs();
@@ -124,8 +133,15 @@ export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; i
   const filtered = filterTeams(teams, search);
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
 
+  const [creating, setCreating] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createErrors, setCreateErrors] = useState<CreateTeamErrors>({});
+
+  function closeCreate() {
+    setCreating(false);
+    setCreateName("");
+    setCreateErrors({});
+  }
 
   function handleCreateSubmit() {
     startTransition(async () => {
@@ -135,8 +151,7 @@ export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; i
         return;
       }
       setTeams((prev) => [...prev, { id: result.team.id, name: result.team.name, members: [] }]);
-      setCreateErrors({});
-      setCreateName("");
+      closeCreate();
     });
   }
 
@@ -162,36 +177,72 @@ export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; i
     });
   }
 
-  function handleAddBuild(teamId: number, buildId: number) {
-    startTransition(async () => {
-      const result = await addTeamBuild(teamId, buildId);
-      if ("error" in result) {
-        notify(result.error, { title: "Can't add build" });
-        return;
-      }
-      setTeams((prev) =>
-        prev.map((team) => (team.id === teamId ? { ...team, members: [...team.members, result.member] } : team))
-      );
-    });
-  }
-
-  function handleRemoveBuild(teamId: number, buildId: number) {
+  // Handles all three slot actions (add/remove/replace) through one path,
+  // rather than the three separate handlers this replaced -- a replace is
+  // just a remove and an add for the same slot, and sequencing those two
+  // server calls matters: addTeamBuild's own server-side 4-build check
+  // would otherwise race against a still-in-flight removeTeamBuild for
+  // the build being swapped out, if the two fired independently (as the
+  // old handleAddBuild/handleRemoveBuild pair would have here). Applies
+  // both halves of the optimistic update together, then awaits the
+  // remove before the add so the server always sees the slot as already
+  // freed.
+  function handleSlotChange(teamId: number, oldBuildId: number | null, newBuildId: number | null) {
+    if (oldBuildId === newBuildId) return;
     const previous = teams;
+    const newBuild = newBuildId !== null ? builds.find((b) => b.buildId === newBuildId) : undefined;
+
     setTeams((prev) =>
-      prev.map((team) =>
-        team.id === teamId ? { ...team, members: team.members.filter((m) => m.buildId !== buildId) } : team
-      )
+      prev.map((team) => {
+        if (team.id !== teamId) return team;
+        let members = team.members;
+        if (oldBuildId !== null) members = members.filter((m) => m.buildId !== oldBuildId);
+        if (newBuild) {
+          members = [
+            ...members,
+            {
+              buildId: newBuild.buildId,
+              name: newBuild.name,
+              characterName: newBuild.characterName,
+              characterIconUrl: newBuild.characterIconUrl,
+            },
+          ];
+        }
+        return { ...team, members };
+      })
     );
-    startTransition(() => {
-      removeTeamBuild(teamId, buildId).catch(() => setTeams(previous));
+
+    startTransition(async () => {
+      try {
+        if (oldBuildId !== null) await removeTeamBuild(teamId, oldBuildId);
+        if (newBuildId !== null) {
+          const result = await addTeamBuild(teamId, newBuildId);
+          if ("error" in result) {
+            notify(result.error, { title: "Can't add build" });
+            setTeams(previous);
+          }
+        }
+      } catch {
+        setTeams(previous);
+      }
     });
   }
 
   return (
-    <div className="space-y-10">
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Your teams</h2>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        {header}
 
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+        >
+          <span className="text-base leading-none">+</span> Create team
+        </button>
+      </div>
+
+      <div className="space-y-4">
         <input
           type="text"
           placeholder="Search by team or character name..."
@@ -200,52 +251,61 @@ export function TeamManager({ builds, initialTeams }: { builds: BuildOption[]; i
             setSearch(event.target.value);
             setPage(1);
           }}
-          className="rounded border bg-white px-3 py-2 text-sm text-black"
+          className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
         />
 
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-300">
           {filtered.length} team{filtered.length === 1 ? "" : "s"}
         </p>
 
-        <ul className="space-y-2">
-          {pageItems.map((team) => (
-            <TeamCard
-              key={team.id}
-              team={team}
-              builds={builds}
-              onUpdateName={(name) => handleUpdateName(team.id, name)}
-              onAddBuild={(buildId) => handleAddBuild(team.id, buildId)}
-              onRemoveBuild={(buildId) => handleRemoveBuild(team.id, buildId)}
-              onDelete={() => handleDelete(team.id)}
-            />
-          ))}
-          {pageItems.length === 0 && <p className="text-sm text-gray-500">No teams match this search.</p>}
-        </ul>
+        {/* grid-cols-1/2/3 (not the usual square-card 5-6 column grids) --
+            each card is much wider than a single icon, needing room for
+            its own name row plus 4 slot boxes side by side. */}
+        {pageItems.length === 0 ? (
+          <p className="text-sm text-gray-500">No teams match this search.</p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+            {pageItems.map((team) => (
+              <TeamCard
+                key={team.id}
+                team={team}
+                builds={builds}
+                onUpdateName={(name) => handleUpdateName(team.id, name)}
+                onSlotChange={(oldBuildId, newBuildId) => handleSlotChange(team.id, oldBuildId, newBuildId)}
+                onDelete={() => handleDelete(team.id)}
+              />
+            ))}
+          </ul>
+        )}
 
         <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
-      </section>
+      </div>
 
-      <section className="space-y-4 rounded border p-4">
-        <h2 className="text-lg font-semibold">Create a team</h2>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={createName}
-            onChange={(event) => setCreateName(event.target.value)}
-            placeholder="e.g. National Team"
-            className="rounded border bg-white px-2 py-1 text-sm text-black"
-          />
-          <button
-            type="button"
-            onClick={handleCreateSubmit}
-            className="rounded bg-black px-3 py-1 text-xs text-white"
-          >
-            Create team
-          </button>
+      <Modal open={creating} onClose={closeCreate} title="Create a team" maxWidthClassName="max-w-sm">
+        <div className="space-y-3">
+          <label className="block text-sm">
+            Name:
+            <input
+              type="text"
+              autoFocus
+              value={createName}
+              onChange={(event) => setCreateName(event.target.value)}
+              placeholder="e.g. National Team"
+              className="ml-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
+            />
+          </label>
+          {createErrors.name && <p className="text-sm text-red-600">{createErrors.name[0]}</p>}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleCreateSubmit}
+              className="rounded border border-white bg-black px-3 pb-1 pt-2 text-xs font-semibold text-white hover:bg-gray-800"
+            >
+              Create team
+            </button>
+          </div>
         </div>
-        {createErrors.name && <p className="text-xs text-red-600">{createErrors.name[0]}</p>}
-      </section>
+      </Modal>
     </div>
   );
 }
