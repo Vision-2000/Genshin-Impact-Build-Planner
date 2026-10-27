@@ -278,7 +278,13 @@ function BuildEditor({
                 value={weaponId}
                 onChange={setWeaponId}
                 boxSizeClassName={EDITOR_SLOT_SIZE_CLASS}
-                cardBorderClassName=""
+                // border border-white (not the usual 8px gray, and not no
+                // border) -- thin enough not to read as too thick at this
+                // compact size, but still enough to mark where the card
+                // ends: its own bottom gradient overlay fades to near-
+                // black, which otherwise blends invisibly into the page's
+                // own black background.
+                cardBorderClassName="border border-white"
               />
             </div>
 
@@ -295,7 +301,9 @@ function BuildEditor({
                       setSlots((prev) => ({ ...prev, [slot]: ownedArtifactId ?? undefined }))
                     }
                     boxSizeClassName={EDITOR_SLOT_SIZE_CLASS}
-                    cardBorderClassName=""
+                    // border border-white -- same thin-border fix as the
+                    // Weapon slot above, same reason.
+                    cardBorderClassName="border border-white"
                   />
                 ))}
               </div>

@@ -295,7 +295,11 @@ export function WeaponSlotPicker({
                 iconUrl={DEFAULT_WEAPON[weaponType].iconUrl}
                 onSelect={() => select(null)}
                 showWeaponTypeBadge={false}
-                borderClassName=""
+                // border border-white -- same thin-border fix as the
+                // compact slot card (marks where the card ends against
+                // its own near-black bottom gradient, which otherwise
+                // blends into this modal's own dark background).
+                borderClassName="border border-white"
               />
             )}
             {filtered.map((weapon) => (
@@ -314,7 +318,7 @@ export function WeaponSlotPicker({
                 hoverDetail={weapon.hoverDetail}
                 onSelect={() => select(weapon.ownedWeaponId)}
                 showWeaponTypeBadge={false}
-                borderClassName=""
+                borderClassName="border border-white"
               />
             ))}
           </ul>

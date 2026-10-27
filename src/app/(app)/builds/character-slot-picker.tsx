@@ -42,6 +42,10 @@ function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
 function NoneCharacterCard({ onSelect }: { onSelect: () => void }) {
   return (
     <li>
+      {/* border border-white -- matches the real CharacterCard entries
+          in this same grid now, for consistency, not because this
+          card's own light bg-foreground/10 fill has the same
+          blends-into-black problem those have. */}
       <div
         onClick={onSelect}
         role="button"
@@ -51,7 +55,7 @@ function NoneCharacterCard({ onSelect }: { onSelect: () => void }) {
           event.preventDefault();
           onSelect();
         }}
-        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl bg-foreground/10 shadow hover:opacity-90"
+        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border border-white bg-foreground/10 shadow hover:opacity-90"
       >
         <span className="text-lg font-semibold text-gray-400">None</span>
       </div>
@@ -175,7 +179,13 @@ export function CharacterSlotPicker({
           // the Weapon/Artifacts row next to it happens to need. flex-1
           // previously stretched this to match that row, which left it
           // looking squished once that row's own boxes shrank (see
-          // BuildCatalog's own SLOT_SIZE_CLASS).
+          // BuildCatalog's own SLOT_SIZE_CLASS). border-2 border-white --
+          // same thin border the empty placeholder state below already
+          // has, now applied here too: the splash art's own bottom
+          // gradient overlay fades to near-black, which otherwise blends
+          // invisibly into the page's own black background (same
+          // reasoning as the Weapon/Artifact slot cards' own border
+          // border-white fix).
           <div
             onClick={locked ? undefined : () => setOpen(true)}
             role={locked ? undefined : "button"}
@@ -190,7 +200,7 @@ export function CharacterSlotPicker({
                     setOpen(true);
                   }
             }
-            className={`relative aspect-[3/4] w-full overflow-hidden rounded-lg shadow ${
+            className={`relative aspect-[3/4] w-full overflow-hidden rounded-lg border-2 border-white shadow ${
               locked ? "" : "cursor-pointer hover:opacity-90"
             } ${elementBackgroundClass(selected.element)}`}
           >
@@ -289,7 +299,11 @@ export function CharacterSlotPicker({
                 rarity={character.rarity}
                 iconUrl={character.iconUrl}
                 onSelect={() => select(character.ownedCharacterId)}
-                borderClassName=""
+                // border border-white -- same thin-border fix as the
+                // Weapon/Artifact slot cards (marks where the card ends
+                // against its own near-black bottom gradient, which
+                // otherwise blends into this modal's own dark background).
+                borderClassName="border border-white"
                 progression={{
                   level: character.level,
                   ascensionPhase: character.ascensionPhase,
