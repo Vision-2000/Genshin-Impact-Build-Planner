@@ -92,6 +92,16 @@ function BuildCard({
 
   return (
     <li className="relative">
+      {/* flex row, not stacked -- the character icon (2x2 units, w-2/3
+          aspect-square) sits beside a weapon+artifact column (1x1 units
+          each, w-1/3 aspect-square, stacked with no gap so their combined
+          height exactly matches the character icon's own 2-unit height),
+          making the whole row a 3-wide/2-tall rectangle. Replaces the
+          earlier design (full-width 4:3 splash on top, a separate
+          weapon+artifact row below it) -- now that the artifact side is
+          always a single square regardless of 0/1/2 active set effects
+          (see its own comment below), there's no more reason for that
+          second row to exist as a separate block at all. */}
       <div
         onClick={onEdit}
         role="button"
@@ -101,11 +111,18 @@ function BuildCard({
           event.preventDefault();
           onEdit();
         }}
-        className={`w-full cursor-pointer overflow-hidden rounded-xl border-8 shadow hover:opacity-90 ${
+        className={`flex w-full cursor-pointer overflow-hidden rounded-xl border-8 shadow hover:opacity-90 ${
           isActive ? "border-blue-500" : "border-gray-600"
         } ${rarityGradientClasses(build.characterRarity)}`}
       >
-        <div className="relative aspect-[4/3] w-full">
+        {/* border-r-2 border-white -- separates the 3 icon regions so
+            they read as distinct tiles instead of blurring into one
+            shape now that they sit flush against each other (no gap, no
+            individual rounded corners of their own). Same thin-white-
+            border convention as the Build/Weapon/Artifact slot cards
+            elsewhere in this app, and now the same color as the
+            diagonal set-effect divider below too. */}
+        <div className="relative aspect-square w-2/3 shrink-0 border-r-2 border-white">
           {build.characterIconUrl && (
             <>
               {/* Always rendered, never conditionally removed -- opacity
@@ -138,40 +155,119 @@ function BuildCard({
           </div>
         </div>
 
-        <div className="space-y-1.5 bg-background px-2 py-1.5">
-          <div className="flex items-center gap-2">
-            {/* No real weapon chosen falls back to the character's own
-                1-star starter weapon -- same as WeaponSlotPicker's empty
-                state (see DEFAULT_WEAPON's own comment), not a blank slot. */}
-            <div
-              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded p-0.5 ${rarityGradientClasses(
-                build.weaponIconUrl ? (build.weaponRarity ?? 1) : DEFAULT_WEAPON_RARITY
-              )}`}
-            >
-              <Image
-                src={build.weaponIconUrl ?? DEFAULT_WEAPON[build.characterWeaponType].iconUrl}
-                alt=""
-                width={52}
-                height={52}
-              />
-            </div>
+        <div className="flex w-1/3 flex-col">
+          {/* No real weapon chosen falls back to the character's own
+              1-star starter weapon -- same as WeaponSlotPicker's empty
+              state (see DEFAULT_WEAPON's own comment), not a blank slot.
+              No rounded of its own (unlike the old fixed-size box) --
+              this tile's own corners are clipped by the outer card's own
+              overflow-hidden rounded-xl instead, same as the character
+              icon's own square already was. */}
+          {/* border-b-2 border-white -- same reasoning as the character
+              icon's own border-r-2 above, between this and the
+              artifact-effects tile below it. */}
+          <div
+            className={`relative aspect-square w-full border-b-2 border-white ${rarityGradientClasses(
+              build.weaponIconUrl ? (build.weaponRarity ?? 1) : DEFAULT_WEAPON_RARITY
+            )}`}
+          >
+            <Image
+              src={build.weaponIconUrl ?? DEFAULT_WEAPON[build.characterWeaponType].iconUrl}
+              alt=""
+              fill
+              className="object-contain p-1"
+            />
+          </div>
 
-            {build.activeSetEffects.length > 0 && (
-              <div className="ml-auto flex items-center gap-1.5">
-                {build.activeSetEffects.map((effect) => (
+          {build.activeSetEffects.length > 0 &&
+            (() => {
+              const [firstEffect, secondEffect] = build.activeSetEffects;
+
+              // A single set reaching 4pc already consumes 4 of the
+              // build's 5 artifact slots -- there's no room left for a
+              // SECOND 2+-piece set to ever join it (same 5-slot
+              // ceiling as build-stats-summary.tsx's own comment),
+              // unlike a standalone 2pc set, which genuinely could still
+              // be joined by one. The diagonal split exists to
+              // represent "room for a second set that may or may not be
+              // filled" -- there's nothing to represent here, so this
+              // falls back to the original plain, un-split icon. Both
+              // the set's own 2pc and 4pc bonuses are active either way;
+              // this is purely about which icon treatment communicates
+              // that correctly.
+              if (!secondEffect && firstEffect.maxPiece === 4) {
+                return (
                   <div
-                    key={effect.setName}
-                    title={`${effect.setName} (${effect.maxPiece}pc)`}
-                    className={`flex h-16 w-16 shrink-0 items-center justify-center rounded p-0.5 ${rarityGradientClasses(effect.rarity)}`}
+                    title={`${firstEffect.setName} (4pc)`}
+                    className={`relative aspect-square w-full ${rarityGradientClasses(firstEffect.rarity)}`}
                   >
-                    {effect.flowerIconUrl && (
-                      <Image src={effect.flowerIconUrl} alt={effect.setName} width={50} height={50} />
+                    {firstEffect.flowerIconUrl && (
+                      <Image
+                        src={firstEffect.flowerIconUrl}
+                        alt={firstEffect.setName}
+                        fill
+                        className="object-contain p-1"
+                      />
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                );
+              }
+
+              // Otherwise: either 2 distinct standalone 2pc sets, or
+              // just 1 (the 2nd triangle then stays blank, leaving
+              // visual room for a second set that isn't there yet). One
+              // combined box instead of one square per set -- showing
+              // both as separate full icons side by side was the actual
+              // source of the awkward gap this whole layout replaces --
+              // a single diagonally-split box (top-right to bottom-
+              // left) takes the same footprint as ONE icon used to.
+              return (
+                <div
+                  title={build.activeSetEffects.map((e) => `${e.setName} (${e.maxPiece}pc)`).join(" / ")}
+                  className={`relative aspect-square w-full overflow-hidden ${rarityGradientClasses(firstEffect.rarity)}`}
+                >
+                  {firstEffect.flowerIconUrl && (
+                    <div className="absolute inset-0" style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}>
+                      <Image
+                        src={firstEffect.flowerIconUrl}
+                        alt={firstEffect.setName}
+                        fill
+                        className="object-contain p-1"
+                      />
+                    </div>
+                  )}
+                  {secondEffect?.flowerIconUrl && (
+                    <div className="absolute inset-0" style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}>
+                      <Image
+                        src={secondEffect.flowerIconUrl}
+                        alt={secondEffect.setName}
+                        fill
+                        className="object-contain p-1"
+                      />
+                    </div>
+                  )}
+                  {/* The dividing line itself -- a thin opaque band at
+                      the gradient's own midpoint, transparent either
+                      side of it. 135deg (not 45deg) is what makes the
+                      band run from the top-right corner to the bottom-
+                      left corner on a square box, matching the two
+                      clip-path triangles above exactly. White, same
+                      color as the 2px borders between the 3 main icon
+                      tiles -- just thinner (1px) here, since it's
+                      splitting a single icon's own two set-effect
+                      halves rather than marking a whole separate tile's
+                      edge. */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
+                    }}
+                  />
+                </div>
+              );
+            })()}
         </div>
       </div>
     </li>
@@ -591,7 +687,7 @@ export function OwnedBuildManager({
         {pageItems.length === 0 ? (
           <p className="text-sm text-gray-500">No builds match these filters.</p>
         ) : (
-          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {pageItems.map((build) => (
               <BuildCard
                 key={build.id}
