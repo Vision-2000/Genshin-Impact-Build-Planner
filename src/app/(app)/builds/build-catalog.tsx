@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArtifactSlot } from "@/generated/prisma/enums";
 import { Modal } from "@/components/modal";
-import { useToast, Toast } from "@/components/toast";
 import { createBuild } from "./actions";
 import { ArtifactSlotPicker } from "./artifact-slot-picker";
 import { CharacterSlotPicker } from "./character-slot-picker";
@@ -72,11 +71,12 @@ export function readDraft(): Draft | null {
 // ArtifactSlotPicker already establish. Weapon candidates just aren't
 // narrowed to one type until a character is actually chosen (see
 // WeaponSlotPicker's own null-weaponType handling) -- nothing is gated
-// behind filling in an earlier field first. Saving resets back to another
-// blank build (onCreated reports the new one to the caller, which adds it
-// to the owned-builds list behind this modal) rather than closing the
-// modal, so creating several in a row doesn't require reopening it each
-// time.
+// behind filling in an earlier field first. Saving closes the modal
+// (onCreated reports the new build to the caller, which adds it to the
+// owned-builds list this modal was covering) rather than resetting back
+// to another blank form and staying open -- creating several builds in a
+// row means reopening this each time, a deliberate tradeoff for always
+// landing back on the list with the just-created build now visible in it.
 export function BuildCatalog({
   characters,
   weapons,
@@ -99,7 +99,6 @@ export function BuildCatalog({
   onClose: () => void;
 }) {
   const [, startTransition] = useTransition();
-  const { message, visible, showToast } = useToast();
 
   // Always start from the SSR-safe default -- reading sessionStorage inside
   // a useState initializer would run during hydration too (window exists on
@@ -143,8 +142,10 @@ export function BuildCatalog({
   }, []);
 
   // Persisted whenever the draft has anything worth keeping, and cleared
-  // once it doesn't (a fresh mount, or right after resetForm() below
-  // following a successful save).
+  // once it doesn't (a fresh mount) -- a successful save clears it a
+  // different way, via handleClose() directly removing the sessionStorage
+  // entry rather than through this effect, since the whole component
+  // unmounts right after (see handleSubmit's own comment).
   useEffect(() => {
     const isEmpty = characterId === null && name === "" && weaponId === null && Object.keys(slots).length === 0;
     if (isEmpty) {
@@ -169,17 +170,6 @@ export function BuildCatalog({
     const ownedArtifactId = slots[slot];
     return ownedArtifactId !== undefined ? artifacts.find((a) => a.ownedArtifactId === ownedArtifactId) : undefined;
   }).filter((a): a is OwnedArtifactOption => a !== undefined);
-
-  function resetForm() {
-    setCharacterId(null);
-    setName("");
-    setWeaponId(null);
-    setSlots({});
-    setCharacterPickerOpen(false);
-    setWeaponPickerOpen(false);
-    setArtifactPickerOpenSlots({});
-    setErrors({});
-  }
 
   function handleCharacterChange(nextCharacterId: number | null) {
     // A different character (or clearing back to none) can mean a
@@ -221,13 +211,14 @@ export function BuildCatalog({
         return;
       }
 
-      showToast(
-        <>
-          Created <span className="font-bold">{result.build.name}</span> for {character.name}
-        </>
-      );
       onCreated(result.build);
-      resetForm();
+      // Closes the modal (and clears the draft, same as an explicit
+      // close -- see handleClose's own comment) instead of resetting
+      // the form in place and staying open. The newly created build is
+      // now directly visible in the owned-builds list behind this
+      // modal, which is reason enough on its own to close rather than
+      // require a second explicit close to see it.
+      handleClose();
     });
   }
 
@@ -409,8 +400,6 @@ export function BuildCatalog({
             </div>
           </div>
         )}
-
-        <Toast message={message} visible={visible} />
       </div>
     </Modal>
   );
