@@ -18,6 +18,12 @@ export type BuildOption = {
   element: Element;
   rarity: number;
   weaponType: WeaponType;
+  // Derived server-side from the character's own Passive 3 talent name
+  // (see moonsign-hexerei.ts's own comment) -- not a stored field of its
+  // own, just carried here so TeamCard can count them without a second
+  // lookup, same reasoning as element/rarity/weaponType above.
+  isMoonsignCharacter: boolean;
+  isHexereiCharacter: boolean;
   ownedCharacterId: number;
   exclusivityGroup: string | null;
   ownedWeaponId: number | null;

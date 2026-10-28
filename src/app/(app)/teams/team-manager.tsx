@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import Image from "next/image";
+import { computeElementalResonances } from "@/lib/elemental-resonance";
+import { computeMoonsignHexereiEffects } from "@/lib/moonsign-hexerei";
 import { paginate } from "@/lib/paginate";
+import type { TeamEffect } from "@/lib/team-effect";
 import { useDialogs } from "@/components/dialog-provider";
+import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
+import { ELEMENT_ICON_URL } from "../characters/element-icons";
 import { PaginationControls } from "../pagination-controls";
 import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild } from "./actions";
 import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type TeamItem } from "./filter-sort";
@@ -54,6 +60,60 @@ function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: s
   );
 }
 
+// Same dark-box/single-whole-box-tooltip pattern as BuildStatsSummary's
+// own Artifact Set Effects box -- the face shows just the effect name(s)
+// + element icon (when one applies), the full effect text is one hover
+// away. Extracted once a second TeamCard box (Team Effects, alongside
+// Elemental Resonance) needed the exact same shape, same reasoning as
+// this app's own useToast/Toast extraction once a second page needed
+// that pattern. At most 2-3 entries can ever be active at once on a
+// 4-build team (see computeElementalResonances'/
+// computeMoonsignHexereiEffects' own comments), so this never needs to
+// handle a long list.
+function TeamEffectBox({ title, effects, emptyText }: { title: string; effects: TeamEffect[]; emptyText: string }) {
+  if (effects.length === 0) {
+    return (
+      <div className="rounded border bg-black p-4 pt-2 text-base">
+        <p className="text-lg font-semibold text-foreground">{title}</p>
+        <p className="mt-2 text-gray-400">{emptyText}</p>
+      </div>
+    );
+  }
+
+  return (
+    <MouseFollowTooltip
+      wrapperClassName="relative block"
+      content={
+        <div className="space-y-3">
+          {effects.map((effect, index) => (
+            <div key={effect.name}>
+              {index > 0 && <hr className="mb-3 border-gray-700" />}
+              <p className="text-base font-semibold text-yellow-100">{effect.name}</p>
+              {/* whitespace-pre-line -- Moonsign's own Ascendant Gleam
+                  text has real line breaks of its own (see
+                  moonsign-hexerei.ts), which a plain <p> would otherwise
+                  collapse into one run-on line. */}
+              <p className="mt-1 whitespace-pre-line text-gray-300">{effect.effect}</p>
+            </div>
+          ))}
+        </div>
+      }
+    >
+      <div className="rounded border bg-black p-4 pt-2 text-base">
+        <p className="text-lg font-semibold text-foreground">{title}</p>
+        <ul className="mt-2 flex flex-col gap-y-1">
+          {effects.map((effect) => (
+            <li key={effect.name} className="flex items-center gap-1.5 text-foreground">
+              {effect.element && <Image src={ELEMENT_ICON_URL[effect.element]} alt="" width={20} height={20} />}
+              <span>{effect.name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </MouseFollowTooltip>
+  );
+}
+
 // A team's own 4 build slots, each a BuildSlotPicker -- array position IS
 // slot identity here (members[0] is slot 0, etc.), which has no deeper
 // meaning than "whatever order the server returned them in", same as any
@@ -79,6 +139,20 @@ function TeamCard({
     ...team.members.map((m) => m.buildId),
     ...Array(Math.max(0, MAX_TEAM_SIZE - team.members.length)).fill(null),
   ].slice(0, MAX_TEAM_SIZE);
+
+  // Elemental Resonance and Team Effects (Moonsign/Hexerei) both only
+  // care about which builds are actually in the team right now, not
+  // which slot they're in -- built straight from team.members (not
+  // slotBuildIds, which pads with nulls purely for rendering 4 slot
+  // positions).
+  const memberBuilds = team.members
+    .map((member) => builds.find((build) => build.buildId === member.buildId))
+    .filter((build): build is BuildOption => build !== undefined);
+  const resonances = computeElementalResonances(memberBuilds.map((build) => build.element));
+  const teamEffects = computeMoonsignHexereiEffects({
+    moonsignCount: memberBuilds.filter((build) => build.isMoonsignCharacter).length,
+    hexereiCount: memberBuilds.filter((build) => build.isHexereiCharacter).length,
+  });
 
   return (
     <li className="space-y-3 rounded-xl border p-4">
@@ -138,6 +212,11 @@ function TeamCard({
             />
           );
         })}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <TeamEffectBox title="Elemental Resonance" effects={resonances} emptyText="No elemental resonance active yet." />
+        <TeamEffectBox title="Team Effects" effects={teamEffects} emptyText="No team effects active yet." />
       </div>
     </li>
   );

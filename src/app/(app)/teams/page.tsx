@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { TalentSlot } from "@/generated/prisma/enums";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { travelerDisplayName } from "@/lib/character-scaling";
+import { isMoonsignTalentName, isHexereiTalentName } from "@/lib/moonsign-hexerei";
 import { HelpButton } from "@/components/help-button";
 import { TeamManager } from "./team-manager";
 import type { BuildOption, TeamItem } from "./filter-sort";
@@ -18,7 +20,23 @@ export default async function TeamsPage() {
   const [builds, teams] = await Promise.all([
     prisma.build.findMany({
       where: { ownedCharacter: { gameProfileId: profile.id, isOwned: true } },
-      include: { ownedCharacter: { include: { character: true } }, buildArtifacts: true },
+      include: {
+        ownedCharacter: {
+          include: {
+            character: {
+              include: {
+                // Moonsign/Hexerei membership is derived from this one
+                // talent's own name, not a stored Character field (see
+                // moonsign-hexerei.ts's own comment on why) -- scoped to
+                // just Passive3 and just the name, since that's the only
+                // part of it this page needs.
+                talents: { where: { slot: TalentSlot.Passive3 }, select: { name: true } },
+              },
+            },
+          },
+        },
+        buildArtifacts: true,
+      },
       orderBy: { name: "asc" },
     }),
     prisma.team.findMany({
@@ -36,19 +54,29 @@ export default async function TeamsPage() {
     }),
   ]);
 
-  const buildOptions: BuildOption[] = builds.map((build) => ({
-    buildId: build.id,
-    name: build.name,
-    characterName: travelerDisplayName(build.ownedCharacter.character.name),
-    characterIconUrl: build.ownedCharacter.character.iconUrl,
-    element: build.ownedCharacter.character.element,
-    rarity: build.ownedCharacter.character.rarity,
-    weaponType: build.ownedCharacter.character.weaponType,
-    ownedCharacterId: build.ownedCharacterId,
-    exclusivityGroup: build.ownedCharacter.character.exclusivityGroup,
-    ownedWeaponId: build.ownedWeaponId,
-    ownedArtifactIds: build.buildArtifacts.map((ba) => ba.ownedArtifactId),
-  }));
+  const buildOptions: BuildOption[] = builds.map((build) => {
+    // At most one row (Passive3 is a single fixed slot per character),
+    // and plenty of characters have no Passive3 at all (e.g. 4-star
+    // characters, who only have 2 passives) -- isMoonsignTalentName/
+    // isHexereiTalentName both correctly return false for undefined via
+    // the ?. below either way.
+    const passive3Name = build.ownedCharacter.character.talents[0]?.name;
+    return {
+      buildId: build.id,
+      name: build.name,
+      characterName: travelerDisplayName(build.ownedCharacter.character.name),
+      characterIconUrl: build.ownedCharacter.character.iconUrl,
+      element: build.ownedCharacter.character.element,
+      rarity: build.ownedCharacter.character.rarity,
+      weaponType: build.ownedCharacter.character.weaponType,
+      isMoonsignCharacter: passive3Name !== undefined && isMoonsignTalentName(passive3Name),
+      isHexereiCharacter: passive3Name !== undefined && isHexereiTalentName(passive3Name),
+      ownedCharacterId: build.ownedCharacterId,
+      exclusivityGroup: build.ownedCharacter.character.exclusivityGroup,
+      ownedWeaponId: build.ownedWeaponId,
+      ownedArtifactIds: build.buildArtifacts.map((ba) => ba.ownedArtifactId),
+    };
+  });
 
   const teamItems: TeamItem[] = teams.map((team) => ({
     id: team.id,
