@@ -179,95 +179,122 @@ function BuildCard({
             />
           </div>
 
-          {build.activeSetEffects.length > 0 &&
-            (() => {
-              const [firstEffect, secondEffect] = build.activeSetEffects;
+          {(() => {
+            const [firstEffect, secondEffect] = build.activeSetEffects;
 
-              // A single set reaching 4pc already consumes 4 of the
-              // build's 5 artifact slots -- there's no room left for a
-              // SECOND 2+-piece set to ever join it (same 5-slot
-              // ceiling as build-stats-summary.tsx's own comment),
-              // unlike a standalone 2pc set, which genuinely could still
-              // be joined by one. The diagonal split exists to
-              // represent "room for a second set that may or may not be
-              // filled" -- there's nothing to represent here, so this
-              // falls back to the original plain, un-split icon. Both
-              // the set's own 2pc and 4pc bonuses are active either way;
-              // this is purely about which icon treatment communicates
-              // that correctly.
-              if (!secondEffect && firstEffect.maxPiece === 4) {
-                return (
-                  <div
-                    title={`${firstEffect.setName} (4pc)`}
-                    className={`relative aspect-square w-full ${rarityGradientClasses(firstEffect.rarity)}`}
-                  >
-                    {firstEffect.flowerIconUrl && (
-                      <Image
-                        src={firstEffect.flowerIconUrl}
-                        alt={firstEffect.setName}
-                        fill
-                        className="object-contain p-1"
-                      />
-                    )}
-                  </div>
-                );
-              }
+            // No active set effects -- same 1-star rarity gradient the
+            // weapon tile above falls back to when there's no real
+            // weapon equipped (DEFAULT_WEAPON_RARITY), rather than
+            // rendering nothing at all here: an unfilled tile previously
+            // just let the outer card's own (character rarity) gradient
+            // show through behind it, which read as a stray gold
+            // background for a 5-star character instead of a deliberate
+            // "nothing active" state.
+            if (!firstEffect) {
+              return <div className={`aspect-square w-full ${rarityGradientClasses(DEFAULT_WEAPON_RARITY)}`} />;
+            }
 
-              // Otherwise: either 2 distinct standalone 2pc sets, or
-              // just 1 (the 2nd triangle then stays blank, leaving
-              // visual room for a second set that isn't there yet). One
-              // combined box instead of one square per set -- showing
-              // both as separate full icons side by side was the actual
-              // source of the awkward gap this whole layout replaces --
-              // a single diagonally-split box (top-right to bottom-
-              // left) takes the same footprint as ONE icon used to.
+            // A single set reaching 4pc already consumes 4 of the
+            // build's 5 artifact slots -- there's no room left for a
+            // SECOND 2+-piece set to ever join it (same 5-slot ceiling
+            // as build-stats-summary.tsx's own comment), unlike a
+            // standalone 2pc set, which genuinely could still be joined
+            // by one. The diagonal split exists to represent "room for
+            // a second set that may or may not be filled" -- there's
+            // nothing to represent here, so this falls back to the
+            // original plain, un-split icon. Both the set's own 2pc and
+            // 4pc bonuses are active either way; this is purely about
+            // which icon treatment communicates that correctly.
+            if (!secondEffect && firstEffect.maxPiece === 4) {
               return (
                 <div
-                  title={build.activeSetEffects.map((e) => `${e.setName} (${e.maxPiece}pc)`).join(" / ")}
-                  className={`relative aspect-square w-full overflow-hidden ${rarityGradientClasses(firstEffect.rarity)}`}
+                  title={`${firstEffect.setName} (4pc)`}
+                  className={`relative aspect-square w-full ${rarityGradientClasses(firstEffect.rarity)}`}
                 >
                   {firstEffect.flowerIconUrl && (
-                    <div className="absolute inset-0" style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}>
-                      <Image
-                        src={firstEffect.flowerIconUrl}
-                        alt={firstEffect.setName}
-                        fill
-                        className="object-contain p-1"
-                      />
-                    </div>
+                    <Image
+                      src={firstEffect.flowerIconUrl}
+                      alt={firstEffect.setName}
+                      fill
+                      className="object-contain p-1"
+                    />
                   )}
-                  {secondEffect?.flowerIconUrl && (
-                    <div className="absolute inset-0" style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}>
-                      <Image
-                        src={secondEffect.flowerIconUrl}
-                        alt={secondEffect.setName}
-                        fill
-                        className="object-contain p-1"
-                      />
-                    </div>
-                  )}
-                  {/* The dividing line itself -- a thin opaque band at
-                      the gradient's own midpoint, transparent either
-                      side of it. 135deg (not 45deg) is what makes the
-                      band run from the top-right corner to the bottom-
-                      left corner on a square box, matching the two
-                      clip-path triangles above exactly. White, same
-                      color as the 2px borders between the 3 main icon
-                      tiles -- just thinner (1px) here, since it's
-                      splitting a single icon's own two set-effect
-                      halves rather than marking a whole separate tile's
-                      edge. */}
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
-                    }}
-                  />
                 </div>
               );
-            })()}
+            }
+
+            // Otherwise: either 2 distinct standalone 2pc sets, or just
+            // 1 (the 2nd triangle then stays blank, leaving visual room
+            // for a second set that isn't there yet). One combined box
+            // instead of one square per set -- showing both as separate
+            // full icons side by side was the actual source of the
+            // awkward gap this whole layout replaces -- a single
+            // diagonally-split box (top-right to bottom-left) takes the
+            // same footprint as ONE icon used to.
+            return (
+              <div
+                title={build.activeSetEffects.map((e) => `${e.setName} (${e.maxPiece}pc)`).join(" / ")}
+                className="relative aspect-square w-full overflow-hidden"
+              >
+                {/* Each triangle carries its OWN rarity gradient now
+                    (not one shared background for the whole box, which
+                    only ever reflected firstEffect's own rarity even
+                    when the two sets were different rarities -- a 4-star
+                    set paired with a 5-star one used to show as a single
+                    uniform gold box, hiding the 4-star half's own real
+                    color entirely). The second triangle falls back to
+                    the same 1-star DEFAULT_WEAPON_RARITY treatment as
+                    the fully-empty state above when there's no second
+                    set to show -- otherwise that blank half would show
+                    nothing here and let the outer card's own rarity
+                    gradient show through behind it again. */}
+                <div
+                  className={`absolute inset-0 ${rarityGradientClasses(firstEffect.rarity)}`}
+                  style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
+                >
+                  {firstEffect.flowerIconUrl && (
+                    <Image
+                      src={firstEffect.flowerIconUrl}
+                      alt={firstEffect.setName}
+                      fill
+                      className="object-contain p-1"
+                    />
+                  )}
+                </div>
+                <div
+                  className={`absolute inset-0 ${rarityGradientClasses(secondEffect?.rarity ?? DEFAULT_WEAPON_RARITY)}`}
+                  style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
+                >
+                  {secondEffect?.flowerIconUrl && (
+                    <Image
+                      src={secondEffect.flowerIconUrl}
+                      alt={secondEffect.setName}
+                      fill
+                      className="object-contain p-1"
+                    />
+                  )}
+                </div>
+                {/* The dividing line itself -- a thin opaque band at the
+                    gradient's own midpoint, transparent either side of
+                    it. 135deg (not 45deg) is what makes the band run
+                    from the top-right corner to the bottom-left corner
+                    on a square box, matching the two clip-path triangles
+                    above exactly. White, same color as the 2px borders
+                    between the 3 main icon tiles -- just thinner (1px)
+                    here, since it's splitting a single icon's own two
+                    set-effect halves rather than marking a whole
+                    separate tile's edge. */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
+                  }}
+                />
+              </div>
+            );
+          })()}
         </div>
       </div>
     </li>
