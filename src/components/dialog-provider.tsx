@@ -5,7 +5,7 @@
 // showModal() -- that imperative open call turned out to be unreliable, and
 // plain JSX has no such failure mode: it renders whenever `state` is set,
 // full stop.
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 type ConfirmOptions = {
   title?: string;
@@ -33,6 +33,13 @@ const DialogContext = createContext<DialogContextValue | null>(null);
 
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<DialogState | null>(null);
+  // Whether the mousedown that started this click also landed directly on
+  // the backdrop -- same fix as Modal's own mouseDownOnBackdrop (see its
+  // comment): a click event's own target isn't necessarily where the
+  // mousedown happened, so dragging to select the dialog's own message
+  // text and releasing outside it would otherwise close the dialog as if
+  // the backdrop itself had been clicked.
+  const mouseDownOnBackdrop = useRef(false);
 
   const confirm = useCallback((message: string, options: ConfirmOptions = {}) => {
     return new Promise<boolean>((resolve) => {
@@ -75,8 +82,11 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
       {state && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onMouseDown={(event) => {
+            mouseDownOnBackdrop.current = event.target === event.currentTarget;
+          }}
           onClick={(event) => {
-            if (event.target === event.currentTarget) close(false);
+            if (event.target === event.currentTarget && mouseDownOnBackdrop.current) close(false);
           }}
         >
           <div

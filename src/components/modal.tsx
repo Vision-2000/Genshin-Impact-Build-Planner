@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 // Presentational modal: a plain conditionally-rendered overlay, same approach
 // as DialogProvider (native <dialog>.showModal() proved unreliable). The
@@ -57,13 +57,29 @@ export function Modal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
+  // Whether the mousedown that started this click also landed directly on
+  // the backdrop -- a click event's own target isn't necessarily where the
+  // mousedown happened: dragging to select text inside the panel (e.g.
+  // deleting a build's name) and releasing the mouse outside the modal
+  // resolves the synthesized click's target to the nearest common
+  // ancestor of the mousedown and mouseup targets, which is the backdrop
+  // itself once the drag crosses out of the panel -- satisfying
+  // `event.target === event.currentTarget` below even though the user
+  // never actually clicked the backdrop. Requiring the mousedown to have
+  // started there too is what tells a genuine backdrop click apart from
+  // a drag that merely ended on it.
+  const mouseDownOnBackdrop = useRef(false);
+
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
+      onMouseDown={(event) => {
+        mouseDownOnBackdrop.current = event.target === event.currentTarget;
+      }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && mouseDownOnBackdrop.current) onClose();
       }}
     >
       <div
