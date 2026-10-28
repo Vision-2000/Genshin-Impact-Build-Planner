@@ -40,7 +40,15 @@ export function Sidebar() {
                       // itself is the first character, so its own left
                       // edge lines up directly below the parent's first
                       // word instead of sitting further right than it.
-                      className={`flex items-center gap-1.5 rounded px-4 py-1.5 text-sm ${
+                      // pt-2/pb-1 (not py-1.5) -- same Arial line-height
+                      // fix as every other text-centered control in this
+                      // app (see build-stats-summary.tsx's own comment
+                      // on the root cause), shifting the whole row (icon
+                      // + label together) down as a unit -- separate
+                      // from the arrow's own -top-1 below, which tunes
+                      // its position relative to the label, not the
+                      // row's own position within the link.
+                      className={`flex items-center gap-1.5 rounded px-4 pb-1 pt-2 text-sm ${
                         isChildActive
                           ? "bg-foreground text-background"
                           : "text-gray-500 hover:bg-black/5 dark:text-gray-400"

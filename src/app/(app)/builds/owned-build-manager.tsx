@@ -232,13 +232,16 @@ function BuildEditor({
           styling and placement as WeaponProgressionForm/
           ArtifactProgressionForm (solid red, directly left of Save). */}
       <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
+        {/* pt-1.5/pb-0.5 (not py-1) -- same Arial line-height fix as the
+            search fields, see build-stats-summary.tsx's own comment on
+            the root cause. */}
         <label className="block text-sm">
           Name:
           <input
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="ml-1 rounded border bg-white px-2 py-1 text-sm text-black"
+            className="ml-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
           />
         </label>
 
@@ -494,6 +497,9 @@ export function OwnedBuildManager({
       <div className="flex items-center justify-between gap-3">
         {header}
 
+        {/* pt-3/pb-2 (not py-2.5) -- same Arial line-height fix as every
+            other text-centered control in this app, see
+            build-stats-summary.tsx's own comment on the root cause. */}
         <button
           type="button"
           onClick={() => {
@@ -510,9 +516,19 @@ export function OwnedBuildManager({
             }
             setCreating(true);
           }}
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+          className="flex items-center gap-1.5 rounded-lg border px-4 pb-2 pt-3 text-sm font-semibold hover:bg-black/5"
         >
-          <span className="text-base leading-none">+</span> Create build
+          {/* The "+" and this text are flex siblings (items-center) at
+              different font sizes/line-heights (text-base leading-none
+              vs this text's own default text-sm), so items-center
+              centers each independently -- the button's own pt-3/pb-2
+              above shifts the whole row, not their position relative to
+              each other. mt-0.5 nudges the text down and -mt-0.5 nudges
+              the "+" up by the same amount to meet it, same small-nudge
+              pattern used throughout this app for a badge/icon sitting
+              next to plain text. */}
+          <span className="-mt-0.5 text-base leading-none">+</span>
+          <span className="mt-0.5">Create build</span>
         </button>
       </div>
 

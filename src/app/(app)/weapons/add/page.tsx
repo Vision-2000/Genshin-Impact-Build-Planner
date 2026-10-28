@@ -63,11 +63,19 @@ export default async function AddWeaponPage({
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-300">Adding weapons for {profile.name}</p>
         </div>
+        {/* pt-3/pb-2 (not py-2.5) -- same Arial line-height fix as every
+            other text-centered control in this app, see
+            build-stats-summary.tsx's own comment on the root cause. */}
         <Link
           href="/weapons"
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+          className="flex items-center gap-1.5 rounded-lg border px-4 pb-2 pt-3 text-sm font-semibold hover:bg-black/5"
         >
-          ← Back to my weapons
+          {/* Own span, not part of the plain text -- same flex-sibling
+              alignment issue as the "+" buttons elsewhere (see
+              owned-build-manager.tsx's own "Create build" comment),
+              just a small upward nudge here rather than meeting the
+              text halfway. */}
+          <span className="-mt-0.5">←</span> Back to my weapons
         </Link>
       </div>
       <WeaponCatalog catalog={catalog} initialWeaponType={initialWeaponType} />

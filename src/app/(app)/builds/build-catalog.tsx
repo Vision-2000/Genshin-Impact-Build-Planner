@@ -270,13 +270,16 @@ export function BuildCatalog({
                 body below. */}
             <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
               <div>
+                {/* pt-1.5/pb-0.5 (not py-1) -- same Arial line-height
+                    fix as the search fields, see build-stats-summary.tsx's
+                    own comment on the root cause. */}
                 <label className="block text-sm">
                   Name:
                   <input
                     type="text"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
-                    className="ml-1 rounded border bg-white px-2 py-1 text-sm text-black"
+                    className="ml-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
                   />
                 </label>
                 {errors.name && <p className="text-sm text-red-600">{errors.name[0]}</p>}
