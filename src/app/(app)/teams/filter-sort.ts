@@ -47,15 +47,18 @@ export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
   };
 }
 
+// No sort of its own -- teams arrive (and stay) in most-recently-updated-
+// first order, both from the server's own orderBy and from TeamManager's
+// own optimistic reordering on every local mutation (see its touchTeam),
+// so filtering just needs to preserve whatever order it's handed rather
+// than re-sorting by name the way this used to.
 export function filterTeams(teams: TeamItem[], search: string): TeamItem[] {
   const query = search.trim().toLowerCase();
-  const result = query
-    ? teams.filter(
-        (team) =>
-          team.name.toLowerCase().includes(query) ||
-          team.members.some((member) => member.characterName.toLowerCase().includes(query))
-      )
-    : teams;
+  if (!query) return teams;
 
-  return [...result].sort((a, b) => a.name.localeCompare(b.name));
+  return teams.filter(
+    (team) =>
+      team.name.toLowerCase().includes(query) ||
+      team.members.some((member) => member.characterName.toLowerCase().includes(query))
+  );
 }

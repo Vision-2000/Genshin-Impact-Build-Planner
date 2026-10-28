@@ -91,9 +91,21 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
     return { error: "This build conflicts with another build already in the team." };
   }
 
-  await prisma.teamBuild.create({
-    data: { teamId, buildId: candidateBuild.id, ownedCharacterId: candidateBuild.ownedCharacterId },
-  });
+  // Touches Team.updatedAt too (an empty updateMany still bumps the
+  // @updatedAt field) -- TeamBuild is a separate join table, so creating
+  // a row here wouldn't otherwise move this team to the top of the
+  // "most recently updated" ordering the page sorts by. updateMany (not
+  // update) re-scopes by gameProfileId for the same reason deleteTeam
+  // does -- ownership was already checked once above when `team` was
+  // fetched, but this keeps the guarantee local to the call that needs
+  // it instead of relying on that earlier check never being refactored
+  // away.
+  await prisma.$transaction([
+    prisma.teamBuild.create({
+      data: { teamId, buildId: candidateBuild.id, ownedCharacterId: candidateBuild.ownedCharacterId },
+    }),
+    prisma.team.updateMany({ where: { id: teamId, gameProfileId: profile.id }, data: {} }),
+  ]);
 
   return {
     member: {
@@ -108,7 +120,9 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
 export async function removeTeamBuild(teamId: number, buildId: number) {
   const profile = await requireActiveProfile();
 
-  await prisma.teamBuild.deleteMany({
-    where: { teamId, buildId, team: { gameProfileId: profile.id } },
-  });
+  // Same Team.updatedAt touch as addTeamBuild, same reason.
+  await prisma.$transaction([
+    prisma.teamBuild.deleteMany({ where: { teamId, buildId, team: { gameProfileId: profile.id } } }),
+    prisma.team.updateMany({ where: { id: teamId, gameProfileId: profile.id }, data: {} }),
+  ]);
 }

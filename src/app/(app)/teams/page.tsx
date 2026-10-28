@@ -28,7 +28,11 @@ export default async function TeamsPage() {
           include: { build: { include: { ownedCharacter: { include: { character: true } } } } },
         },
       },
-      orderBy: { name: "asc" },
+      // Most recently updated first -- renaming a team or changing its
+      // builds (addTeamBuild/removeTeamBuild both touch Team.updatedAt
+      // too, see their own comment) bumps it back to the top, same as a
+      // fresh create.
+      orderBy: { updatedAt: "desc" },
     }),
   ]);
 

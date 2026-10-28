@@ -2,11 +2,9 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { paginate } from "@/lib/paginate";
-import { Modal } from "@/components/modal";
 import { useDialogs } from "@/components/dialog-provider";
 import { PaginationControls } from "../pagination-controls";
 import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild } from "./actions";
-import type { CreateTeamErrors } from "./schemas";
 import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type TeamItem } from "./filter-sort";
 import { BuildSlotPicker } from "./build-slot-picker";
 
@@ -16,6 +14,27 @@ const PAGE_SIZE = 9;
 // needs to fit 4 of these side by side, plus its own name row, inside a
 // grid cell.
 const SLOT_SIZE_CLASS = "h-28 w-28";
+// A team is a perfectly valid, real in-game state with 0 builds in it (a
+// party slot can sit empty) -- "Create team" no longer prompts for a name
+// up front, it just makes one of these immediately and lets
+// TeamNameInput's own inline rename handle the rest, the same way a build
+// slot starts empty and gets filled in afterward rather than demanding
+// everything up front.
+const DEFAULT_TEAM_NAME = "New Team";
+
+// Reorders `teams` so the one matching `teamId` (after `updater` is
+// applied to it) moves to the front -- mirrors Team.updatedAt actually
+// changing server-side (every mutation here has a matching server action
+// that touches it, see actions.ts's own comments), so the client's own
+// "most recently updated first" order stays live without waiting for a
+// refetch. A no-op (returns `teams` unchanged) if teamId isn't found,
+// which shouldn't happen in practice but is cheap to guard against.
+function touchTeam(teams: TeamItem[], teamId: number, updater: (team: TeamItem) => TeamItem): TeamItem[] {
+  const index = teams.findIndex((team) => team.id === teamId);
+  if (index === -1) return teams;
+  const updated = updater(teams[index]);
+  return [updated, ...teams.slice(0, index), ...teams.slice(index + 1)];
+}
 
 function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
   const [draft, setDraft] = useState(value);
@@ -69,10 +88,23 @@ function TeamCard({
           <span className="text-xs text-gray-500">
             {team.members.length}/{MAX_TEAM_SIZE}
           </span>
+          {/* py-1.5 (symmetric, no nudge) -- not the usual pt-2/pb-1
+              every other Delete button in this app uses. Both pt-2/pb-1
+              and a halved pt-[7px]/pb-[5px] still read as too low here,
+              confirmed visually each time, even though the className is
+              otherwise identical to buttons where pt-2/pb-1 looks right.
+              Same root cause as the set-effect badge rows in
+              build-stats-summary.tsx: the "correct" nudge amount isn't a
+              font constant, it's sensitive to this specific element's
+              own sub-pixel position, so it can genuinely need a
+              different (here, no) correction in a different layout
+              context. If this is still off, the fix may need to go the
+              other direction entirely (more bottom padding than top),
+              which no other instance in this app has ever needed. */}
           <button
             type="button"
             onClick={onDelete}
-            className="rounded bg-red-600 px-3 pb-1 pt-2 text-xs font-semibold text-white hover:bg-red-700"
+            className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
           >
             Delete
           </button>
@@ -117,8 +149,9 @@ export function TeamManager({
   initialTeams,
 }: {
   // The page's own title block -- same reasoning as OwnedBuildManager's
-  // own header prop (see page.tsx's own comment): "Create team" opens a
-  // modal driven by client state, so the row holding both lives here.
+  // own header prop (see page.tsx's own comment): "Create team" drives
+  // client state (even though it no longer opens a modal, see
+  // DEFAULT_TEAM_NAME's own comment), so the row holding both lives here.
   header: ReactNode;
   builds: BuildOption[];
   initialTeams: TeamItem[];
@@ -133,31 +166,33 @@ export function TeamManager({
   const filtered = filterTeams(teams, search);
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
 
-  const [creating, setCreating] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [createErrors, setCreateErrors] = useState<CreateTeamErrors>({});
-
-  function closeCreate() {
-    setCreating(false);
-    setCreateName("");
-    setCreateErrors({});
-  }
-
-  function handleCreateSubmit() {
+  // No form, no modal -- see DEFAULT_TEAM_NAME's own comment. Errors from
+  // CreateTeamSchema are effectively unreachable with a fixed, valid
+  // literal name, but createTeam's return type still allows for them (a
+  // future schema change might add a different kind of validation), so
+  // this still checks rather than assuming success.
+  function handleCreate() {
     startTransition(async () => {
-      const result = await createTeam(createName);
+      const result = await createTeam(DEFAULT_TEAM_NAME);
       if ("errors" in result) {
-        setCreateErrors(result.errors);
+        notify(result.errors.name?.[0] ?? "Couldn't create a new team.", { title: "Can't create team" });
         return;
       }
-      setTeams((prev) => [...prev, { id: result.team.id, name: result.team.name, members: [] }]);
-      closeCreate();
+      // Clears any active search (and resets to page 1) rather than
+      // relying on DEFAULT_TEAM_NAME happening to match it -- a blank
+      // name wouldn't have helped either, since an empty string still
+      // never matches a non-empty query. Without this, creating a team
+      // while a search is active could leave it filtered straight out of
+      // view, reading as if nothing happened.
+      setSearch("");
+      setPage(1);
+      setTeams((prev) => [{ id: result.team.id, name: result.team.name, members: [] }, ...prev]);
     });
   }
 
   function handleUpdateName(teamId: number, name: string) {
     const previous = teams;
-    setTeams((prev) => prev.map((team) => (team.id === teamId ? { ...team, name } : team)));
+    setTeams((prev) => touchTeam(prev, teamId, (team) => ({ ...team, name })));
     startTransition(() => {
       updateTeamName(teamId, name).catch(() => setTeams(previous));
     });
@@ -193,8 +228,7 @@ export function TeamManager({
     const newBuild = newBuildId !== null ? builds.find((b) => b.buildId === newBuildId) : undefined;
 
     setTeams((prev) =>
-      prev.map((team) => {
-        if (team.id !== teamId) return team;
+      touchTeam(prev, teamId, (team) => {
         let members = team.members;
         if (oldBuildId !== null) members = members.filter((m) => m.buildId !== oldBuildId);
         if (newBuild) {
@@ -230,17 +264,7 @@ export function TeamManager({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        {header}
-
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
-        >
-          <span className="text-base leading-none">+</span> Create team
-        </button>
-      </div>
+      {header}
 
       <div className="space-y-4">
         <input
@@ -254,9 +278,29 @@ export function TeamManager({
           className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
         />
 
-        <p className="text-sm text-gray-500 dark:text-gray-300">
-          {filtered.length} team{filtered.length === 1 ? "" : "s"}
-        </p>
+        {/* Sits right next to the count it immediately changes, not off
+            at the far end of the row -- and not in the header row next
+            to the title either (see Builds' own "Create build"), since
+            that position implies opening something (a modal or a
+            separate page), which this no longer does (see
+            DEFAULT_TEAM_NAME's own comment: it's a single instant action
+            with no form). A small pill (rounded-full, not the bordered
+            rounded-lg "Create X" shape every other page uses) marks it
+            as that different, lighter-weight kind of action rather than
+            reusing a button shape that implies the same modal/page
+            pattern. */}
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-gray-500 dark:text-gray-300">
+            {filtered.length} team{filtered.length === 1 ? "" : "s"}
+          </p>
+          <button
+            type="button"
+            onClick={handleCreate}
+            className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5"
+          >
+            <span className="text-sm leading-none">+</span> New Team
+          </button>
+        </div>
 
         {/* grid-cols-1/2/3 (not the usual square-card 5-6 column grids) --
             each card is much wider than a single icon, needing room for
@@ -280,32 +324,6 @@ export function TeamManager({
 
         <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
       </div>
-
-      <Modal open={creating} onClose={closeCreate} title="Create a team" maxWidthClassName="max-w-sm">
-        <div className="space-y-3">
-          <label className="block text-sm">
-            Name:
-            <input
-              type="text"
-              autoFocus
-              value={createName}
-              onChange={(event) => setCreateName(event.target.value)}
-              placeholder="e.g. National Team"
-              className="ml-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
-            />
-          </label>
-          {createErrors.name && <p className="text-sm text-red-600">{createErrors.name[0]}</p>}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleCreateSubmit}
-              className="rounded border border-white bg-black px-3 pb-1 pt-2 text-xs font-semibold text-white hover:bg-gray-800"
-            >
-              Create team
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

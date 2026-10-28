@@ -16,9 +16,13 @@ describe("filterTeams", () => {
     team({ id: 3, name: "Anemo Team", members: [member({ characterName: "Kazuha" })] }),
   ];
 
-  it("returns everything sorted by name with no search", () => {
+  it("returns everything in its given order with no search, not sorted by name", () => {
+    // TeamManager hands this whatever order it's already maintaining
+    // (most-recently-updated-first, from the server's own orderBy and its
+    // own optimistic reordering) -- filterTeams has no sort of its own
+    // and must preserve that, not re-sort by name.
     const result = filterTeams(teams, "");
-    expect(result.map((t) => t.name)).toEqual(["Anemo Team", "National Team", "Vaporize Team"]);
+    expect(result.map((t) => t.name)).toEqual(["National Team", "Vaporize Team", "Anemo Team"]);
   });
 
   it("filters by case-insensitive, whitespace-trimmed team name", () => {
@@ -29,6 +33,11 @@ describe("filterTeams", () => {
   it("filters by a member's character name too, not just the team name", () => {
     const result = filterTeams(teams, "kazuha");
     expect(result.map((t) => t.name)).toEqual(["Anemo Team"]);
+  });
+
+  it("preserves original relative order across multiple matches, not alphabetical", () => {
+    const result = filterTeams(teams, "team");
+    expect(result.map((t) => t.name)).toEqual(["National Team", "Vaporize Team", "Anemo Team"]);
   });
 
   it("returns an empty array when nothing matches", () => {
