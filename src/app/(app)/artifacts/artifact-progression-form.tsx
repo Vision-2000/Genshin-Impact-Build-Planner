@@ -18,7 +18,11 @@ import {
   substatValidValues,
   nearestValidValue,
   validateSubstatRollTotal,
+  SUBSTAT_TEMPLATES,
+  applicableTemplateEntries,
+  templateEntryValue,
   type SubstatTypeName,
+  type SubstatTemplate,
 } from "./artifact-rules";
 import type { StatTypeOption } from "./filter-sort";
 
@@ -188,6 +192,29 @@ export function ArtifactProgressionForm({
         return { ...s, value: nearestValidValue(values, s.value) };
       })
     );
+  }
+
+  // Resets ALL 4 rows, discarding whatever was there before -- a template is
+  // meant to be picked at the start, not merged with edits the user already
+  // made (see this function's own call site for why there's no "only fill
+  // empty rows" mode). Only the entries that don't name the current main
+  // stat are actually applied (applicableTemplateEntries) -- e.g. "Crit
+  // Atk" under a Crit Rate% main stat still fills Crit DMG%/ATK%, just
+  // leaves one row on None instead of Crit Rate% -- any entry dropped this
+  // way, and any row beyond what the template names at all, is left as
+  // None/Flex. Each applied entry's raw value is snapped to this level's
+  // own substatValidValues, the same way every other substat edit in this
+  // form already is.
+  function handleApplyTemplate(template: SubstatTemplate) {
+    setRollError(null);
+    const rows: DraftSubstat[] = applicableTemplateEntries(template, mainStatName ?? "").map((entry) => {
+      const option = statTypeByName.get(entry.statTypeName);
+      if (!option) return emptySubstatRow();
+      const values = substatValidValues(entry.statTypeName, rarity, level);
+      return { statTypeId: option.id, value: nearestValidValue(values, templateEntryValue(entry, rarity)) };
+    });
+    while (rows.length < MAX_SUBSTATS) rows.push(emptySubstatRow());
+    setSubstats(rows);
   }
 
   // Not live-validated per keystroke -- see validateSubstatRollTotal's own
@@ -406,6 +433,37 @@ export function ArtifactProgressionForm({
               </div>
             )}
           </label>
+
+          {
+            // value is pinned to "" (the "Apply template" placeholder,
+            // never a real template) rather than tracking the last-applied
+            // template -- this is a one-shot action, not a persistent
+            // choice, so the control should always read back as "nothing
+            // selected" once its effect (resetting the rows below) has been
+            // applied. Every template is always listed, regardless of main
+            // stat -- a template no longer hides itself based on main stat,
+            // see handleApplyTemplate's own comment on why.
+            <select
+              value=""
+              onChange={(event) => {
+                const template = SUBSTAT_TEMPLATES.find((t) => t.name === event.target.value);
+                if (template) handleApplyTemplate(template);
+              }}
+              className="h-8 w-44 rounded border border-gray-300 bg-white px-2 text-sm text-black"
+            >
+              {/* hidden -- still the closed box's own label (selecting it
+                  does nothing, same as picking no template at all), just
+                  not a real row in the opened list. */}
+              <option value="" hidden>
+                Apply template
+              </option>
+              {SUBSTAT_TEMPLATES.map((template) => (
+                <option key={template.name} value={template.name}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          }
 
           <div className="space-y-1">
             <p className="text-sm">Substats</p>

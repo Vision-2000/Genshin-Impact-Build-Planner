@@ -227,7 +227,7 @@ function maxRollCount(rarity: number, level: number): number {
 // displayed stat for one roll -- summing several of these (done by
 // achievableSumsForRollCount below) is summing already-rounded roll
 // values, not raw fractions rounded only once at the end.
-function rollTierValues(statName: SubstatTypeName, rarity: number): readonly number[] {
+export function rollTierValues(statName: SubstatTypeName, rarity: number): readonly number[] {
   const lower = SUBSTAT_LOWER_ROLL_TIERS[statName][rarity] ?? SUBSTAT_LOWER_ROLL_TIERS[statName][5];
   const highest = SUBSTAT_HIGHEST_ROLL[statName][rarity] ?? SUBSTAT_HIGHEST_ROLL[statName][5];
   return [...lower, highest];
@@ -570,4 +570,134 @@ export const MAIN_STAT_VALUE_BY_LEVEL: Record<string, Record<number, number[]>> 
 // comment on why this can't be a formula.
 export function computeArtifactMainStatValue(statName: string, rarity: number, level: number): number {
   return MAIN_STAT_VALUE_BY_LEVEL[statName][rarity][level];
+}
+
+// A one-click starting point for the add-artifact form's substat rows,
+// instead of making the user pick & tune all 4 by hand every time. Each
+// named substat is "+N upgrades" -- one guaranteed initial roll plus N more
+// -- the same vocabulary players already use for a piece's roll history
+// (see validateSubstatRollTotal's own comment).
+export type SubstatTemplateEntry = {
+  statTypeName: SubstatTypeName;
+  upgrades: number;
+};
+
+export type SubstatTemplate = {
+  name: string;
+  entries: SubstatTemplateEntry[];
+};
+
+// Any entry left out of a template (e.g. "Full EM ER" only ever names 2 of
+// the 4 rows) leaves that row on None/Flex for the user to fill in
+// themselves -- not every template needs all 4 slots named, unlike the
+// "Crit X ER" family below which does. `upgrades: 0` is different from
+// leaving a stat out entirely: it still fills that row, just at the
+// guaranteed initial roll with no upgrades on top (see templateEntryValue).
+export const SUBSTAT_TEMPLATES: SubstatTemplate[] = [
+  {
+    name: "Crit ATK ER",
+    entries: [
+      { statTypeName: "Crit Rate%", upgrades: 1 },
+      { statTypeName: "Crit DMG%", upgrades: 1 },
+      { statTypeName: "ATK%", upgrades: 1 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Crit HP ER",
+    entries: [
+      { statTypeName: "Crit Rate%", upgrades: 1 },
+      { statTypeName: "Crit DMG%", upgrades: 1 },
+      { statTypeName: "HP%", upgrades: 1 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Crit DEF ER",
+    entries: [
+      { statTypeName: "Crit Rate%", upgrades: 1 },
+      { statTypeName: "Crit DMG%", upgrades: 1 },
+      { statTypeName: "DEF%", upgrades: 1 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Crit EM ER",
+    entries: [
+      { statTypeName: "Crit Rate%", upgrades: 1 },
+      { statTypeName: "Crit DMG%", upgrades: 1 },
+      { statTypeName: "Elemental Mastery", upgrades: 1 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Full ATK ER",
+    entries: [
+      { statTypeName: "ATK%", upgrades: 3 },
+      { statTypeName: "ATK", upgrades: 0 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Full HP ER",
+    entries: [
+      { statTypeName: "HP%", upgrades: 3 },
+      { statTypeName: "HP", upgrades: 0 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Full DEF ER",
+    entries: [
+      { statTypeName: "DEF%", upgrades: 3 },
+      { statTypeName: "DEF", upgrades: 0 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Full EM ER",
+    entries: [
+      { statTypeName: "Elemental Mastery", upgrades: 3 },
+      { statTypeName: "Energy Recharge%", upgrades: 1 },
+    ],
+  },
+  {
+    name: "Full Crit",
+    entries: [
+      { statTypeName: "Crit Rate%", upgrades: 2 },
+      { statTypeName: "Crit DMG%", upgrades: 2 },
+    ],
+  },
+  {
+    name: "Full ER",
+    entries: [{ statTypeName: "Energy Recharge%", upgrades: 4 }],
+  },
+];
+
+// A template's own entries, minus whichever one(s) name the piece's current
+// main stat -- the same "main stat excludes substat" rule the rest of this
+// form already enforces, applied per-entry rather than used to hide the
+// whole template. A template is always offered regardless of main stat; the
+// main-stat-colliding entry (if any) just doesn't get applied, leaving that
+// row (and any other unused row) on None/Flex -- e.g. "Crit Atk" applied
+// under a Crit Rate% main stat still fills Crit DMG%/ATK%, just not Crit
+// Rate% itself.
+export function applicableTemplateEntries(template: SubstatTemplate, mainStatName: string): SubstatTemplateEntry[] {
+  return template.entries.filter((entry) => entry.statTypeName !== mainStatName);
+}
+
+// The value a template's named substat starts at: one guaranteed initial
+// roll at the 80% tier, plus one 90%-tier roll per upgrade -- both read from
+// the authoritative SUBSTAT_LOWER_ROLL_TIERS/SUBSTAT_HIGHEST_ROLL lookup
+// (via rollTierValues), never derived by multiplying a fraction against the
+// highest roll (see SUBSTAT_LOWER_ROLL_TIERS's own comment on why that can
+// land a hundredth off for a handful of stat/rarity combinations). Returns
+// the raw summed value, not yet snapped to substatValidValues -- that
+// depends on the level the caller has independently chosen, so the caller
+// snaps it the same way it already does on every level change.
+export function templateEntryValue(entry: SubstatTemplateEntry, rarity: number): number {
+  const tiers = rollTierValues(entry.statTypeName, rarity);
+  const initialRoll = tiers[1];
+  const upgradeRoll = tiers[2];
+  return roundTo2(initialRoll + entry.upgrades * upgradeRoll);
 }
