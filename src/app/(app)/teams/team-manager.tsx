@@ -317,10 +317,13 @@ export function TeamManager({
   const [, startTransition] = useTransition();
   const { confirm, notify } = useDialogs();
 
-  const [search, setSearch] = useState("");
+  // Two separate boxes (see filterTeams' own comment on why they combine
+  // as AND, not one shared box OR-ing team name against character name).
+  const [teamNameSearch, setTeamNameSearch] = useState("");
+  const [characterSearch, setCharacterSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const filtered = filterTeams(teams, search);
+  const filtered = filterTeams(teams, teamNameSearch, characterSearch);
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
 
   // No form, no modal -- see DEFAULT_TEAM_NAME's own comment. Errors from
@@ -341,7 +344,8 @@ export function TeamManager({
       // never matches a non-empty query. Without this, creating a team
       // while a search is active could leave it filtered straight out of
       // view, reading as if nothing happened.
-      setSearch("");
+      setTeamNameSearch("");
+      setCharacterSearch("");
       setPage(1);
       setTeams((prev) => [{ id: result.team.id, name: result.team.name, members: [] }, ...prev]);
     });
@@ -440,16 +444,31 @@ export function TeamManager({
       {header}
 
       <div className="space-y-4">
-        <input
-          type="text"
-          placeholder="Search by team or character name..."
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
-        />
+        {/* Two separate boxes, not one shared one -- see filterTeams' own
+            comment on why they combine as AND rather than either box
+            matching either field. */}
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="text"
+            placeholder="Search by team name..."
+            value={teamNameSearch}
+            onChange={(event) => {
+              setTeamNameSearch(event.target.value);
+              setPage(1);
+            }}
+            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+          />
+          <input
+            type="text"
+            placeholder="Search by character name..."
+            value={characterSearch}
+            onChange={(event) => {
+              setCharacterSearch(event.target.value);
+              setPage(1);
+            }}
+            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+          />
+        </div>
 
         {/* Sits right next to the count it immediately changes, not off
             at the far end of the row -- and not in the header row next

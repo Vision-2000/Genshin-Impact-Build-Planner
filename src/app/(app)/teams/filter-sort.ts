@@ -62,18 +62,28 @@ export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
   };
 }
 
-// No sort of its own -- teams arrive (and stay) in most-recently-updated-
-// first order, both from the server's own orderBy and from TeamManager's
-// own optimistic reordering on every local mutation (see its touchTeam),
-// so filtering just needs to preserve whatever order it's handed rather
-// than re-sorting by name the way this used to.
-export function filterTeams(teams: TeamItem[], search: string): TeamItem[] {
-  const query = search.trim().toLowerCase();
-  if (!query) return teams;
+// No sort of its own -- teams arrive (and stay) in most-recently-created-
+// first order, from the server's own orderBy (see page.tsx) and from
+// TeamManager's own optimistic updates (updateTeamInPlace/
+// handleBumpToFront, neither of which filterTeams needs to know about), so
+// filtering just needs to preserve whatever order it's handed rather than
+// re-sorting by name the way this used to.
+//
+// Two independent queries, not one shared box -- each narrows the result
+// further when non-empty (AND, not OR): teamNameQuery against the team's
+// own name, characterNameQuery against any one of its members' character
+// names. Searching "National" + "Xingqiu" means "the team named National
+// that also has Xingqiu in it", not "anything matching either word".
+export function filterTeams(teams: TeamItem[], teamNameQuery: string, characterNameQuery: string): TeamItem[] {
+  const nameQuery = teamNameQuery.trim().toLowerCase();
+  const characterQuery = characterNameQuery.trim().toLowerCase();
+  if (!nameQuery && !characterQuery) return teams;
 
-  return teams.filter(
-    (team) =>
-      team.name.toLowerCase().includes(query) ||
-      team.members.some((member) => member.characterName.toLowerCase().includes(query))
-  );
+  return teams.filter((team) => {
+    if (nameQuery && !team.name.toLowerCase().includes(nameQuery)) return false;
+    if (characterQuery && !team.members.some((member) => member.characterName.toLowerCase().includes(characterQuery))) {
+      return false;
+    }
+    return true;
+  });
 }
