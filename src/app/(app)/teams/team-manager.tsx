@@ -19,11 +19,11 @@ const PAGE_SIZE = 9;
 // aspect ratio (see build-slot-picker.tsx's own comment on why a filled
 // slot uses BuildPortrait instead of a square CharacterCard at all: a
 // small circular weapon/set-effect badge turned out to be too small to
-// actually read). w-96 at aspect-[3/2] works out to a 384x256 box -- each
-// of BuildPortrait's own weapon/artifact-effects icons is a third of that
-// width (~128px). The card grid is a single column (see the "always 1
-// column" comment below), so there's no column width to stay under.
-const SLOT_SIZE_CLASS = "aspect-[3/2] w-96";
+// actually read). w-[26rem] at aspect-[3/2] works out to a 416x277 box --
+// each of BuildPortrait's own weapon/artifact-effects icons is a third of
+// that width (~139px). The card grid is a single column (see the "always
+// 1 column" comment below), so there's no column width to stay under.
+const SLOT_SIZE_CLASS = "aspect-[3/2] w-[26rem]";
 // A team is a perfectly valid, real in-game state with 0 builds in it (a
 // party slot can sit empty) -- "Create team" no longer prompts for a name
 // up front, it just makes one of these immediately and lets
@@ -59,31 +59,25 @@ function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: s
         if (trimmed && trimmed !== value) onCommit(trimmed);
         else setDraft(value);
       }}
-      className="min-w-0 flex-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-medium text-black"
+      // max-w-xs (not flex-1 alone) -- flex-1 used to be harmless when the
+      // team card itself was narrow (a multi-column grid), but now that
+      // the card spans the full page width (see the "always 1 column"
+      // comment below) it stretched this into an absurdly wide text box.
+      className="min-w-0 max-w-xs flex-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-medium text-black"
     />
   );
 }
 
-// Same dark-box/single-whole-box-tooltip pattern as BuildStatsSummary's
-// own Artifact Set Effects box -- the face shows just the effect name(s)
-// + element icon (when one applies), the full effect text is one hover
-// away. Extracted once a second TeamCard box (Team Effects, alongside
-// Elemental Resonance) needed the exact same shape, same reasoning as
-// this app's own useToast/Toast extraction once a second page needed
-// that pattern. At most 2-3 entries can ever be active at once on a
+// Shared hover-tooltip shell for both the Elemental Resonance pill and the
+// Moonsign/Hexerei icons below -- same "icon-only face, full effect text
+// one hover away" pattern BuildStatsSummary's own Artifact Set Effects box
+// already uses, just over a small icon instead of a titled box now that
+// these moved into the header's own leftover space (see TeamCard's own
+// comment on why). At most 2-3 entries can ever be active at once on a
 // 4-build team (see computeElementalResonances'/
 // computeMoonsignHexereiEffects' own comments), so this never needs to
 // handle a long list.
-function TeamEffectBox({ title, effects, emptyText }: { title: string; effects: TeamEffect[]; emptyText: string }) {
-  if (effects.length === 0) {
-    return (
-      <div className="rounded border bg-black p-4 pt-2 text-base">
-        <p className="text-lg font-semibold text-foreground">{title}</p>
-        <p className="mt-2 text-gray-400">{emptyText}</p>
-      </div>
-    );
-  }
-
+function TeamEffectTooltip({ effects, children }: { effects: TeamEffect[]; children: ReactNode }) {
   return (
     <MouseFollowTooltip
       wrapperClassName="relative block"
@@ -103,17 +97,7 @@ function TeamEffectBox({ title, effects, emptyText }: { title: string; effects: 
         </div>
       }
     >
-      <div className="rounded border bg-black p-4 pt-2 text-base">
-        <p className="text-lg font-semibold text-foreground">{title}</p>
-        <ul className="mt-2 flex flex-col gap-y-1">
-          {effects.map((effect) => (
-            <li key={effect.name} className="flex items-center gap-1.5 text-foreground">
-              {effect.element && <Image src={ELEMENT_ICON_URL[effect.element]} alt="" width={20} height={20} />}
-              <span>{effect.name}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {children}
     </MouseFollowTooltip>
   );
 }
@@ -153,19 +137,98 @@ function TeamCard({
     .map((member) => builds.find((build) => build.buildId === member.buildId))
     .filter((build): build is BuildOption => build !== undefined);
   const resonances = computeElementalResonances(memberBuilds.map((build) => build.element));
-  const teamEffects = computeMoonsignHexereiEffects({
-    moonsignCount: memberBuilds.filter((build) => build.isMoonsignCharacter).length,
-    hexereiCount: memberBuilds.filter((build) => build.isHexereiCharacter).length,
-  });
+  const moonsignCount = memberBuilds.filter((build) => build.isMoonsignCharacter).length;
+  const hexereiCount = memberBuilds.filter((build) => build.isHexereiCharacter).length;
+  // Kept as effect TEXT lookups for the hover tooltips below, not as the
+  // on/off signal itself -- moonsignCount/hexereiCount directly drive
+  // which icon shows and at which color (see the header row below), since
+  // "Nascent Gleam present" alone can't tell muted (count 1) from full
+  // (count 2+) the way the raw count can.
+  const teamEffects = computeMoonsignHexereiEffects({ moonsignCount, hexereiCount });
+  const moonsignEffects = teamEffects.filter((effect) => effect.name === "Nascent Gleam" || effect.name === "Ascendant Gleam");
+  const hexereiEffects = teamEffects.filter((effect) => effect.name === "Hexerei: Secret Rite");
 
   return (
     <li className="space-y-3 rounded-xl border p-4">
       <div className="flex items-center justify-between gap-2">
-        <TeamNameInput value={team.name} onCommit={onUpdateName} />
+        {/* Grouped with the name field (not a 3rd justify-between sibling
+            of its own) so the icons sit right next to it instead of
+            floating centered in whatever space is left over -- that
+            leftover space goes between this whole group and the Delete
+            button instead. Each icon is hidden outright (not an empty
+            placeholder) when it isn't active, since most teams won't have
+            every one of these at once. */}
+        <div className="flex min-w-0 items-center gap-2">
+          <TeamNameInput value={team.name} onCommit={onUpdateName} />
+
+          {/* One black pill PER active resonance (not one shared pill for
+              all of them) -- each pill shows that resonance's own element
+              icon twice, since the resonance is what having 2 of that
+              element in the party actually means. Up to 2 can be active
+              on a 4-build team (computeElementalResonances' own comment),
+              so this is at most 2 side-by-side pills, never a long row. */}
+          {resonances.map((effect) => (
+            <TeamEffectTooltip key={effect.name} effects={[effect]}>
+              <div className="flex h-9 items-center gap-1 rounded-full bg-black px-2">
+                {effect.element && (
+                  <>
+                    <Image src={ELEMENT_ICON_URL[effect.element]} alt={effect.name} width={20} height={20} />
+                    <Image src={ELEMENT_ICON_URL[effect.element]} alt={effect.name} width={20} height={20} />
+                  </>
+                )}
+              </div>
+            </TeamEffectTooltip>
+          ))}
+
+          {moonsignCount >= 1 && (
+            <TeamEffectTooltip effects={moonsignEffects}>
+              {/* Nascent Gleam (moonsignCount 1) renders washed-out/pale
+                  (desaturated + brightened) -- Moonsign.webp is a full
+                  illustrated emblem with no alpha channel, not a flat
+                  icon on a transparent background, so a solid white
+                  silhouette (e.g. brightness-0 invert) isn't achievable
+                  with CSS filters alone on it -- that combination
+                  collapses the whole opaque square to one flat color
+                  instead of preserving the art's own shape. Turns the
+                  image's own full blue color once Ascendant Gleam also
+                  kicks in (moonsignCount 2+), the same "every threshold
+                  reached, not just the highest" relationship moonsign-
+                  hexerei.ts's own comment describes for the text version
+                  of these two effects. */}
+              <div className="relative h-10 w-10 overflow-hidden rounded-full">
+                {/* scale-[1.75] -- the source image's own actual symbol
+                    only fills the center portion of its square canvas,
+                    with extra material around it; object-cover alone
+                    still showed that surrounding material instead of
+                    cropping it away, so this zooms in past 100% to push
+                    it outside the circle's own overflow-hidden bounds.
+                    An arbitrary value, not scale-150's own fixed step --
+                    Tailwind has no built-in 175% stop. */}
+                <Image
+                  src="/icons/Moonsign.webp"
+                  alt="Moonsign"
+                  fill
+                  className={`scale-[1.75] object-cover ${moonsignCount >= 2 ? "" : "grayscale brightness-150"}`}
+                />
+              </div>
+            </TeamEffectTooltip>
+          )}
+
+          {hexereiCount >= 2 && (
+            <TeamEffectTooltip effects={hexereiEffects}>
+              {/* No muted tier here -- unlike Moonsign, Hexerei has only
+                  the one threshold (moonsign-hexerei.ts's own comment:
+                  "Hexerei only has the one 2+ threshold, no Hexerei
+                  equivalent of Nascent Gleam at count 1"), so there's
+                  nothing partial to show muted for. */}
+              <div className="relative h-10 w-10 overflow-hidden rounded-full">
+                <Image src="/icons/Hexerei.webp" alt="Hexerei" fill className="object-cover" />
+              </div>
+            </TeamEffectTooltip>
+          )}
+        </div>
+
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-xs text-gray-500">
-            {team.members.length}/{MAX_TEAM_SIZE}
-          </span>
           {/* py-1.5 (symmetric, no nudge) -- not the usual pt-2/pb-1
               every other Delete button in this app uses. Both pt-2/pb-1
               and a halved pt-[7px]/pb-[5px] still read as too low here,
@@ -216,11 +279,6 @@ function TeamCard({
             />
           );
         })}
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <TeamEffectBox title="Elemental Resonance" effects={resonances} emptyText="No elemental resonance active yet." />
-        <TeamEffectBox title="Team Effects" effects={teamEffects} emptyText="No team effects active yet." />
       </div>
     </li>
   );

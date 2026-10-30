@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { WeaponType } from "@/generated/prisma/enums";
+import { Element, WeaponType } from "@/generated/prisma/enums";
 import { DEFAULT_WEAPON, DEFAULT_WEAPON_RARITY } from "@/lib/default-weapon";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import type { ActiveSetEffectItem } from "@/lib/active-set-effects";
+import { ELEMENT_ICON_URL } from "../app/(app)/characters/element-icons";
 import { ArtifactSetEffectsIcon } from "./artifact-set-effects-icon";
 
 // Shared "character icon beside weapon+artifact-effects icons" content --
@@ -22,6 +23,7 @@ import { ArtifactSetEffectsIcon } from "./artifact-set-effects-icon";
 // sizing/shape to its caller.
 export function BuildPortrait({
   characterIconUrl,
+  characterElement,
   buildName,
   characterName,
   weaponIconUrl,
@@ -30,6 +32,7 @@ export function BuildPortrait({
   activeSetEffects,
 }: {
   characterIconUrl: string | null;
+  characterElement: Element;
   buildName: string;
   characterName: string;
   weaponIconUrl: string | null;
@@ -79,6 +82,15 @@ export function BuildPortrait({
             />
           </>
         )}
+
+        {/* Same element badge CharacterCard itself shows -- dropped when
+            this layout first replaced CharacterCard for the Teams page's
+            build-slot card, then asked back since the character's own
+            element is still useful to see at a glance even once the
+            weapon/artifact-effects icons are showing beside it. */}
+        <span className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 p-1.5 shadow">
+          <Image src={ELEMENT_ICON_URL[characterElement]} alt={characterElement} width={26} height={26} />
+        </span>
 
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
           <p className="truncate text-center text-sm font-semibold text-white">{buildName}</p>

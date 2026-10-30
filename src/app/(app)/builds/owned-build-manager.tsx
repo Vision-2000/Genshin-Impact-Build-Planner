@@ -106,6 +106,7 @@ function BuildCard({
       >
         <BuildPortrait
           characterIconUrl={build.characterIconUrl}
+          characterElement={build.characterElement}
           buildName={build.name}
           characterName={build.characterName}
           weaponIconUrl={build.weaponIconUrl}

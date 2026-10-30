@@ -119,6 +119,7 @@ export function BuildSlotPicker({
         >
           <BuildPortrait
             characterIconUrl={selected.characterIconUrl}
+            characterElement={selected.element}
             buildName={selected.name}
             characterName={selected.characterName}
             weaponIconUrl={selected.weaponIconUrl}
