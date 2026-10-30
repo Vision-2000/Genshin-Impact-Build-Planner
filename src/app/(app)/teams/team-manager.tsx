@@ -10,7 +10,7 @@ import { useDialogs } from "@/components/dialog-provider";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { ELEMENT_ICON_URL } from "../characters/element-icons";
 import { PaginationControls } from "../pagination-controls";
-import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild } from "./actions";
+import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild, bumpTeamToFront } from "./actions";
 import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type TeamItem } from "./filter-sort";
 import { BuildSlotPicker } from "./build-slot-picker";
 
@@ -32,18 +32,14 @@ const SLOT_SIZE_CLASS = "aspect-[3/2] w-[26rem]";
 // everything up front.
 const DEFAULT_TEAM_NAME = "New Team";
 
-// Reorders `teams` so the one matching `teamId` (after `updater` is
-// applied to it) moves to the front -- mirrors Team.updatedAt actually
-// changing server-side (every mutation here has a matching server action
-// that touches it, see actions.ts's own comments), so the client's own
-// "most recently updated first" order stays live without waiting for a
-// refetch. A no-op (returns `teams` unchanged) if teamId isn't found,
-// which shouldn't happen in practice but is cheap to guard against.
-function touchTeam(teams: TeamItem[], teamId: number, updater: (team: TeamItem) => TeamItem): TeamItem[] {
-  const index = teams.findIndex((team) => team.id === teamId);
-  if (index === -1) return teams;
-  const updated = updater(teams[index]);
-  return [updated, ...teams.slice(0, index), ...teams.slice(index + 1)];
+// Applies `updater` to the one team matching `teamId`, in place -- unlike
+// the earlier touchTeam this replaced, ordinary edits (rename, add/remove
+// build) never move a team's position in the list any more; only
+// handleBumpToFront does that, explicitly. A no-op (returns `teams`
+// unchanged) if teamId isn't found, which shouldn't happen in practice but
+// is cheap to guard against.
+function updateTeamInPlace(teams: TeamItem[], teamId: number, updater: (team: TeamItem) => TeamItem): TeamItem[] {
+  return teams.map((team) => (team.id === teamId ? updater(team) : team));
 }
 
 function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
@@ -115,12 +111,14 @@ function TeamCard({
   builds,
   onUpdateName,
   onSlotChange,
+  onBumpToFront,
   onDelete,
 }: {
   team: TeamItem;
   builds: BuildOption[];
   onUpdateName: (name: string) => void;
   onSlotChange: (oldBuildId: number | null, newBuildId: number | null) => void;
+  onBumpToFront: () => void;
   onDelete: () => void;
 }) {
   const slotBuildIds: (number | null)[] = [
@@ -229,6 +227,24 @@ function TeamCard({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {/* Moves this team to the top of the full list (see
+              handleBumpToFront's own comment) -- the only user-facing way
+              a team's position ever changes now that ordinary edits don't
+              move it any more. Same solid-black/white-border button this
+              app already uses for every other non-destructive primary
+              action (Save, Add, etc. -- see e.g. owned-build-manager.tsx's
+              own Save button), not a one-off style -- a plain border alone
+              (this app's OTHER kind of secondary button, e.g. "+ New
+              Team") read as inert/non-clickable text next to the solid
+              red Delete button beside it. */}
+          <button
+            type="button"
+            onClick={onBumpToFront}
+            title="Move to top"
+            className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+          >
+            Move to top
+          </button>
           {/* py-1.5 (symmetric, no nudge) -- not the usual pt-2/pb-1
               every other Delete button in this app uses. Both pt-2/pb-1
               and a halved pt-[7px]/pb-[5px] still read as too low here,
@@ -333,9 +349,25 @@ export function TeamManager({
 
   function handleUpdateName(teamId: number, name: string) {
     const previous = teams;
-    setTeams((prev) => touchTeam(prev, teamId, (team) => ({ ...team, name })));
+    setTeams((prev) => updateTeamInPlace(prev, teamId, (team) => ({ ...team, name })));
     startTransition(() => {
       updateTeamName(teamId, name).catch(() => setTeams(previous));
+    });
+  }
+
+  // Moves a team to the very top of the full list regardless of the
+  // current page or search filter -- "move to front" always means the
+  // top of the whole underlying order, not just within whatever's
+  // currently visible, so this doesn't need to account for either.
+  function handleBumpToFront(teamId: number) {
+    const previous = teams;
+    setTeams((prev) => {
+      const index = prev.findIndex((team) => team.id === teamId);
+      if (index === -1) return prev;
+      return [prev[index], ...prev.slice(0, index), ...prev.slice(index + 1)];
+    });
+    startTransition(() => {
+      bumpTeamToFront(teamId).catch(() => setTeams(previous));
     });
   }
 
@@ -369,7 +401,7 @@ export function TeamManager({
     const newBuild = newBuildId !== null ? builds.find((b) => b.buildId === newBuildId) : undefined;
 
     setTeams((prev) =>
-      touchTeam(prev, teamId, (team) => {
+      updateTeamInPlace(prev, teamId, (team) => {
         let members = team.members;
         if (oldBuildId !== null) members = members.filter((m) => m.buildId !== oldBuildId);
         if (newBuild) {
@@ -459,6 +491,7 @@ export function TeamManager({
                 builds={builds}
                 onUpdateName={(name) => handleUpdateName(team.id, name)}
                 onSlotChange={(oldBuildId, newBuildId) => handleSlotChange(team.id, oldBuildId, newBuildId)}
+                onBumpToFront={() => handleBumpToFront(team.id)}
                 onDelete={() => handleDelete(team.id)}
               />
             ))}

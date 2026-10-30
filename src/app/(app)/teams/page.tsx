@@ -54,11 +54,13 @@ export default async function TeamsPage() {
           include: { build: { include: { ownedCharacter: { include: { character: true } } } } },
         },
       },
-      // Most recently updated first -- renaming a team or changing its
-      // builds (addTeamBuild/removeTeamBuild both touch Team.updatedAt
-      // too, see their own comment) bumps it back to the top, same as a
-      // fresh create.
-      orderBy: { updatedAt: "desc" },
+      // Most recently created first -- a fresh team naturally lands here,
+      // and the only other way a team's position changes is the explicit
+      // "move to front" button (bumpTeamToFront in actions.ts), which
+      // works by rewriting this same createdAt field. Ordinary edits
+      // (rename, add/remove build) never touch createdAt, so they never
+      // move a team -- see those actions' own comments.
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 

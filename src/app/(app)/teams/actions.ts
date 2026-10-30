@@ -33,6 +33,20 @@ export async function updateTeamName(teamId: number, name: string) {
   await prisma.team.update({ where: { id: teamId }, data: { name } });
 }
 
+// Teams are ordered by createdAt desc (see page.tsx) -- this is the only
+// way a team's position in that order ever changes: a plain write to its
+// own createdAt, same effect as deleting and recreating it but without
+// losing its builds. No dedicated "sort order" column -- createdAt isn't
+// displayed anywhere in this app (grepped before adding this), so
+// repurposing it costs nothing real, and ordinary edits (rename, add/
+// remove build) never touch it, so a team's position stays put until the
+// user explicitly asks to move it here.
+export async function bumpTeamToFront(teamId: number) {
+  const profile = await requireActiveProfile();
+
+  await prisma.team.updateMany({ where: { id: teamId, gameProfileId: profile.id }, data: { createdAt: new Date() } });
+}
+
 export async function deleteTeam(teamId: number) {
   const profile = await requireActiveProfile();
 
@@ -91,21 +105,13 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
     return { error: "This build conflicts with another build already in the team." };
   }
 
-  // Touches Team.updatedAt too (an empty updateMany still bumps the
-  // @updatedAt field) -- TeamBuild is a separate join table, so creating
-  // a row here wouldn't otherwise move this team to the top of the
-  // "most recently updated" ordering the page sorts by. updateMany (not
-  // update) re-scopes by gameProfileId for the same reason deleteTeam
-  // does -- ownership was already checked once above when `team` was
-  // fetched, but this keeps the guarantee local to the call that needs
-  // it instead of relying on that earlier check never being refactored
-  // away.
-  await prisma.$transaction([
-    prisma.teamBuild.create({
-      data: { teamId, buildId: candidateBuild.id, ownedCharacterId: candidateBuild.ownedCharacterId },
-    }),
-    prisma.team.updateMany({ where: { id: teamId, gameProfileId: profile.id }, data: {} }),
-  ]);
+  // No Team.updatedAt/createdAt touch here -- teams are ordered by
+  // createdAt (see bumpTeamToFront's own comment), and adding a build
+  // deliberately never moves a team's position; only the explicit "move
+  // to front" action does that.
+  await prisma.teamBuild.create({
+    data: { teamId, buildId: candidateBuild.id, ownedCharacterId: candidateBuild.ownedCharacterId },
+  });
 
   return {
     member: {
@@ -120,9 +126,7 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
 export async function removeTeamBuild(teamId: number, buildId: number) {
   const profile = await requireActiveProfile();
 
-  // Same Team.updatedAt touch as addTeamBuild, same reason.
-  await prisma.$transaction([
-    prisma.teamBuild.deleteMany({ where: { teamId, buildId, team: { gameProfileId: profile.id } } }),
-    prisma.team.updateMany({ where: { id: teamId, gameProfileId: profile.id }, data: {} }),
-  ]);
+  // No Team.updatedAt/createdAt touch here either -- same reason as
+  // addTeamBuild above.
+  await prisma.teamBuild.deleteMany({ where: { teamId, buildId, team: { gameProfileId: profile.id } } });
 }
