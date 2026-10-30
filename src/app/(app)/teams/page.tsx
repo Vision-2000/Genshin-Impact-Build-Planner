@@ -4,6 +4,7 @@ import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { travelerDisplayName } from "@/lib/character-scaling";
 import { isMoonsignTalentName, isHexereiTalentName } from "@/lib/moonsign-hexerei";
+import { computeActiveSetEffects } from "@/lib/active-set-effects";
 import { HelpButton } from "@/components/help-button";
 import { TeamManager } from "./team-manager";
 import type { BuildOption, TeamItem } from "./filter-sort";
@@ -35,7 +36,14 @@ export default async function TeamsPage() {
             },
           },
         },
-        buildArtifacts: true,
+        // weapon/artifactSet are here for the filled build-slot card's own
+        // weapon/set-effect badges (build-slot-picker.tsx), same data
+        // shape the Builds page's own BuildItem already fetches for its
+        // BuildCard.
+        ownedWeapon: { include: { weapon: { select: { iconUrl: true, rarity: true } } } },
+        buildArtifacts: {
+          include: { ownedArtifact: { include: { artifactSet: true } } },
+        },
       },
       orderBy: { name: "asc" },
     }),
@@ -75,6 +83,9 @@ export default async function TeamsPage() {
       exclusivityGroup: build.ownedCharacter.character.exclusivityGroup,
       ownedWeaponId: build.ownedWeaponId,
       ownedArtifactIds: build.buildArtifacts.map((ba) => ba.ownedArtifactId),
+      weaponIconUrl: build.ownedWeapon?.weapon.iconUrl ?? null,
+      weaponRarity: build.ownedWeapon?.weapon.rarity ?? null,
+      activeSetEffects: computeActiveSetEffects(build.buildArtifacts),
     };
   });
 

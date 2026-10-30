@@ -2,9 +2,10 @@ import { ArtifactSlot, Element, TalentSlot, WeaponType } from "@/generated/prism
 import type { SortDirection } from "@/lib/sort";
 import { travelerDisplayName } from "@/lib/character-scaling";
 import type { WeaponHoverDetail } from "@/lib/weapon-hover-detail";
+import { computeActiveSetEffects, type ActiveSetEffectItem } from "@/lib/active-set-effects";
 import { slotIconUrl } from "../artifacts/filter-sort";
 
-export type { SortDirection, WeaponHoverDetail };
+export type { SortDirection, WeaponHoverDetail, ActiveSetEffectItem };
 
 export type StatBonusItem = { statTypeName: string; value: number };
 
@@ -151,13 +152,6 @@ export type BuildArtifactSlotItem = {
 // mirroring the same consolidation BuildCatalog's own activeSetEffects
 // already does for the create-build page. Grouped by artifactSetId, not
 // setName, same "id is the stable key" reasoning as OwnedArtifactOption.
-export type ActiveSetEffectItem = {
-  setName: string;
-  flowerIconUrl: string | null;
-  rarity: number;
-  maxPiece: 2 | 4;
-};
-
 export type BuildItem = {
   id: number;
   name: string;
@@ -243,33 +237,9 @@ export function toBuildItem(row: BuildRow): BuildItem {
   };
 }
 
-function computeActiveSetEffects(buildArtifacts: BuildRow["buildArtifacts"]): ActiveSetEffectItem[] {
-  const setPieceCounts = new Map<
-    number,
-    { setName: string; flowerIconUrl: string | null; rarity: number; count: number }
-  >();
-  for (const ba of buildArtifacts) {
-    const set = ba.ownedArtifact.artifactSet;
-    const existing = setPieceCounts.get(set.id);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      setPieceCounts.set(set.id, { setName: set.name, flowerIconUrl: set.flowerIconUrl, rarity: set.rarity, count: 1 });
-    }
-  }
-  return [...setPieceCounts.values()]
-    .filter((s) => s.count >= 2)
-    .map((s) => ({
-      setName: s.setName,
-      flowerIconUrl: s.flowerIconUrl,
-      rarity: s.rarity,
-      maxPiece: (s.count >= 4 ? 4 : 2) as 2 | 4,
-    }));
-}
-
-// Same grouping as toBuildItem's own computeActiveSetEffects, but over
-// already-flattened OwnedArtifactOption rows instead of a Prisma row shape
-// -- used client-side (owned-build-manager.tsx's own save handler) to
+// Same grouping as computeActiveSetEffects (src/lib/active-set-effects.ts),
+// but over already-flattened OwnedArtifactOption rows instead of a Prisma
+// row shape -- used client-side (owned-build-manager.tsx's own save handler) to
 // recompute a build's activeSetEffects optimistically right after an edit,
 // without waiting on a server refetch.
 export function activeSetEffectsFromArtifacts(artifacts: OwnedArtifactOption[]): ActiveSetEffectItem[] {

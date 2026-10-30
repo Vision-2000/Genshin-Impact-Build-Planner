@@ -1,5 +1,6 @@
 import { Element, WeaponType } from "@/generated/prisma/enums";
 import type { OverlapCheckBuild } from "@/lib/overlap";
+import type { ActiveSetEffectItem } from "@/lib/active-set-effects";
 
 export const MAX_TEAM_SIZE = 4;
 
@@ -28,6 +29,14 @@ export type BuildOption = {
   exclusivityGroup: string | null;
   ownedWeaponId: number | null;
   ownedArtifactIds: number[];
+  // Backs the filled build-slot card's own weapon/artifact-set-effect
+  // badges (build-slot-picker.tsx) -- same "show at a glance" reasoning as
+  // the Builds page's own BuildCard, just at a small circular badge size
+  // instead of a full tile. weaponRarity is null exactly when
+  // ownedWeaponId/weaponIconUrl are -- no real weapon equipped.
+  weaponIconUrl: string | null;
+  weaponRarity: number | null;
+  activeSetEffects: ActiveSetEffectItem[];
 };
 
 export type TeamMemberItem = {

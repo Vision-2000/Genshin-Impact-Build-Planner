@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition, type ReactNode } from "react";
-import Image from "next/image";
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
-import { DEFAULT_WEAPON, DEFAULT_WEAPON_RARITY } from "@/lib/default-weapon";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { paginate } from "@/lib/paginate";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
+import { BuildPortrait } from "@/components/build-portrait";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
@@ -80,28 +79,18 @@ function BuildCard({
   isActive: boolean;
   onEdit: () => void;
 }) {
-  // Same loaded-flag/spinner-overlay technique as CharacterCard/
-  // ArtifactCard/WeaponCard -- a freshly-started dev server (or just a
-  // cold browser cache) has never fetched this portrait before, and Image
-  // renders nothing at all while it's in flight, reading as a wall of
-  // blank cards on a page full of builds. No key={build.characterIconUrl}
-  // reset here -- unlike WeaponCard, this component is never reused for a
-  // different build's icon in place (each card is keyed by build.id at
-  // the list level, same as CharacterCard's own reasoning).
-  const [imageLoaded, setImageLoaded] = useState(false);
-
   return (
     <li className="relative">
-      {/* flex row, not stacked -- the character icon (2x2 units, w-2/3
-          aspect-square) sits beside a weapon+artifact column (1x1 units
-          each, w-1/3 aspect-square, stacked with no gap so their combined
-          height exactly matches the character icon's own 2-unit height),
-          making the whole row a 3-wide/2-tall rectangle. Replaces the
-          earlier design (full-width 4:3 splash on top, a separate
-          weapon+artifact row below it) -- now that the artifact side is
-          always a single square regardless of 0/1/2 active set effects
-          (see its own comment below), there's no more reason for that
-          second row to exist as a separate block at all. */}
+      {/* flex row, not stacked -- BuildPortrait's own character icon (2x2
+          units, w-2/3 aspect-square) sits beside its weapon+artifact
+          column (1x1 units each, w-1/3 aspect-square, stacked with no gap
+          so their combined height exactly matches the character icon's
+          own 2-unit height), making the whole row a 3-wide/2-tall
+          rectangle. Replaces the earlier design (full-width 4:3 splash on
+          top, a separate weapon+artifact row below it) -- now that the
+          artifact side is always a single square regardless of 0/1/2
+          active set effects, there's no more reason for that second row
+          to exist as a separate block at all. */}
       <div
         onClick={onEdit}
         role="button"
@@ -115,187 +104,15 @@ function BuildCard({
           isActive ? "border-blue-500" : "border-gray-600"
         } ${rarityGradientClasses(build.characterRarity)}`}
       >
-        {/* border-r-2 border-white -- separates the 3 icon regions so
-            they read as distinct tiles instead of blurring into one
-            shape now that they sit flush against each other (no gap, no
-            individual rounded corners of their own). Same thin-white-
-            border convention as the Build/Weapon/Artifact slot cards
-            elsewhere in this app, and now the same color as the
-            diagonal set-effect divider below too. */}
-        <div className="relative aspect-square w-2/3 shrink-0 border-r-2 border-white">
-          {build.characterIconUrl && (
-            <>
-              {/* Always rendered, never conditionally removed -- opacity
-                  toggled by a class instead, so the very first client
-                  render (imageLoaded still false, same as the server)
-                  produces an identical tree. Structurally adding/removing
-                  this node based on load state caused a hydration
-                  mismatch for any image that happened to resolve from
-                  cache fast enough to flip imageLoaded before hydration's
-                  diff settled. */}
-              <div
-                className={`absolute inset-0 flex items-center justify-center transition-opacity ${imageLoaded ? "opacity-0" : "opacity-100"}`}
-              >
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/20 border-t-white" />
-              </div>
-              <Image
-                src={build.characterIconUrl}
-                alt=""
-                fill
-                sizes="(min-width: 1280px) 220px, (min-width: 1024px) 200px, (min-width: 640px) 180px, 40vw"
-                className="object-cover"
-                onLoad={() => setImageLoaded(true)}
-              />
-            </>
-          )}
-
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
-            <p className="truncate text-center text-sm font-semibold text-white">{build.name}</p>
-            <p className="truncate text-center text-xs text-gray-300">{build.characterName}</p>
-          </div>
-        </div>
-
-        <div className="flex w-1/3 flex-col">
-          {/* No real weapon chosen falls back to the character's own
-              1-star starter weapon -- same as WeaponSlotPicker's empty
-              state (see DEFAULT_WEAPON's own comment), not a blank slot.
-              No rounded of its own (unlike the old fixed-size box) --
-              this tile's own corners are clipped by the outer card's own
-              overflow-hidden rounded-xl instead, same as the character
-              icon's own square already was. */}
-          {/* border-b-2 border-white -- same reasoning as the character
-              icon's own border-r-2 above, between this and the
-              artifact-effects tile below it. */}
-          <div
-            className={`relative aspect-square w-full border-b-2 border-white ${rarityGradientClasses(
-              build.weaponIconUrl ? (build.weaponRarity ?? 1) : DEFAULT_WEAPON_RARITY
-            )}`}
-          >
-            <Image
-              src={build.weaponIconUrl ?? DEFAULT_WEAPON[build.characterWeaponType].iconUrl}
-              alt=""
-              fill
-              className="object-contain p-1"
-            />
-          </div>
-
-          {(() => {
-            const [firstEffect, secondEffect] = build.activeSetEffects;
-
-            // No active set effects -- same 1-star rarity gradient the
-            // weapon tile above falls back to when there's no real
-            // weapon equipped (DEFAULT_WEAPON_RARITY), rather than
-            // rendering nothing at all here: an unfilled tile previously
-            // just let the outer card's own (character rarity) gradient
-            // show through behind it, which read as a stray gold
-            // background for a 5-star character instead of a deliberate
-            // "nothing active" state.
-            if (!firstEffect) {
-              return <div className={`aspect-square w-full ${rarityGradientClasses(DEFAULT_WEAPON_RARITY)}`} />;
-            }
-
-            // A single set reaching 4pc already consumes 4 of the
-            // build's 5 artifact slots -- there's no room left for a
-            // SECOND 2+-piece set to ever join it (same 5-slot ceiling
-            // as build-stats-summary.tsx's own comment), unlike a
-            // standalone 2pc set, which genuinely could still be joined
-            // by one. The diagonal split exists to represent "room for
-            // a second set that may or may not be filled" -- there's
-            // nothing to represent here, so this falls back to the
-            // original plain, un-split icon. Both the set's own 2pc and
-            // 4pc bonuses are active either way; this is purely about
-            // which icon treatment communicates that correctly.
-            if (!secondEffect && firstEffect.maxPiece === 4) {
-              return (
-                <div
-                  title={`${firstEffect.setName} (4pc)`}
-                  className={`relative aspect-square w-full ${rarityGradientClasses(firstEffect.rarity)}`}
-                >
-                  {firstEffect.flowerIconUrl && (
-                    <Image
-                      src={firstEffect.flowerIconUrl}
-                      alt={firstEffect.setName}
-                      fill
-                      className="object-contain p-1"
-                    />
-                  )}
-                </div>
-              );
-            }
-
-            // Otherwise: either 2 distinct standalone 2pc sets, or just
-            // 1 (the 2nd triangle then stays blank, leaving visual room
-            // for a second set that isn't there yet). One combined box
-            // instead of one square per set -- showing both as separate
-            // full icons side by side was the actual source of the
-            // awkward gap this whole layout replaces -- a single
-            // diagonally-split box (top-right to bottom-left) takes the
-            // same footprint as ONE icon used to.
-            return (
-              <div
-                title={build.activeSetEffects.map((e) => `${e.setName} (${e.maxPiece}pc)`).join(" / ")}
-                className="relative aspect-square w-full overflow-hidden"
-              >
-                {/* Each triangle carries its OWN rarity gradient now
-                    (not one shared background for the whole box, which
-                    only ever reflected firstEffect's own rarity even
-                    when the two sets were different rarities -- a 4-star
-                    set paired with a 5-star one used to show as a single
-                    uniform gold box, hiding the 4-star half's own real
-                    color entirely). The second triangle falls back to
-                    the same 1-star DEFAULT_WEAPON_RARITY treatment as
-                    the fully-empty state above when there's no second
-                    set to show -- otherwise that blank half would show
-                    nothing here and let the outer card's own rarity
-                    gradient show through behind it again. */}
-                <div
-                  className={`absolute inset-0 ${rarityGradientClasses(firstEffect.rarity)}`}
-                  style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
-                >
-                  {firstEffect.flowerIconUrl && (
-                    <Image
-                      src={firstEffect.flowerIconUrl}
-                      alt={firstEffect.setName}
-                      fill
-                      className="object-contain p-1"
-                    />
-                  )}
-                </div>
-                <div
-                  className={`absolute inset-0 ${rarityGradientClasses(secondEffect?.rarity ?? DEFAULT_WEAPON_RARITY)}`}
-                  style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
-                >
-                  {secondEffect?.flowerIconUrl && (
-                    <Image
-                      src={secondEffect.flowerIconUrl}
-                      alt={secondEffect.setName}
-                      fill
-                      className="object-contain p-1"
-                    />
-                  )}
-                </div>
-                {/* The dividing line itself -- a thin opaque band at the
-                    gradient's own midpoint, transparent either side of
-                    it. 135deg (not 45deg) is what makes the band run
-                    from the top-right corner to the bottom-left corner
-                    on a square box, matching the two clip-path triangles
-                    above exactly. White, same color as the 2px borders
-                    between the 3 main icon tiles -- just thinner (1px)
-                    here, since it's splitting a single icon's own two
-                    set-effect halves rather than marking a whole
-                    separate tile's edge. */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% - 0.5px), rgba(255,255,255,0.85) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
-                  }}
-                />
-              </div>
-            );
-          })()}
-        </div>
+        <BuildPortrait
+          characterIconUrl={build.characterIconUrl}
+          buildName={build.name}
+          characterName={build.characterName}
+          weaponIconUrl={build.weaponIconUrl}
+          weaponRarity={build.weaponRarity}
+          characterWeaponType={build.characterWeaponType}
+          activeSetEffects={build.activeSetEffects}
+        />
       </div>
     </li>
   );

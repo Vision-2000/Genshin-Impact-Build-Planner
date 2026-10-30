@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
+import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { Modal } from "@/components/modal";
 import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
+import { BuildPortrait } from "@/components/build-portrait";
 import { CharacterCard } from "../characters/character-card";
 import { toOverlapCheckBuild, type BuildOption } from "./filter-sort";
 
@@ -33,15 +35,19 @@ function NoneBuildCard({ onSelect }: { onSelect: () => void }) {
 }
 
 // One of a team's (up to 4) build slots -- same click-a-box/modal-grid
-// interaction as WeaponSlotPicker/ArtifactSlotPicker, reusing CharacterCard
-// (not a dedicated BuildCard-style component) since a team cares about
-// WHICH character is in which slot at a glance, same as those two pickers'
-// own small-card treatment; the build's own name is folded into
-// CharacterCard's single name line ("<character> — <build>") rather than
-// shown as a second line, since CharacterCard has no second line to spare
-// at this size. Unlike those two pickers, there's no `disabled` state here
-// -- a team slot is always choosable (there's no upstream field like a
-// character that narrows candidates first), and the team-size cap is
+// interaction as WeaponSlotPicker/ArtifactSlotPicker. The filled slot's own
+// card uses BuildPortrait (the same character-icon-beside-weapon-and-
+// artifact-effects-icons layout BuildCard uses on the Builds page) rather
+// than CharacterCard -- a small circular badge was tried first for the
+// weapon/set-effect icons and found genuinely too small to read at a
+// glance, which is the whole point of showing them here at all. The
+// modal's own candidate grid still uses CharacterCard with the combined
+// "<character> — <build>" label, since scanning a list of many builds
+// across many characters needs that character context up front, and
+// doesn't need the full equipped-loadout preview a filled slot does.
+// Unlike WeaponSlotPicker/ArtifactSlotPicker, there's no `disabled` state
+// here -- a team slot is always choosable (there's no upstream field like
+// a character that narrows candidates first), and the team-size cap is
 // enforced by only ever rendering 4 of these per team, not by disabling
 // one once a count is reached.
 export function BuildSlotPicker({
@@ -97,17 +103,30 @@ export function BuildSlotPicker({
   return (
     <>
       {selected ? (
-        <ul className={`${boxSizeClassName} shrink-0`}>
-          <CharacterCard
-            name={`${selected.characterName} — ${selected.name}`}
-            element={selected.element}
-            weaponType={selected.weaponType}
-            rarity={selected.rarity}
-            iconUrl={selected.characterIconUrl}
-            onSelect={() => setOpen(true)}
-            borderClassName="border border-white"
+        <div
+          onClick={() => setOpen(true)}
+          role="button"
+          tabIndex={0}
+          title={`${selected.characterName} — ${selected.name}`}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            setOpen(true);
+          }}
+          className={`flex ${boxSizeClassName} shrink-0 cursor-pointer overflow-hidden rounded-lg border border-white shadow hover:opacity-90 ${rarityGradientClasses(
+            selected.rarity
+          )}`}
+        >
+          <BuildPortrait
+            characterIconUrl={selected.characterIconUrl}
+            buildName={selected.name}
+            characterName={selected.characterName}
+            weaponIconUrl={selected.weaponIconUrl}
+            weaponRarity={selected.weaponRarity}
+            characterWeaponType={selected.weaponType}
+            activeSetEffects={selected.activeSetEffects}
           />
-        </ul>
+        </div>
       ) : (
         <button
           type="button"

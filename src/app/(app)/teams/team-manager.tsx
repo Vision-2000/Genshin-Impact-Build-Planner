@@ -15,11 +15,15 @@ import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type
 import { BuildSlotPicker } from "./build-slot-picker";
 
 const PAGE_SIZE = 9;
-// Compact size for a team card's own 4 slots -- smaller than the usual
-// 224x224 default (same reasoning as Builds' own SLOT_SIZE_CLASS): a card
-// needs to fit 4 of these side by side, plus its own name row, inside a
-// grid cell.
-const SLOT_SIZE_CLASS = "h-28 w-28";
+// A 3-wide/2-tall rectangle, not a square -- matches BuildPortrait's own
+// aspect ratio (see build-slot-picker.tsx's own comment on why a filled
+// slot uses BuildPortrait instead of a square CharacterCard at all: a
+// small circular weapon/set-effect badge turned out to be too small to
+// actually read). w-96 at aspect-[3/2] works out to a 384x256 box -- each
+// of BuildPortrait's own weapon/artifact-effects icons is a third of that
+// width (~128px). The card grid is a single column (see the "always 1
+// column" comment below), so there's no column width to stay under.
+const SLOT_SIZE_CLASS = "aspect-[3/2] w-96";
 // A team is a perfectly valid, real in-game state with 0 builds in it (a
 // party slot can sit empty) -- "Create team" no longer prompts for a name
 // up front, it just makes one of these immediately and lets
@@ -381,13 +385,15 @@ export function TeamManager({
           </button>
         </div>
 
-        {/* grid-cols-1/2/3 (not the usual square-card 5-6 column grids) --
-            each card is much wider than a single icon, needing room for
-            its own name row plus 4 slot boxes side by side. */}
+        {/* Always 1 column, never the usual square-card multi-column grids
+            -- each card now needs ~760px (4 h-44 slots plus gaps/padding)
+            to keep its own 4 slots in one row without wrapping to 2x2, more
+            than a 2nd/3rd column would leave on anything short of a very
+            wide monitor. */}
         {pageItems.length === 0 ? (
           <p className="text-sm text-gray-500">No teams match this search.</p>
         ) : (
-          <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-4">
             {pageItems.map((team) => (
               <TeamCard
                 key={team.id}
