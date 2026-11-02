@@ -91,7 +91,7 @@ export default async function TeamsPage() {
       ownedCharacterId: build.ownedCharacterId,
       exclusivityGroup: build.ownedCharacter.character.exclusivityGroup,
       ownedWeaponId: build.ownedWeaponId,
-      ownedArtifactIds: build.buildArtifacts.map((ba) => ba.ownedArtifactId),
+      ownedArtifacts: build.buildArtifacts.map((ba) => ({ ownedArtifactId: ba.ownedArtifactId, slot: ba.slot })),
       weaponIconUrl: build.ownedWeapon?.weapon.iconUrl ?? null,
       weaponRarity: build.ownedWeapon?.weapon.rarity ?? null,
       activeSetEffects: computeActiveSetEffects(build.buildArtifacts),

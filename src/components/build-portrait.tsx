@@ -30,6 +30,8 @@ export function BuildPortrait({
   weaponRarity,
   characterWeaponType,
   activeSetEffects,
+  weaponConflict = false,
+  artifactConflict = false,
 }: {
   characterIconUrl: string | null;
   characterElement: Element;
@@ -39,6 +41,16 @@ export function BuildPortrait({
   weaponRarity: number | null;
   characterWeaponType: WeaponType;
   activeSetEffects: ActiveSetEffectItem[];
+  // Teams page only (team-manager.tsx's own computeTeamConflicts) -- true
+  // when this build's own equipped weapon/artifact is ALSO equipped on
+  // another build in the same team, a state the add/swap-time overlap
+  // check can't always prevent (a build's weapon/artifacts can change
+  // later, from the Builds page, after it's already sitting in a team --
+  // see computeTeamConflicts' own comment). Both default to false so
+  // every other BuildPortrait caller (e.g. the Builds page's own
+  // BuildCard) renders exactly as before without passing either.
+  weaponConflict?: boolean;
+  artifactConflict?: boolean;
 }) {
   // Same loaded-flag/spinner-overlay technique as CharacterCard/
   // ArtifactCard/WeaponCard -- a freshly-started dev server (or just a cold
@@ -107,18 +119,32 @@ export function BuildPortrait({
             character icon's own square already is. border-b-2 border-white
             -- same reasoning as the character icon's own border-r-2 above,
             between this and the artifact-effects tile below it. */}
+        {/* ring-inset (not a plain border swap) -- draws inside this
+            tile's own box instead of adding to its outer edge, so it
+            still reads clearly even clipped by the outer card's own
+            overflow-hidden, and doesn't disturb the border-b-2 separator
+            line itself. */}
         <div
           className={`relative aspect-square w-full border-b-2 border-white ${rarityGradientClasses(
             weaponIconUrl ? weaponRarity ?? 1 : DEFAULT_WEAPON_RARITY
-          )}`}
+          )} ${weaponConflict ? "ring-2 ring-inset ring-red-500" : ""}`}
         >
           <Image src={weaponIconUrl ?? DEFAULT_WEAPON[characterWeaponType].iconUrl} alt="" fill className="object-contain p-1" />
         </div>
 
         {/* ArtifactSetEffectsIcon only renders position:absolute fill
             content -- this wrapper is what actually gives it its square
-            shape and clips the diagonal-split case's own triangles to it. */}
-        <div className="relative aspect-square w-full overflow-hidden">
+            shape and clips the diagonal-split case's own triangles to
+            it. A real border here (not ring-inset like the weapon tile
+            above) -- ArtifactSetEffectsIcon's own children are `inset-0`,
+            covering this box edge-to-edge with no padding to leave a
+            ring's own thin inset band visible around, unlike the weapon
+            tile's Image (object-contain + p-1, which never quite reaches
+            the edge). A real border sits in the padding box, outside
+            that inset-0 content, so it stays visible on top regardless. */}
+        <div
+          className={`relative aspect-square w-full overflow-hidden ${artifactConflict ? "border-[3px] border-red-500" : ""}`}
+        >
           <ArtifactSetEffectsIcon activeSetEffects={activeSetEffects} />
         </div>
       </div>

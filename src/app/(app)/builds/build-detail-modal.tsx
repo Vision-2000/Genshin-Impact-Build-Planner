@@ -19,7 +19,21 @@ import { BuildViewer } from "./build-viewer";
 // build) rather than caching -- a build's own level/talents/artifacts can
 // change between views, and this is a single small query, not worth
 // caching against going stale.
-export function BuildDetailModal({ buildId, onClose }: { buildId: number | null; onClose: () => void }) {
+export function BuildDetailModal({
+  buildId,
+  weaponConflict = false,
+  conflictingArtifactIds = [],
+  onClose,
+}: {
+  buildId: number | null;
+  // Teams page only (team-manager.tsx's own computeTeamConflicts) -- true/
+  // non-empty when "View" was opened from a team slot whose weapon/
+  // artifact is currently shared with another build in that same team.
+  // Both default to false/empty for any other caller.
+  weaponConflict?: boolean;
+  conflictingArtifactIds?: number[];
+  onClose: () => void;
+}) {
   // Tagged with the buildId it was actually fetched for, not reset
   // separately when buildId changes -- a synchronous setState at the top
   // of an effect body (to clear stale data before the fetch starts) is
@@ -66,7 +80,13 @@ export function BuildDetailModal({ buildId, onClose }: { buildId: number | null;
       ) : !detail ? (
         <p className="text-sm text-gray-400">Loading...</p>
       ) : (
-        <BuildViewer character={detail.character} weapon={detail.weapon} artifacts={detail.artifacts} />
+        <BuildViewer
+          character={detail.character}
+          weapon={detail.weapon}
+          artifacts={detail.artifacts}
+          weaponConflict={weaponConflict}
+          conflictingArtifactIds={conflictingArtifactIds}
+        />
       )}
     </Modal>
   );

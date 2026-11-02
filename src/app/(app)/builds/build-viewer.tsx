@@ -31,10 +31,19 @@ export function BuildViewer({
   character,
   weapon,
   artifacts,
+  weaponConflict = false,
+  conflictingArtifactIds = [],
 }: {
   character: OwnedCharacterOption;
   weapon: OwnedWeaponOption | null;
   artifacts: OwnedArtifactOption[];
+  // Teams page only (team-manager.tsx's own computeTeamConflicts), passed
+  // through BuildDetailModal -- true/non-empty when this build's own
+  // weapon/artifact is currently shared with another build in the team
+  // "View" was opened from. Both default to false/empty for any other
+  // caller.
+  weaponConflict?: boolean;
+  conflictingArtifactIds?: number[];
 }) {
   return (
     <div className="flex w-full flex-col sm:flex-row">
@@ -67,7 +76,7 @@ export function BuildViewer({
                 hoverDetail={weapon?.hoverDetail}
                 showWeaponTypeBadge={false}
                 showName={false}
-                borderClassName="border border-white"
+                borderClassName={weaponConflict ? "border-2 border-red-500" : "border border-white"}
               />
             </ul>
           </div>
@@ -89,7 +98,11 @@ export function BuildViewer({
                         tooltipContent={buildTooltipContent(artifact)}
                         showSetName={false}
                         showSlotBadge={false}
-                        borderClassName="border border-white"
+                        borderClassName={
+                          conflictingArtifactIds.includes(artifact.ownedArtifactId)
+                            ? "border-2 border-red-500"
+                            : "border border-white"
+                        }
                       />
                     ) : (
                       // Same dashed/dimmed/cursor-not-allowed treatment

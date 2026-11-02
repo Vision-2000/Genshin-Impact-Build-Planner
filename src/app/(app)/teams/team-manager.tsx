@@ -25,7 +25,16 @@ import {
   bumpTeamToFront,
   type AddTeamBuildResult,
 } from "./actions";
-import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type TeamItem } from "./filter-sort";
+import {
+  MAX_TEAM_SIZE,
+  filterTeams,
+  toOverlapCheckBuild,
+  computeTeamConflicts,
+  buildConflictFlags,
+  describeTeamConflict,
+  type BuildOption,
+  type TeamItem,
+} from "./filter-sort";
 import { BuildSlotPicker } from "./build-slot-picker";
 
 const PAGE_SIZE = 10;
@@ -142,7 +151,12 @@ function TeamCard({
   // Opens TeamManager's own single, shared BuildDetailModal -- not a
   // modal owned by this card or by BuildSlotPicker itself, since only one
   // of these should ever be open across the whole page at once.
-  onView: (buildId: number) => void;
+  // weaponConflict/conflictingArtifactIds are THIS team's own
+  // computeTeamConflicts result for the build being viewed (see this
+  // card's own conflicts below) -- computed here, not re-derived at
+  // TeamManager, since a build can be reused across multiple teams
+  // simultaneously and "which team" would otherwise be ambiguous there.
+  onView: (buildId: number, weaponConflict: boolean, conflictingArtifactIds: number[]) => void;
   onBumpToFront: () => void;
   onDelete: () => void;
 }) {
@@ -311,12 +325,25 @@ function TeamCard({
   const moonsignEffects = teamEffects.filter((effect) => effect.name === "Nascent Gleam" || effect.name === "Ascendant Gleam");
   const hexereiEffects = teamEffects.filter((effect) => effect.name === "Hexerei: Secret Rite");
 
+  // Weapon/artifact pieces this team's own builds have drifted into
+  // sharing since they were added -- the add/swap-time overlap check
+  // (BuildSlotPicker's own candidate filter) already prevents creating
+  // this, but can't catch a build's weapon/artifacts being changed LATER
+  // from the Builds page, after it's already sitting here (see
+  // computeTeamConflicts' own comment). Surfaced via the red ring on each
+  // affected slot's own BuildPortrait tile below, the whole card's own
+  // red border, and the warning text under the build slots.
+  const conflicts = computeTeamConflicts(memberBuilds);
+
   // The build currently being drag-previewed -- undefined whenever
   // draggedIndex is null, which the overlay render below already guards.
   const draggedBuild = draggedIndex !== null ? builds.find((b) => b.buildId === slotBuildIds[draggedIndex]) : undefined;
 
   return (
-    <li className="space-y-3 rounded-xl border p-4">
+    // border-red-500 (overriding the plain default border) once this
+    // team's own builds have drifted into conflict -- see conflicts'
+    // own comment above.
+    <li className={`space-y-3 rounded-xl border p-4 ${conflicts.length > 0 ? "border-red-500" : ""}`}>
       {/* min-h-10 -- matches the Moonsign/Hexerei badges' own fixed h-10,
           the tallest thing this row can ever contain. Without it, a team
           with no active resonance/Moonsign/Hexerei rendered a shorter row
@@ -505,6 +532,7 @@ function TeamCard({
             .map(toOverlapCheckBuild);
 
           const isFilled = buildId !== null;
+          const slotConflictFlags = buildId !== null ? buildConflictFlags(buildId, conflicts) : null;
 
           return (
             <div
@@ -543,13 +571,41 @@ function TeamCard({
                 otherOverlapBuilds={otherBuilds}
                 value={buildId}
                 onChange={(newBuildId) => onSlotChange(buildId, newBuildId)}
-                onView={onView}
+                onView={(viewedBuildId) => {
+                  const flags = buildConflictFlags(viewedBuildId, conflicts);
+                  onView(viewedBuildId, flags.weaponConflict, flags.conflictingArtifactIds);
+                }}
+                weaponConflict={slotConflictFlags?.weaponConflict}
+                artifactConflict={(slotConflictFlags?.conflictingArtifactIds.length ?? 0) > 0}
                 boxSizeClassName={SLOT_SIZE_CLASS}
               />
             </div>
           );
         })}
       </div>
+
+      {/* One line per conflict -- see computeTeamConflicts' own comment
+          on why this can happen at all despite the add/swap-time check. */}
+      {conflicts.length > 0 && (
+        <ul className="space-y-1 text-sm text-red-500">
+          {conflicts.map((conflict, index) => (
+            <li key={index}>
+              {describeTeamConflict(conflict, memberBuilds).map((part, partIndex) =>
+                part.type === "build" ? (
+                  // Build name italicized, in parens -- distinguishes it
+                  // from the character name right next to it, since both
+                  // are plain names otherwise.
+                  <span key={partIndex}>
+                    {part.characterName} (<em>{part.buildName}</em>)
+                  </span>
+                ) : (
+                  <span key={partIndex}>{part.text}</span>
+                )
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* The real floating drag preview -- a genuine BuildPortrait render
           (not a browser-native drag ghost, see this component's own top
@@ -615,8 +671,12 @@ export function TeamManager({
 
   // One shared BuildDetailModal for the whole page, not one per TeamCard --
   // at most one can ever be open at a time regardless of which slot
-  // triggered it.
-  const [viewingBuildId, setViewingBuildId] = useState<number | null>(null);
+  // triggered it. weaponConflict/conflictingArtifactIds travel alongside
+  // buildId rather than being recomputed here -- see TeamCard's own onView
+  // prop comment on why "which team" would otherwise be ambiguous.
+  const [viewing, setViewing] = useState<{ buildId: number; weaponConflict: boolean; conflictingArtifactIds: number[] } | null>(
+    null
+  );
 
   // Two separate boxes (see filterTeams' own comment on why they combine
   // as AND, not one shared box OR-ing team name against character name).
@@ -883,7 +943,9 @@ export function TeamManager({
                 onUpdateName={(name) => handleUpdateName(team.id, name)}
                 onSlotChange={(oldBuildId, newBuildId) => handleSlotChange(team.id, oldBuildId, newBuildId)}
                 onReorder={(fromIndex, toIndex) => handleReorderSlots(team.id, fromIndex, toIndex)}
-                onView={setViewingBuildId}
+                onView={(buildId, weaponConflict, conflictingArtifactIds) =>
+                  setViewing({ buildId, weaponConflict, conflictingArtifactIds })
+                }
                 onBumpToFront={() => handleBumpToFront(team.id)}
                 onDelete={() => handleDelete(team.id)}
               />
@@ -894,7 +956,12 @@ export function TeamManager({
         <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
       </div>
 
-      <BuildDetailModal buildId={viewingBuildId} onClose={() => setViewingBuildId(null)} />
+      <BuildDetailModal
+        buildId={viewing?.buildId ?? null}
+        weaponConflict={viewing?.weaponConflict ?? false}
+        conflictingArtifactIds={viewing?.conflictingArtifactIds ?? []}
+        onClose={() => setViewing(null)}
+      />
     </div>
   );
 }

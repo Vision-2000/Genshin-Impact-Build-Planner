@@ -69,6 +69,13 @@ export function BuildSlotPicker({
   // hover reveal: the whole rest of the card keeps its existing click-to-
   // swap/drag-to-reorder behavior untouched.
   onView,
+  // Whether THIS slot's own build (if any) is currently involved in one
+  // of its team's computeTeamConflicts (team-manager.tsx) -- a red
+  // ring-inset on BuildPortrait's own weapon/artifact-effects tile, see
+  // its own comment. Both default to false, same as BuildPortrait's own
+  // defaults, for every caller that doesn't track conflicts at all.
+  weaponConflict = false,
+  artifactConflict = false,
   boxSizeClassName = "h-32 w-32",
 }: {
   builds: BuildOption[];
@@ -76,6 +83,8 @@ export function BuildSlotPicker({
   value: number | null;
   onChange: (buildId: number | null) => void;
   onView?: (buildId: number) => void;
+  weaponConflict?: boolean;
+  artifactConflict?: boolean;
   boxSizeClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -91,7 +100,14 @@ export function BuildSlotPicker({
   // whatever's already in this team's other slots (see detectOverlaps'
   // own comment -- all four are hard blocks, not advisory warnings, so a
   // conflicting build simply never appears here rather than being
-  // selectable then rejected).
+  // selectable then rejected). Only conflicts the CANDIDATE itself would
+  // be part of count -- not just "is detectOverlaps' result non-empty at
+  // all" over the whole set, which would also reject every candidate
+  // whenever two of the OTHER slots already conflict with each other
+  // (possible since a build's weapon/artifacts can change after it's
+  // already in a team -- see computeTeamConflicts in filter-sort.ts). That
+  // pre-existing conflict is real and flagged elsewhere on the team card,
+  // but it has nothing to do with whether THIS candidate is safe to add.
   const candidates = builds.filter((build) => {
     if (build.buildId === value) return false;
     if (
@@ -100,7 +116,8 @@ export function BuildSlotPicker({
     ) {
       return false;
     }
-    return detectOverlaps([...otherOverlapBuilds, toOverlapCheckBuild(build)]).length === 0;
+    const conflicts = detectOverlaps([...otherOverlapBuilds, toOverlapCheckBuild(build)]);
+    return !conflicts.some((conflict) => conflict.buildIds.includes(build.buildId));
   });
 
   function select(buildId: number | null) {
@@ -141,6 +158,8 @@ export function BuildSlotPicker({
             weaponRarity={selected.weaponRarity}
             characterWeaponType={selected.weaponType}
             activeSetEffects={selected.activeSetEffects}
+            weaponConflict={weaponConflict}
+            artifactConflict={artifactConflict}
           />
 
           {onView && (

@@ -101,7 +101,16 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
   const existing = team.teamBuilds.map((tb) => toOverlapCheckBuild(tb.build));
   const candidate = toOverlapCheckBuild(candidateBuild);
 
-  if (detectOverlaps([...existing, candidate]).length > 0) {
+  // Only rejects conflicts the CANDIDATE is actually part of -- not just
+  // "is detectOverlaps' result non-empty over the whole set", which would
+  // also reject every add whenever two of the team's EXISTING builds
+  // already conflict with each other (possible since a build's weapon/
+  // artifacts can change after it's already in a team -- see
+  // computeTeamConflicts in teams/filter-sort.ts). That pre-existing
+  // conflict is real, but has nothing to do with whether this candidate
+  // itself is safe to add.
+  const conflicts = detectOverlaps([...existing, candidate]);
+  if (conflicts.some((conflict) => conflict.buildIds.includes(candidate.buildId))) {
     return { error: "This build conflicts with another build already in the team." };
   }
 
@@ -170,7 +179,10 @@ export async function replaceTeamBuild(teamId: number, oldBuildId: number, newBu
   const existing = team.teamBuilds.filter((tb) => tb.buildId !== oldBuildId).map((tb) => toOverlapCheckBuild(tb.build));
   const candidate = toOverlapCheckBuild(candidateBuild);
 
-  if (detectOverlaps([...existing, candidate]).length > 0) {
+  // Same "only reject conflicts the candidate itself is part of" fix as
+  // addTeamBuild above, same reason.
+  const conflicts = detectOverlaps([...existing, candidate]);
+  if (conflicts.some((conflict) => conflict.buildIds.includes(candidate.buildId))) {
     return { error: "This build conflicts with another build already in the team." };
   }
 
