@@ -189,3 +189,57 @@ export async function replaceTeamBuild(teamId: number, oldBuildId: number, newBu
     },
   };
 }
+
+export type ReorderTeamBuildsResult = { success: true } | { error: string };
+
+// Drag-reorders a team's own slots -- `orderedBuildIds` must be exactly the
+// team's CURRENT build ids, just in a new order (this never adds, removes,
+// or replaces which builds are in the team, only their positions).
+//
+// Can't just UPDATE each existing row's buildId/ownedCharacterId one at a
+// time to its new position: TeamBuild has @@unique([teamId,
+// ownedCharacterId]), and Postgres checks that constraint immediately (not
+// deferred), so writing row A's new value before row B's old value has
+// moved off it can transiently collide for any reorder that isn't a no-op
+// (e.g. swapping two slots directly). Instead this deletes all the team's
+// rows and recreates them in one transaction, passing each row's OWN
+// original id back in explicitly -- the exact same "explicit id reuse on
+// recreate" technique this app's own master-data seed script already
+// relies on (see CLAUDE.md's Key decisions on why that's trusted). Delete-
+// then-recreate (not interleaved updates) means the unique constraint
+// never sees an intermediate conflicting state, and reusing the same ids
+// keeps each row's own position (teamBuilds render in id order -- see
+// page.tsx's own orderBy) exactly where the caller asked for it. No
+// sequence reset needed afterward (unlike bulk master-data imports) --
+// these ids already existed below the sequence's current counter; this
+// never introduces a NEW id the counter doesn't already know about.
+export async function reorderTeamBuilds(teamId: number, orderedBuildIds: number[]): Promise<ReorderTeamBuildsResult> {
+  const profile = await requireActiveProfile();
+
+  const team = await prisma.team.findFirst({
+    where: { id: teamId, gameProfileId: profile.id },
+    include: { teamBuilds: { orderBy: { id: "asc" } } },
+  });
+  if (!team) return { error: "Team not found." };
+
+  const ownedCharacterIdByBuildId = new Map(team.teamBuilds.map((tb) => [tb.buildId, tb.ownedCharacterId]));
+  const isSamePermutation =
+    orderedBuildIds.length === team.teamBuilds.length && orderedBuildIds.every((id) => ownedCharacterIdByBuildId.has(id));
+  if (!isSamePermutation) return { error: "That reorder no longer matches this team's own builds." };
+
+  await prisma.$transaction([
+    prisma.teamBuild.deleteMany({ where: { teamId } }),
+    ...team.teamBuilds.map((row, index) =>
+      prisma.teamBuild.create({
+        data: {
+          id: row.id,
+          teamId,
+          buildId: orderedBuildIds[index],
+          ownedCharacterId: ownedCharacterIdByBuildId.get(orderedBuildIds[index])!,
+        },
+      })
+    ),
+  ]);
+
+  return { success: true };
+}

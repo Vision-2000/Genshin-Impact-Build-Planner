@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { computeElementalResonances } from "@/lib/elemental-resonance";
 import { computeMoonsignHexereiEffects } from "@/lib/moonsign-hexerei";
 import { paginate } from "@/lib/paginate";
+import { rarityGradientClasses } from "@/lib/rarity-colors";
 import type { TeamEffect } from "@/lib/team-effect";
 import { useDialogs } from "@/components/dialog-provider";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
+import { BuildPortrait } from "@/components/build-portrait";
 import { ELEMENT_ICON_URL } from "../characters/element-icons";
 import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import {
@@ -17,6 +20,7 @@ import {
   addTeamBuild,
   removeTeamBuild,
   replaceTeamBuild,
+  reorderTeamBuilds,
   bumpTeamToFront,
   type AddTeamBuildResult,
 } from "./actions";
@@ -120,6 +124,7 @@ function TeamCard({
   builds,
   onUpdateName,
   onSlotChange,
+  onReorder,
   onBumpToFront,
   onDelete,
 }: {
@@ -127,6 +132,11 @@ function TeamCard({
   builds: BuildOption[];
   onUpdateName: (name: string) => void;
   onSlotChange: (oldBuildId: number | null, newBuildId: number | null) => void;
+  // Slot INDEX, not buildId -- unlike onSlotChange (which only ever
+  // targets one slot by what it currently holds), a reorder needs both
+  // endpoints at once, and the dragged slot's own buildId is still
+  // reachable via slotBuildIds[fromIndex] if a future caller needs it.
+  onReorder: (fromIndex: number, toIndex: number) => void;
   onBumpToFront: () => void;
   onDelete: () => void;
 }) {
@@ -134,6 +144,146 @@ function TeamCard({
     ...team.members.map((m) => m.buildId),
     ...Array(Math.max(0, MAX_TEAM_SIZE - team.members.length)).fill(null),
   ].slice(0, MAX_TEAM_SIZE);
+
+  // Custom pointer-based drag, not native HTML5 drag-and-drop -- native
+  // drag always renders its own "ghost" preview through the browser/OS's
+  // own compositor at a fixed, reduced opacity no CSS can override
+  // (dataTransfer.setDragImage only picks WHICH element to snapshot, not
+  // how it's rendered). A real, fully-opaque floating copy needs an
+  // actual DOM element tracking the cursor instead -- see the
+  // BuildPortrait rendered at the bottom of this component. Pointer
+  // Events (not mouse/touch events separately) also means this works on
+  // touch devices for free, which native HTML5 drag never did either.
+  //
+  // A 4-item reorder within one team doesn't need dnd-kit's own
+  // touch/accessibility machinery to be worth the dependency here (unlike
+  // the earlier, since-abandoned idea of reordering whole TEAMS on this
+  // page, where pagination/search made drag targets genuinely ambiguous
+  // -- none of that applies within one team's own fixed 4 slots). Only a
+  // FILLED slot is draggable or a valid drop target; dragging onto an
+  // empty slot isn't supported -- there's no persisted "this slot is
+  // empty" identity to move INTO (a real slot column would be needed for
+  // that, not built here), so reordering is scoped to permuting the slots
+  // that already hold something.
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  // The slot currently under the cursor during a drag, for the "this is
+  // where it'll land" ring -- separate from draggedIndex, the dimmed
+  // source.
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dragSize, setDragSize] = useState<{ width: number; height: number } | null>(null);
+
+  // Mirror the latest props/derived values into refs after every render
+  // (an effect with no dependency array, not a plain render-time
+  // assignment -- React's own rule against mutating refs during render)
+  // so the window-level listeners below -- attached ONCE on mount, not
+  // re-subscribed on every pointer-move frame -- always read through-the-
+  // ref current data instead of closing over whatever was current the one
+  // time the effect first ran.
+  const slotBuildIdsRef = useRef(slotBuildIds);
+  const onReorderRef = useRef(onReorder);
+  useEffect(() => {
+    slotBuildIdsRef.current = slotBuildIds;
+    onReorderRef.current = onReorder;
+  });
+
+  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const dragStartRef = useRef<{ index: number; x: number; y: number } | null>(null);
+  const draggedIndexRef = useRef<number | null>(null);
+  const dragSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const suppressNextClickRef = useRef(false);
+
+  useEffect(() => {
+    // Below this many pixels of movement, a pointerdown+pointerup is
+    // treated as a plain click (never preventDefault'd, so BuildSlotPicker's
+    // own onClick still opens its swap modal normally) rather than a drag.
+    const DRAG_THRESHOLD = 5;
+
+    function slotIndexAt(x: number, y: number): number | null {
+      const el = document.elementFromPoint(x, y);
+      const slotEl = el instanceof Element ? el.closest<HTMLElement>("[data-team-slot-index]") : null;
+      if (!slotEl) return null;
+      const index = Number(slotEl.dataset.teamSlotIndex);
+      return slotBuildIdsRef.current[index] !== null ? index : null;
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      const start = dragStartRef.current;
+      if (!start) return;
+
+      if (draggedIndexRef.current === null) {
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        const rect = slotRefs.current[start.index]?.getBoundingClientRect();
+        if (rect) {
+          dragSizeRef.current = { width: rect.width, height: rect.height };
+          setDragSize(dragSizeRef.current);
+        }
+        draggedIndexRef.current = start.index;
+        setDraggedIndex(start.index);
+      }
+
+      // Imperative, not React state -- moving the overlay through
+      // setState on every pixel of pointer movement would re-render this
+      // whole card dozens of times a second; writing straight to the
+      // already-mounted overlay node's own style keeps the drag smooth.
+      // Centered under the cursor (offset by half its own size).
+      if (overlayRef.current && dragSizeRef.current) {
+        const { width, height } = dragSizeRef.current;
+        overlayRef.current.style.transform = `translate(${event.clientX - width / 2}px, ${event.clientY - height / 2}px)`;
+      }
+
+      // Excludes the dragged slot's own index -- right at the start of a
+      // drag the cursor is still essentially over the source, so without
+      // this, dragOverIndex briefly equals draggedIndex and both
+      // opacity-0 and opacity-50 land on the same element (opacity-50
+      // wins in Tailwind's generated CSS), leaving the source dimmed
+      // instead of fully invisible until the cursor moved elsewhere.
+      const hit = slotIndexAt(event.clientX, event.clientY);
+      setDragOverIndex(hit !== null && hit !== draggedIndexRef.current ? hit : null);
+    }
+
+    function handlePointerUp(event: PointerEvent) {
+      const start = dragStartRef.current;
+      dragStartRef.current = null;
+      if (!start || draggedIndexRef.current === null) return;
+
+      // A genuine drag happened -- the browser still fires an ordinary
+      // click on whatever's under the pointer right after pointerup
+      // regardless of how far it traveled in between, which would
+      // otherwise immediately reopen the dropped-on slot's own picker
+      // modal. Swallowed once, in the capture phase, by the click
+      // listener below.
+      suppressNextClickRef.current = true;
+
+      const hitIndex = slotIndexAt(event.clientX, event.clientY);
+      if (hitIndex !== null && hitIndex !== start.index) onReorderRef.current(start.index, hitIndex);
+
+      draggedIndexRef.current = null;
+      dragSizeRef.current = null;
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      setDragSize(null);
+    }
+
+    function handleClickCapture(event: MouseEvent) {
+      if (!suppressNextClickRef.current) return;
+      suppressNextClickRef.current = false;
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    // capture: true -- must run before BuildSlotPicker's own onClick does.
+    window.addEventListener("click", handleClickCapture, true);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("click", handleClickCapture, true);
+    };
+  }, []);
 
   // Elemental Resonance and Team Effects (Moonsign/Hexerei) both only
   // care about which builds are actually in the team right now, not
@@ -154,6 +304,10 @@ function TeamCard({
   const teamEffects = computeMoonsignHexereiEffects({ moonsignCount, hexereiCount });
   const moonsignEffects = teamEffects.filter((effect) => effect.name === "Nascent Gleam" || effect.name === "Ascendant Gleam");
   const hexereiEffects = teamEffects.filter((effect) => effect.name === "Hexerei: Secret Rite");
+
+  // The build currently being drag-previewed -- undefined whenever
+  // draggedIndex is null, which the overlay render below already guards.
+  const draggedBuild = draggedIndex !== null ? builds.find((b) => b.buildId === slotBuildIds[draggedIndex]) : undefined;
 
   return (
     <li className="space-y-3 rounded-xl border p-4">
@@ -344,18 +498,93 @@ function TeamCard({
             .filter((b): b is BuildOption => b !== undefined)
             .map(toOverlapCheckBuild);
 
+          const isFilled = buildId !== null;
+
           return (
-            <BuildSlotPicker
+            <div
               key={index}
-              builds={builds}
-              otherOverlapBuilds={otherBuilds}
-              value={buildId}
-              onChange={(newBuildId) => onSlotChange(buildId, newBuildId)}
-              boxSizeClassName={SLOT_SIZE_CLASS}
-            />
+              ref={(el) => {
+                slotRefs.current[index] = el;
+              }}
+              data-team-slot-index={index}
+              onPointerDown={
+                isFilled
+                  ? (event) => {
+                      if (event.button !== 0) return; // primary button/touch only
+                      dragStartRef.current = { index, x: event.clientX, y: event.clientY };
+                    }
+                  : undefined
+              }
+              // Suppresses the browser's own native image-drag (BuildPortrait
+              // renders <img>s, which are draggable by default) so it never
+              // fights with the pointer-based drag above.
+              onDragStart={(event) => event.preventDefault()}
+              className={[
+                isFilled && "touch-none select-none",
+                // The dragged source is invisible, not dimmed -- the
+                // floating BuildPortrait overlay is already standing in
+                // for it, so showing both at once just looked like two
+                // copies. The hover TARGET gets the opacity-50 dimming
+                // instead, showing which card the drop would replace.
+                draggedIndex === index && "opacity-0",
+                dragOverIndex === index && "opacity-50",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <BuildSlotPicker
+                builds={builds}
+                otherOverlapBuilds={otherBuilds}
+                value={buildId}
+                onChange={(newBuildId) => onSlotChange(buildId, newBuildId)}
+                boxSizeClassName={SLOT_SIZE_CLASS}
+              />
+            </div>
           );
         })}
       </div>
+
+      {/* The real floating drag preview -- a genuine BuildPortrait render
+          (not a browser-native drag ghost, see this component's own top
+          comment), positioned via a ref-mutated transform rather than
+          React state so dragging stays smooth. position: fixed, sized to
+          match the slot it was picked up from (dragSize, captured once at
+          drag start) -- its initial off-screen transform here is only
+          ever visible for the single frame before the first pointermove
+          repositions it under the cursor.
+          Portaled straight to document.body rather than rendered inline
+          here -- even though position: fixed removes it from this card's
+          own layout, something about it being a DOM descendant of this
+          <li> was still growing the card's own bottom space while a drag
+          was active. A portal sidesteps that category of bug entirely by
+          construction, rather than chasing the exact CSS mechanism behind
+          it, which is also just the more correct way to build a "follows
+          the cursor, renders above everything" overlay in React to begin
+          with. */}
+      {draggedIndex !== null &&
+        dragSize &&
+        draggedBuild &&
+        createPortal(
+          <div
+            ref={overlayRef}
+            className={`pointer-events-none fixed left-0 top-0 z-50 flex overflow-hidden rounded-lg border border-white shadow-xl ${rarityGradientClasses(
+              draggedBuild.rarity
+            )}`}
+            style={{ width: dragSize.width, height: dragSize.height, transform: "translate(-9999px, -9999px)" }}
+          >
+            <BuildPortrait
+              characterIconUrl={draggedBuild.characterIconUrl}
+              characterElement={draggedBuild.element}
+              buildName={draggedBuild.name}
+              characterName={draggedBuild.characterName}
+              weaponIconUrl={draggedBuild.weaponIconUrl}
+              weaponRarity={draggedBuild.weaponRarity}
+              characterWeaponType={draggedBuild.weaponType}
+              activeSetEffects={draggedBuild.activeSetEffects}
+            />
+          </div>,
+          document.body
+        )}
     </li>
   );
 }
@@ -520,6 +749,36 @@ export function TeamManager({
     });
   }
 
+  // Drag-reordering two FILLED slots (empty slots aren't valid drag
+  // sources or drop targets -- see TeamCard's own comment on why). A
+  // plain two-element swap -- dropping slot 4 onto slot 2 exchanges
+  // exactly those two, leaving 3 untouched -- not array-move/splice
+  // semantics (which would shift everything between the two positions).
+  function handleReorderSlots(teamId: number, fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return;
+    const team = teams.find((t) => t.id === teamId);
+    if (!team) return;
+
+    const members = [...team.members];
+    [members[fromIndex], members[toIndex]] = [members[toIndex], members[fromIndex]];
+    const newOrderedBuildIds = members.map((m) => m.buildId);
+
+    const previous = teams;
+    setTeams((prev) => updateTeamInPlace(prev, teamId, (t) => ({ ...t, members })));
+
+    startTransition(async () => {
+      try {
+        const result = await reorderTeamBuilds(teamId, newOrderedBuildIds);
+        if ("error" in result) {
+          notify(result.error, { title: "Can't reorder" });
+          setTeams(previous);
+        }
+      } catch {
+        setTeams(previous);
+      }
+    });
+  }
+
   return (
     <div className="space-y-3">
       {header}
@@ -611,6 +870,7 @@ export function TeamManager({
                 builds={builds}
                 onUpdateName={(name) => handleUpdateName(team.id, name)}
                 onSlotChange={(oldBuildId, newBuildId) => handleSlotChange(team.id, oldBuildId, newBuildId)}
+                onReorder={(fromIndex, toIndex) => handleReorderSlots(team.id, fromIndex, toIndex)}
                 onBumpToFront={() => handleBumpToFront(team.id)}
                 onDelete={() => handleDelete(team.id)}
               />
