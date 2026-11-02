@@ -8,6 +8,7 @@ import { computeMoonsignHexereiEffects } from "@/lib/moonsign-hexerei";
 import { paginate } from "@/lib/paginate";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import type { TeamEffect } from "@/lib/team-effect";
+import { useRefreshOnBackNavigation, wasBackNavigation } from "@/lib/use-refresh-on-back-navigation";
 import { useDialogs } from "@/components/dialog-provider";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { BuildPortrait } from "@/components/build-portrait";
@@ -29,6 +30,7 @@ import {
   MAX_TEAM_SIZE,
   filterTeams,
   toOverlapCheckBuild,
+  memberBuildsForTeam,
   computeTeamConflicts,
   buildConflictFlags,
   describeTeamConflict,
@@ -54,6 +56,53 @@ const SLOT_SIZE_CLASS = "aspect-[3/2] w-[26rem]";
 // slot starts empty and gets filled in afterward rather than demanding
 // everything up front.
 const DEFAULT_TEAM_NAME = "New Team";
+
+// Which of TeamManager's own two modals (BuildDetailModal's "view", or one
+// slot's own BuildSlotPicker "select") was open right before a navigation
+// away from this page -- e.g. following BuildDetailModal's own "Edit
+// build" button, or BuildSlotPicker's own "Need another build? Create one
+// on the Builds page" link. Both unmount TeamManager entirely (a real
+// route change, not a modal-over-modal), so neither `viewing` nor
+// `reopenPicker` survives on their own; this sessionStorage draft is what
+// lets the right modal reopen on the way back, the same round-trip-
+// survival technique BuildCatalog's own create-build draft already uses
+// (see its own DRAFT_KEY comment) -- applied here to "which modal/slot was
+// open" instead of a form's field values. slotIndex (not buildId) is the
+// key for "selecting", since an EMPTY slot's own BuildSlotPicker can be
+// reopened too, and every empty slot shares the same buildId (null).
+type TeamsPageDraft =
+  | { kind: "viewing"; teamId: number; slotIndex: number; buildId: number }
+  | { kind: "selecting"; teamId: number; slotIndex: number };
+
+const DRAFT_KEY = "teams-page-draft";
+
+function readDraft(): TeamsPageDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as TeamsPageDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft: TeamsPageDraft) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Ignore -- sessionStorage can throw in a private/locked-down browser
+    // context; losing the "reopen on Back" convenience isn't worth
+    // crashing the page over.
+  }
+}
+
+function clearDraft() {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Same as writeDraft above.
+  }
+}
 
 // Applies `updater` to the one team matching `teamId`, in place -- unlike
 // the earlier touchTeam this replaced, ordinary edits (rename, add/remove
@@ -136,6 +185,27 @@ function TeamCard({
   onSlotChange,
   onReorder,
   onView,
+  // Non-null only on the one team/slot BuildDetailModal's own "Select
+  // another build" button just targeted, or a slot restored from a
+  // sessionStorage draft after a Builds-page round trip (team-manager.tsx's
+  // own reopenPicker state, see its own comment) -- null for every other
+  // TeamCard, and usually null here too. Reopens that slot's
+  // BuildSlotPicker exactly as if the user had clicked the upper part of
+  // its own card. Keyed by slot INDEX, not buildId -- buildId is null for
+  // an empty slot, which an index still identifies uniquely but a shared
+  // null wouldn't. onReopenConsumed fires once that slot's picker actually
+  // closes (select OR cancel), clearing the parent's one-shot state so a
+  // later unrelated open/close elsewhere on the page doesn't re-trigger
+  // anything.
+  reopenSlotIndex,
+  onReopenConsumed,
+  // Fires for ANY slot's own BuildSlotPicker opening or closing (not just
+  // a reopen-triggered one) -- team-manager.tsx uses this to keep its own
+  // sessionStorage "which modal was open" draft in sync, the same
+  // round-trip-survival technique BuildCatalog's own draft already uses,
+  // applied here to "which team slot's picker is open" instead of a
+  // create-build form's field values.
+  onPickerOpenChange,
   onBumpToFront,
   onDelete,
 }: {
@@ -156,7 +226,13 @@ function TeamCard({
   // card's own conflicts below) -- computed here, not re-derived at
   // TeamManager, since a build can be reused across multiple teams
   // simultaneously and "which team" would otherwise be ambiguous there.
-  onView: (buildId: number, weaponConflict: boolean, conflictingArtifactIds: number[]) => void;
+  // slotIndex travels alongside buildId purely so TeamManager can restore
+  // (or reopen) the right slot's own picker later -- BuildDetailModal
+  // itself has no use for it.
+  onView: (slotIndex: number, buildId: number, weaponConflict: boolean, conflictingArtifactIds: number[]) => void;
+  reopenSlotIndex: number | null;
+  onReopenConsumed: () => void;
+  onPickerOpenChange: (slotIndex: number, open: boolean) => void;
   onBumpToFront: () => void;
   onDelete: () => void;
 }) {
@@ -310,9 +386,7 @@ function TeamCard({
   // which slot they're in -- built straight from team.members (not
   // slotBuildIds, which pads with nulls purely for rendering 4 slot
   // positions).
-  const memberBuilds = team.members
-    .map((member) => builds.find((build) => build.buildId === member.buildId))
-    .filter((build): build is BuildOption => build !== undefined);
+  const memberBuilds = memberBuildsForTeam(team, builds);
   const resonances = computeElementalResonances(memberBuilds.map((build) => build.element));
   const moonsignCount = memberBuilds.filter((build) => build.isMoonsignCharacter).length;
   const hexereiCount = memberBuilds.filter((build) => build.isHexereiCharacter).length;
@@ -533,6 +607,10 @@ function TeamCard({
 
           const isFilled = buildId !== null;
           const slotConflictFlags = buildId !== null ? buildConflictFlags(buildId, conflicts) : null;
+          // Only ever true for exactly one slot across the whole page at
+          // a time -- see this prop's own comment above for where it
+          // comes from.
+          const isReopenTarget = index === reopenSlotIndex;
 
           return (
             <div
@@ -573,10 +651,15 @@ function TeamCard({
                 onChange={(newBuildId) => onSlotChange(buildId, newBuildId)}
                 onView={(viewedBuildId) => {
                   const flags = buildConflictFlags(viewedBuildId, conflicts);
-                  onView(viewedBuildId, flags.weaponConflict, flags.conflictingArtifactIds);
+                  onView(index, viewedBuildId, flags.weaponConflict, flags.conflictingArtifactIds);
                 }}
                 weaponConflict={slotConflictFlags?.weaponConflict}
                 artifactConflict={(slotConflictFlags?.conflictingArtifactIds.length ?? 0) > 0}
+                autoOpen={isReopenTarget}
+                onOpenChange={(open) => {
+                  onPickerOpenChange(index, open);
+                  if (isReopenTarget && !open) onReopenConsumed();
+                }}
                 boxSizeClassName={SLOT_SIZE_CLASS}
               />
             </div>
@@ -665,7 +748,23 @@ export function TeamManager({
   builds: BuildOption[];
   initialTeams: TeamItem[];
 }) {
+  // Following "Edit build" (build-detail-modal.tsx) to the Builds page and
+  // back via the browser Back button -- or any other same-document
+  // navigation away and back -- can restore this page from Next's client
+  // router cache without re-running the server component, leaving `teams`
+  // on its pre-navigation snapshot even though the edit landed correctly.
+  // useRefreshOnBackNavigation forces a server refetch on popstate; the
+  // prevInitialTeams comparison below is what actually applies the fresh
+  // props once they arrive -- same two-part fix OwnedBuildManager's own
+  // identical bug already needed (see its own comment for why this has to
+  // happen during render, not in an effect).
+  useRefreshOnBackNavigation();
   const [teams, setTeams] = useState(initialTeams);
+  const [prevInitialTeams, setPrevInitialTeams] = useState(initialTeams);
+  if (initialTeams !== prevInitialTeams) {
+    setPrevInitialTeams(initialTeams);
+    setTeams(initialTeams);
+  }
   const [, startTransition] = useTransition();
   const { confirm, notify } = useDialogs();
 
@@ -673,10 +772,127 @@ export function TeamManager({
   // at most one can ever be open at a time regardless of which slot
   // triggered it. weaponConflict/conflictingArtifactIds travel alongside
   // buildId rather than being recomputed here -- see TeamCard's own onView
-  // prop comment on why "which team" would otherwise be ambiguous.
-  const [viewing, setViewing] = useState<{ buildId: number; weaponConflict: boolean; conflictingArtifactIds: number[] } | null>(
-    null
-  );
+  // prop comment on why "which team" would otherwise be ambiguous. teamId/
+  // slotIndex travel too, purely so "Select another build" (below) and the
+  // sessionStorage draft (see TeamsPageDraft's own comment) know which
+  // team/slot to reopen -- the modal itself has no other use for either.
+  const [viewing, setViewing] = useState<{
+    teamId: number;
+    slotIndex: number;
+    buildId: number;
+    weaponConflict: boolean;
+    conflictingArtifactIds: number[];
+  } | null>(null);
+
+  // Set by BuildDetailModal's own "Select another build" button, or by the
+  // mount-time draft restore below -- reopens the target team slot's own
+  // BuildSlotPicker, as if the user had clicked the upper part of its own
+  // card instead of the View button (or had never left the page at all).
+  // Only ever names one (teamId, slotIndex) pair at a time; TeamCard clears
+  // it back to null itself once that slot's picker closes (see its own
+  // reopenSlotIndex/onReopenConsumed props).
+  const [reopenPicker, setReopenPicker] = useState<{ teamId: number; slotIndex: number } | null>(null);
+
+  // Runs once, right after the initial render: restore whichever modal a
+  // sessionStorage draft says was open right before this page was last
+  // navigated away from (see TeamsPageDraft's own comment on when that
+  // happens). Gated on wasBackNavigation() -- the draft is only meant to
+  // survive the SPECIFIC round trip of following a link away (Edit build,
+  // or the picker's own "create one on the Builds page" link) and pressing
+  // Back, not an ordinary nav-bar click back to this page, which should
+  // always land on a clean, modal-free Teams page even if a draft happens
+  // to still be sitting in sessionStorage from an earlier, unrelated visit.
+  // A leftover draft is discarded outright (not left to possibly resurface
+  // later) whenever this mount turns out not to be a Back-navigation one.
+  //
+  // A deliberate react-hooks/set-state-in-effect exception, same as
+  // BuildCatalog's own identical mount-restore effect -- this is
+  // "synchronize with an external store" on mount, not derived-state
+  // busywork. Re-derives weaponConflict/conflictingArtifactIds from the
+  // CURRENT teams/builds rather than trusting anything stale the draft
+  // might have carried -- it stores neither, only the ids needed to look
+  // them back up.
+  //
+  // hasCheckedBackNavRef guards wasBackNavigation()'s own consume-and-clear
+  // read specifically against React Strict Mode's dev-only double-invoke
+  // of a fresh mount's effects (mount -> cleanup -> mount again, same
+  // component instance/state throughout, unlike a genuine unmount) --
+  // without it, the SECOND invocation would find the flag already
+  // consumed by the first and wrongly conclude this wasn't a Back
+  // navigation after all. BuildCatalog's own equivalent restore effect
+  // doesn't need this: reading sessionStorage and reapplying the same
+  // state twice is harmless, but wasBackNavigation() is a genuine
+  // one-shot read specifically BECAUSE it has to tell a real Back/Forward
+  // apart from an ordinary later mount that didn't involve one at all.
+  const hasCheckedBackNavRef = useRef(false);
+  useEffect(() => {
+    if (hasCheckedBackNavRef.current) return;
+    hasCheckedBackNavRef.current = true;
+    if (!wasBackNavigation()) {
+      clearDraft();
+      return;
+    }
+    const draft = readDraft();
+    if (!draft) return;
+    const team = teams.find((t) => t.id === draft.teamId);
+    if (!team) {
+      clearDraft();
+      return;
+    }
+    if (draft.kind === "viewing") {
+      const build = builds.find((b) => b.buildId === draft.buildId);
+      if (!build) {
+        clearDraft();
+        return;
+      }
+      const flags = buildConflictFlags(draft.buildId, computeTeamConflicts(memberBuildsForTeam(team, builds)));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setViewing({
+        teamId: draft.teamId,
+        slotIndex: draft.slotIndex,
+        buildId: draft.buildId,
+        weaponConflict: flags.weaponConflict,
+        conflictingArtifactIds: flags.conflictingArtifactIds,
+      });
+    } else {
+      // The rule only needs one exception per effect (see the one above) --
+      // both calls are batched into the same cascading render regardless.
+      setReopenPicker({ teamId: draft.teamId, slotIndex: draft.slotIndex });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keeps the sessionStorage draft in sync with `viewing` -- written
+  // whenever a build is being viewed (including right as "View" is first
+  // clicked, well before any navigation happens, so the draft is always
+  // ready by the time a navigation-away actually occurs), cleared the
+  // instant it closes for any other reason (the user's own close click,
+  // "Select another build" moving on to a picker instead -- see below).
+  useEffect(() => {
+    if (viewing) {
+      writeDraft({ kind: "viewing", teamId: viewing.teamId, slotIndex: viewing.slotIndex, buildId: viewing.buildId });
+    } else {
+      clearDraft();
+    }
+  }, [viewing]);
+
+  // Same idea for a slot's own BuildSlotPicker -- TeamCard's
+  // onPickerOpenChange fires this for ANY slot opening or closing, not
+  // just a reopen-triggered one, so a plain manual click on a slot's own
+  // card persists the draft exactly the same way "Select another build"
+  // does. Only clears the draft if it still names THIS slot -- guards
+  // against one slot's own close firing after a DIFFERENT slot has
+  // already opened and overwritten the draft with its own entry.
+  function handlePickerOpenChange(teamId: number, slotIndex: number, open: boolean) {
+    if (open) {
+      writeDraft({ kind: "selecting", teamId, slotIndex });
+      return;
+    }
+    const current = readDraft();
+    if (current && current.kind === "selecting" && current.teamId === teamId && current.slotIndex === slotIndex) {
+      clearDraft();
+    }
+  }
 
   // Two separate boxes (see filterTeams' own comment on why they combine
   // as AND, not one shared box OR-ing team name against character name).
@@ -943,9 +1159,12 @@ export function TeamManager({
                 onUpdateName={(name) => handleUpdateName(team.id, name)}
                 onSlotChange={(oldBuildId, newBuildId) => handleSlotChange(team.id, oldBuildId, newBuildId)}
                 onReorder={(fromIndex, toIndex) => handleReorderSlots(team.id, fromIndex, toIndex)}
-                onView={(buildId, weaponConflict, conflictingArtifactIds) =>
-                  setViewing({ buildId, weaponConflict, conflictingArtifactIds })
+                onView={(slotIndex, buildId, weaponConflict, conflictingArtifactIds) =>
+                  setViewing({ teamId: team.id, slotIndex, buildId, weaponConflict, conflictingArtifactIds })
                 }
+                reopenSlotIndex={reopenPicker?.teamId === team.id ? reopenPicker.slotIndex : null}
+                onReopenConsumed={() => setReopenPicker(null)}
+                onPickerOpenChange={(slotIndex, open) => handlePickerOpenChange(team.id, slotIndex, open)}
                 onBumpToFront={() => handleBumpToFront(team.id)}
                 onDelete={() => handleDelete(team.id)}
               />
@@ -960,6 +1179,12 @@ export function TeamManager({
         buildId={viewing?.buildId ?? null}
         weaponConflict={viewing?.weaponConflict ?? false}
         conflictingArtifactIds={viewing?.conflictingArtifactIds ?? []}
+        onSelectAnother={
+          viewing ? () => {
+            setReopenPicker({ teamId: viewing.teamId, slotIndex: viewing.slotIndex });
+            setViewing(null);
+          } : undefined
+        }
         onClose={() => setViewing(null)}
       />
     </div>

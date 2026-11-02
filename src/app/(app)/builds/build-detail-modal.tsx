@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Modal } from "@/components/modal";
 import { getBuildDetail, type BuildDetail } from "./actions";
 import { BuildViewer } from "./build-viewer";
@@ -23,6 +24,7 @@ export function BuildDetailModal({
   buildId,
   weaponConflict = false,
   conflictingArtifactIds = [],
+  onSelectAnother,
   onClose,
 }: {
   buildId: number | null;
@@ -32,8 +34,16 @@ export function BuildDetailModal({
   // Both default to false/empty for any other caller.
   weaponConflict?: boolean;
   conflictingArtifactIds?: number[];
+  // Teams page only -- closes this modal and reopens the ORIGINATING
+  // team slot's own BuildSlotPicker (team-manager.tsx owns that wiring,
+  // since only it knows which team/slot "View" was opened from). Omitted
+  // entirely (not just a no-op) for any other caller, which is what hides
+  // the "Select another build" button below -- there's nothing for it to
+  // reopen outside a team slot.
+  onSelectAnother?: () => void;
   onClose: () => void;
 }) {
+  const router = useRouter();
   // Tagged with the buildId it was actually fetched for, not reset
   // separately when buildId changes -- a synchronous setState at the top
   // of an effect body (to clear stale data before the fetch starts) is
@@ -61,6 +71,32 @@ export function BuildDetailModal({
   const detail = current && "detail" in current ? current.detail : null;
   const error = current && "error" in current ? current.error : null;
 
+  // Smaller than Modal's own h-10 close button (h-7, tighter px) -- two
+  // text buttons at that height read as oversized next to the plain X;
+  // items-center keeps all three vertically aligned in the shared
+  // top-right row despite the height difference -- see Modal's own
+  // headerActions comment.
+  const headerButtonClassName =
+    "flex h-7 items-center whitespace-nowrap rounded border px-2 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10";
+
+  const headerActions =
+    buildId !== null ? (
+      <>
+        {onSelectAnother && (
+          <button type="button" onClick={onSelectAnother} className={headerButtonClassName}>
+            Select another build
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => router.push(`/builds?edit=${buildId}`)}
+          className={headerButtonClassName}
+        >
+          Edit build
+        </button>
+      </>
+    ) : null;
+
   return (
     <Modal
       open={buildId !== null}
@@ -74,6 +110,7 @@ export function BuildDetailModal({
       // to multiple rows and reading as a cut-down version of the real
       // thing instead of the genuinely identical one this is meant to be.
       maxWidthClassName="max-w-7xl"
+      headerActions={headerActions}
     >
       {error ? (
         <p className="text-sm text-red-400">{error}</p>

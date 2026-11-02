@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
@@ -76,6 +76,17 @@ export function BuildSlotPicker({
   // defaults, for every caller that doesn't track conflicts at all.
   weaponConflict = false,
   artifactConflict = false,
+  // Lets an external trigger -- BuildDetailModal's own "Select another
+  // build" button (team-manager.tsx), reached from a totally different
+  // part of the tree than this specific slot -- reopen THIS slot's swap
+  // modal, the same way a user clicking the upper part of its own card
+  // would. Same autoOpen/onOpenChange contract WeaponSlotPicker/
+  // ArtifactSlotPicker/CharacterSlotPicker already use for their own
+  // "reopen after an external event" needs -- onOpenChange fires on every
+  // open/close (not just the auto-triggered one), so the caller can clear
+  // its own one-shot autoOpen flag once it's been consumed.
+  autoOpen,
+  onOpenChange,
   boxSizeClassName = "h-32 w-32",
 }: {
   builds: BuildOption[];
@@ -85,10 +96,30 @@ export function BuildSlotPicker({
   onView?: (buildId: number) => void;
   weaponConflict?: boolean;
   artifactConflict?: boolean;
+  autoOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   boxSizeClassName?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
+
+  function setOpen(next: boolean) {
+    setOpenState(next);
+    onOpenChange?.(next);
+  }
+
+  // Fires when a caller flips autoOpen to true after this component has
+  // already mounted closed (e.g. BuildDetailModal's own "Select another
+  // build" button, clicked well after this slot first rendered). Same
+  // deliberate react-hooks/set-state-in-effect exception WeaponSlotPicker's
+  // own identical effect takes -- this IS "synchronize with a value owned
+  // by an external system" (the caller's own one-shot request), not
+  // derived-state busywork.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (autoOpen) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   const selected = value !== null ? builds.find((b) => b.buildId === value) : undefined;
 

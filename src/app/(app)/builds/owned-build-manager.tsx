@@ -274,6 +274,7 @@ export function OwnedBuildManager({
   weapons,
   artifacts,
   initialBuilds,
+  initialEditBuildId = null,
 }: {
   // The page's own title block -- rendered on the same row as "Create
   // build", same header shape every other page uses (see page.tsx's own
@@ -283,6 +284,11 @@ export function OwnedBuildManager({
   weapons: OwnedWeaponOption[];
   artifacts: OwnedArtifactOption[];
   initialBuilds: BuildItem[];
+  // From page.tsx's own ?edit= query param -- set by BuildDetailModal's
+  // "Edit build" button on the Teams page, to land here with that
+  // build's own BuildEditor already open, same as clicking its card
+  // would. null (the default) for every other, ordinary page load.
+  initialEditBuildId?: number | null;
 }) {
   useRefreshOnBackNavigation();
   const [builds, setBuilds] = useState(initialBuilds);
@@ -312,7 +318,7 @@ export function OwnedBuildManager({
   const [sortKey, setSortKey] = useState<BuildSortKey>("obtained");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [page, setPage] = useState(1);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(initialEditBuildId);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
 

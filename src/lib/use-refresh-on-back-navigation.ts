@@ -23,8 +23,20 @@ import { useRouter } from "next/navigation";
 // navigation. Calling refresh() immediately, right when the browser event
 // fires, has no such dependency on this component's own render cycle.
 let latestRouter: ReturnType<typeof useRouter> | null = null;
+// Set the instant a real Back/Forward happens, read (and cleared) by
+// wasBackNavigation() below -- a module-level flag, not component state,
+// for the same reason latestRouter itself is one: it has to survive this
+// component unmounting and a fresh one remounting in its place, which is
+// exactly what a Back/Forward navigation that lands on a NEW page instance
+// does. Teams page uses this to decide whether a leftover "which modal was
+// open" sessionStorage draft (team-manager.tsx) should actually be
+// restored -- only ever true for a genuine Back/Forward round trip, never
+// for an ordinary nav-bar/sidebar Link click to the same route, which
+// should always start from a clean, modal-free page.
+let poppedSincePageLoad = false;
 if (typeof window !== "undefined") {
   window.addEventListener("popstate", () => {
+    poppedSincePageLoad = true;
     latestRouter?.refresh();
   });
 }
@@ -39,4 +51,18 @@ export function useRefreshOnBackNavigation() {
   useEffect(() => {
     latestRouter = router;
   }, [router]);
+}
+
+// Reads AND clears the "a Back/Forward just happened" flag -- clearing it
+// here (not leaving it set) means only the very next check sees a given
+// popstate; a later ordinary mount (e.g. navigating elsewhere and back via
+// the nav bar, no further Back/Forward involved) correctly sees false
+// again instead of forever treating every mount as a Back-navigation one
+// just because the user used Back at some earlier point in the session.
+// Call from an effect (e.g. right alongside useRefreshOnBackNavigation's
+// own mount-time sync), not during render -- reading mutates module state.
+export function wasBackNavigation(): boolean {
+  const popped = poppedSincePageLoad;
+  poppedSincePageLoad = false;
+  return popped;
 }

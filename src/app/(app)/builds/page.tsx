@@ -20,8 +20,19 @@ export const metadata: Metadata = {
 
 const HELP_TEXT = `This page shows the builds you've assembled for your owned characters. Click "Create build" to assemble a new one; click an existing card to rename it, change its weapon/artifacts, or delete it (deleting pulls it out of any team or roster it's in).`;
 
-export default async function BuildsPage() {
+export default async function BuildsPage({
+  searchParams,
+}: {
+  // Set by BuildDetailModal's own "Edit build" button (Teams page), which
+  // links here as /builds?edit=<buildId> -- same query-param-driven
+  // "open this on load" pattern AddWeaponPage's own weaponType param
+  // already uses. Only trusted as a real number below; an invalid/missing
+  // value just leaves the editor closed, same as a normal page load.
+  searchParams: Promise<{ edit?: string }>;
+}) {
   const profile = await requireActiveProfile();
+  const { edit } = await searchParams;
+  const initialEditBuildId = edit !== undefined && Number.isInteger(Number(edit)) ? Number(edit) : null;
 
   const [ownedCharacters, ownedWeapons, ownedArtifacts, builds] = await Promise.all([
     prisma.ownedCharacter.findMany({
@@ -194,6 +205,7 @@ export default async function BuildsPage() {
           weapons={weaponOptions}
           artifacts={artifactOptions}
           initialBuilds={buildItems}
+          initialEditBuildId={initialEditBuildId}
         />
       </div>
     </div>

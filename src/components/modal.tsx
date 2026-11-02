@@ -11,6 +11,7 @@ export function Modal({
   open,
   onClose,
   title,
+  headerActions,
   children,
   maxWidthClassName = "max-w-md",
   fitContent = false,
@@ -20,6 +21,12 @@ export function Modal({
   open: boolean;
   onClose: () => void;
   title?: React.ReactNode;
+  // Extra buttons in the same top-right row as the close button,
+  // immediately to its left -- e.g. BuildDetailModal's own Edit/Select
+  // another build buttons. Only used there today; every other Modal
+  // caller leaves this undefined and gets the plain close button alone,
+  // unchanged.
+  headerActions?: React.ReactNode;
   children: React.ReactNode;
   // Overridable for content that needs more room than a typical form, e.g. a
   // picker showing a grid of cards instead of a simple list.
@@ -87,19 +94,32 @@ export function Modal({
         aria-modal="true"
         className={`relative max-h-[90vh] overflow-y-auto rounded-lg border bg-background p-5 text-foreground shadow-lg ${fitContent ? "w-fit" : "w-full"} ${maxWidthClassName}`}
       >
-        {!hideCloseButton && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className={`absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded ${closeButtonClassName}`}
-          >
-            <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
+        {(!hideCloseButton || headerActions) && (
+          <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
+            {headerActions}
+            {!hideCloseButton && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className={`flex h-10 w-10 items-center justify-center rounded ${closeButtonClassName}`}
+              >
+                <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            )}
+          </div>
         )}
-        {title && <div className={`mb-4 text-base font-semibold ${hideCloseButton ? "" : "pr-10"}`}>{title}</div>}
+        {/* pr-32 (not the plain close-button-only pr-10) once headerActions
+            exist -- reserves room for those too, not just the X, so a
+            long title doesn't run underneath them. Approximate, not
+            measured -- BuildDetailModal is the only caller today. */}
+        {title && (
+          <div className={`mb-4 text-base font-semibold ${headerActions ? "pr-32" : hideCloseButton ? "" : "pr-10"}`}>
+            {title}
+          </div>
+        )}
         {children}
       </div>
     </div>

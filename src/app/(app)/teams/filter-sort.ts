@@ -58,6 +58,20 @@ export type TeamItem = {
   members: TeamMemberItem[];
 };
 
+// A team's own members, resolved against the full owned-builds list --
+// team.members only carries buildId/name/characterName/characterIconUrl
+// (TeamMemberItem, enough for the plain member list), not the full
+// BuildOption shape computeTeamConflicts/elemental-resonance/etc. need, so
+// this is the one place that join happens. A member whose build no longer
+// exists in `builds` (shouldn't happen in practice -- deleting a Build
+// cascades it out of any team, per CLAUDE.md) is silently dropped rather
+// than crashing.
+export function memberBuildsForTeam(team: TeamItem, builds: BuildOption[]): BuildOption[] {
+  return team.members
+    .map((member) => builds.find((build) => build.buildId === member.buildId))
+    .filter((build): build is BuildOption => build !== undefined);
+}
+
 export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
   return {
     buildId: build.buildId,
