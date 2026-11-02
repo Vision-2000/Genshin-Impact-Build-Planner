@@ -148,7 +148,13 @@ function TeamCard({
 
   return (
     <li className="space-y-3 rounded-xl border p-4">
-      <div className="flex items-center justify-between gap-2">
+      {/* min-h-10 -- matches the Moonsign/Hexerei badges' own fixed h-10,
+          the tallest thing this row can ever contain. Without it, a team
+          with no active resonance/Moonsign/Hexerei rendered a shorter row
+          (just the name field/buttons) than one that did, so the space
+          above the build slots grew or shrank per team instead of staying
+          consistent -- same fix as the top pagination rows' own min-h-8. */}
+      <div className="flex min-h-10 items-center justify-between gap-2">
         {/* Grouped with the name field (not a 3rd justify-between sibling
             of its own) so the icons sit right next to it instead of
             floating centered in whatever space is left over -- that
@@ -160,23 +166,64 @@ function TeamCard({
           <TeamNameInput value={team.name} onCommit={onUpdateName} />
 
           {/* One black pill PER active resonance (not one shared pill for
-              all of them) -- each pill shows that resonance's own element
-              icon twice, since the resonance is what having 2 of that
+              all of them) -- each same-element pill shows that element's
+              own icon twice, since the resonance is what having 2 of that
               element in the party actually means. Up to 2 can be active
               on a 4-build team (computeElementalResonances' own comment),
-              so this is at most 2 side-by-side pills, never a long row. */}
-          {resonances.map((effect) => (
-            <TeamEffectTooltip key={effect.name} effects={[effect]}>
-              <div className="flex h-9 items-center gap-1 rounded-full bg-black px-2">
-                {effect.element && (
-                  <>
-                    <Image src={ELEMENT_ICON_URL[effect.element]} alt={effect.name} width={20} height={20} />
-                    <Image src={ELEMENT_ICON_URL[effect.element]} alt={effect.name} width={20} height={20} />
-                  </>
-                )}
-              </div>
-            </TeamEffectTooltip>
-          ))}
+              so this is at most 2 side-by-side pills, never a long row.
+              Protective Canopy is the one resonance with no single
+              `element` of its own (it needs all 4 slots filled with 4
+              DIFFERENT elements, see elemental-resonance.ts's own
+              comment) -- rendered as a 2x2 mosaic instead, each quadrant
+              showing that SAME quadrant of one team member's own element
+              icon (top-left of member 1, top-right of member 2, and so
+              on), reusing memberBuilds directly rather than trying to
+              force 4 elements through TeamEffect's own single-`element`
+              shape. */}
+          {resonances.map((effect) =>
+            effect.name === "Protective Canopy" ? (
+              <TeamEffectTooltip key={effect.name} effects={[effect]}>
+                <div className="relative h-9 w-9 overflow-hidden rounded-full bg-black p-1">
+                  {/* The padding above sits on the OUTER circle, not on
+                      each Image directly -- `fill` positions each one
+                      against its nearest positioned ancestor, so this
+                      inner div (sized to the padded remainder) is what
+                      actually keeps the mosaic from touching the circle's
+                      own edge. */}
+                  <div className="relative h-full w-full">
+                    {memberBuilds.map((build, index) => (
+                      <Image
+                        key={index}
+                        src={ELEMENT_ICON_URL[build.element]}
+                        alt={build.element}
+                        fill
+                        className="object-contain"
+                        style={{
+                          clipPath: [
+                            "inset(0 50% 50% 0)", // top-left
+                            "inset(0 0 50% 50%)", // top-right
+                            "inset(50% 50% 0 0)", // bottom-left
+                            "inset(50% 0 0 50%)", // bottom-right
+                          ][index],
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </TeamEffectTooltip>
+            ) : (
+              <TeamEffectTooltip key={effect.name} effects={[effect]}>
+                <div className="flex h-9 items-center gap-1 rounded-full bg-black px-2">
+                  {effect.element && (
+                    <>
+                      <Image src={ELEMENT_ICON_URL[effect.element]} alt={effect.name} width={20} height={20} />
+                      <Image src={ELEMENT_ICON_URL[effect.element]} alt={effect.name} width={20} height={20} />
+                    </>
+                  )}
+                </div>
+              </TeamEffectTooltip>
+            )
+          )}
 
           {moonsignCount >= 1 && (
             <TeamEffectTooltip effects={moonsignEffects}>
@@ -193,7 +240,11 @@ function TeamCard({
                   reached, not just the highest" relationship moonsign-
                   hexerei.ts's own comment describes for the text version
                   of these two effects. */}
-              <div className="relative h-10 w-10 overflow-hidden rounded-full">
+              {/* h-9 w-9, smaller than Hexerei's own h-10 w-10 -- the
+                  scale-[1.75] zoom (kept as-is, not the issue) made this
+                  badge read as bigger than Hexerei even at the same
+                  container size. */}
+              <div className="relative h-9 w-9 overflow-hidden rounded-full">
                 {/* scale-[1.75] -- the source image's own actual symbol
                     only fills the center portion of its square canvas,
                     with extra material around it; object-cover alone
@@ -494,8 +545,11 @@ export function TeamManager({
               bordered rounded-lg "Create X" shape every other page uses)
               marks it as that different, lighter-weight kind of action
               rather than reusing a button shape that implies the same
-              modal/page pattern. */}
-          <div className="flex items-center gap-3">
+              modal/page pattern. pt-1 -- same fix as the Weapons/
+              Artifacts pages' own count+button row: this group read
+              higher than PaginationNavButtons beside it once they started
+              sharing a row. */}
+          <div className="flex items-center gap-3 pt-1">
             <p className="text-sm text-gray-500 dark:text-gray-300">
               {filtered.length} team{filtered.length === 1 ? "" : "s"}
             </p>
