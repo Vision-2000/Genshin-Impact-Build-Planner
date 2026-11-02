@@ -69,8 +69,9 @@ function tiebreakByAdded(a: OwnedArtifactOption, b: OwnedArtifactOption): number
 
 // The exact hover detail the owned-artifacts page's own ArtifactCard shows
 // (see its buildTooltipContent) -- set name/level header, main stat, then
-// every substat.
-function buildTooltipContent(artifact: OwnedArtifactOption) {
+// every substat. Exported for BuildViewer (build-viewer.tsx), which reuses
+// this exact same tooltip content for its own read-only artifact cards.
+export function buildTooltipContent(artifact: OwnedArtifactOption) {
   return (
     <>
       <div className="flex items-baseline gap-2">

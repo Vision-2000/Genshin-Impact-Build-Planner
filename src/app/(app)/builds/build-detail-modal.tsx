@@ -3,17 +3,16 @@
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/modal";
 import { getBuildDetail, type BuildDetail } from "./actions";
-import { BuildStatsSummary } from "./build-stats-summary";
+import { BuildViewer } from "./build-viewer";
 
-// Read-only "view build details" popover -- reuses BuildStatsSummary (the
-// same Stats/Talents/Constellations/Artifact Set Effects boxes the Builds
-// page's own create/edit flow already shows) fed by a single on-demand
-// fetch (getBuildDetail) rather than the full owned-character/weapon/
-// artifact catalogs the Builds page's own editor needs for its pickers.
-// Triggered from the Teams page's own build-slot cards (see build-slot-
-// picker.tsx's own "View" zone) without navigating away from Teams --
-// stays mounted (and keeps its own open/buildId state) regardless of
-// which slot last triggered it, same one-modal-per-page-section pattern
+// Read-only "view build details" popover -- BuildViewer (a true read-only
+// counterpart to BuildEditor, not a simplified stand-in) fed by a single
+// on-demand fetch (getBuildDetail) rather than the full owned-character/
+// weapon/artifact catalogs the Builds page's own editor needs for its
+// pickers. Triggered from the Teams page's own build-slot cards (see
+// build-slot-picker.tsx's own "View" zone) without navigating away from
+// Teams -- stays mounted (and keeps its own open/buildId state) regardless
+// of which slot last triggered it, same one-modal-per-page-section pattern
 // BuildSlotPicker's own swap modal already uses.
 //
 // Fetches fresh every time buildId changes (including re-opening the SAME
@@ -53,21 +52,22 @@ export function BuildDetailModal({ buildId, onClose }: { buildId: number | null;
       open={buildId !== null}
       onClose={onClose}
       title={detail ? `${detail.character.name} — ${detail.name}` : "Build details"}
-      maxWidthClassName="max-w-4xl"
+      // max-w-7xl -- the exact same width the Builds page's own BuildEditor/
+      // BuildCatalog modals use (owned-build-manager.tsx/build-catalog.tsx).
+      // max-w-4xl (tried first) left BuildStatsSummary's own Column 2
+      // (Talents/Constellations/Artifact Set Effects, each a flex-wrap icon
+      // row) too narrow to fit on one line the way it does there, wrapping
+      // to multiple rows and reading as a cut-down version of the real
+      // thing instead of the genuinely identical one this is meant to be.
+      maxWidthClassName="max-w-7xl"
     >
-      {/* Fixed height, not h-full -- on the Builds page itself
-          BuildStatsSummary's own h-full tracks a character splash-art
-          sibling's height; standalone here, with no such sibling, it
-          needs an explicit height to stretch against instead. */}
-      <div className="h-[32rem]">
-        {error ? (
-          <p className="text-sm text-red-400">{error}</p>
-        ) : !detail ? (
-          <p className="text-sm text-gray-400">Loading...</p>
-        ) : (
-          <BuildStatsSummary character={detail.character} weapon={detail.weapon} artifacts={detail.artifacts} />
-        )}
-      </div>
+      {error ? (
+        <p className="text-sm text-red-400">{error}</p>
+      ) : !detail ? (
+        <p className="text-sm text-gray-400">Loading...</p>
+      ) : (
+        <BuildViewer character={detail.character} weapon={detail.weapon} artifacts={detail.artifacts} />
+      )}
     </Modal>
   );
 }
