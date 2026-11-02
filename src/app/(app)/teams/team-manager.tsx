@@ -10,7 +10,16 @@ import { useDialogs } from "@/components/dialog-provider";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { ELEMENT_ICON_URL } from "../characters/element-icons";
 import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
-import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild, bumpTeamToFront } from "./actions";
+import {
+  createTeam,
+  updateTeamName,
+  deleteTeam,
+  addTeamBuild,
+  removeTeamBuild,
+  replaceTeamBuild,
+  bumpTeamToFront,
+  type AddTeamBuildResult,
+} from "./actions";
 import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type TeamItem } from "./filter-sort";
 import { BuildSlotPicker } from "./build-slot-picker";
 
@@ -441,15 +450,13 @@ export function TeamManager({
   }
 
   // Handles all three slot actions (add/remove/replace) through one path,
-  // rather than the three separate handlers this replaced -- a replace is
-  // just a remove and an add for the same slot, and sequencing those two
-  // server calls matters: addTeamBuild's own server-side 4-build check
-  // would otherwise race against a still-in-flight removeTeamBuild for
-  // the build being swapped out, if the two fired independently (as the
-  // old handleAddBuild/handleRemoveBuild pair would have here). Applies
-  // both halves of the optimistic update together, then awaits the
-  // remove before the add so the server always sees the slot as already
-  // freed.
+  // rather than three separate handlers. Replace is NOT remove-then-add
+  // for the same slot any more (that was the old approach) -- it's its
+  // own server call (replaceTeamBuild) that updates the existing
+  // TeamBuild row in place, so the slot being replaced keeps its own
+  // position (teamBuilds are rendered in id order -- see page.tsx's own
+  // orderBy comment) instead of the new build landing at the end as a
+  // freshly-created row would.
   function handleSlotChange(teamId: number, oldBuildId: number | null, newBuildId: number | null) {
     if (oldBuildId === newBuildId) return;
     const previous = teams;
@@ -457,6 +464,25 @@ export function TeamManager({
 
     setTeams((prev) =>
       updateTeamInPlace(prev, teamId, (team) => {
+        if (oldBuildId !== null && newBuild) {
+          // Replace -- same array index, not filter-then-push, so the
+          // optimistic update matches what replaceTeamBuild actually does
+          // server-side.
+          return {
+            ...team,
+            members: team.members.map((m) =>
+              m.buildId === oldBuildId
+                ? {
+                    buildId: newBuild.buildId,
+                    name: newBuild.name,
+                    characterName: newBuild.characterName,
+                    characterIconUrl: newBuild.characterIconUrl,
+                  }
+                : m
+            ),
+          };
+        }
+
         let members = team.members;
         if (oldBuildId !== null) members = members.filter((m) => m.buildId !== oldBuildId);
         if (newBuild) {
@@ -476,13 +502,17 @@ export function TeamManager({
 
     startTransition(async () => {
       try {
-        if (oldBuildId !== null) await removeTeamBuild(teamId, oldBuildId);
-        if (newBuildId !== null) {
-          const result = await addTeamBuild(teamId, newBuildId);
-          if ("error" in result) {
-            notify(result.error, { title: "Can't add build" });
-            setTeams(previous);
-          }
+        let result: AddTeamBuildResult | undefined;
+        if (oldBuildId !== null && newBuildId !== null) {
+          result = await replaceTeamBuild(teamId, oldBuildId, newBuildId);
+        } else if (oldBuildId !== null) {
+          await removeTeamBuild(teamId, oldBuildId);
+        } else if (newBuildId !== null) {
+          result = await addTeamBuild(teamId, newBuildId);
+        }
+        if (result && "error" in result) {
+          notify(result.error, { title: "Can't add build" });
+          setTeams(previous);
         }
       } catch {
         setTeams(previous);

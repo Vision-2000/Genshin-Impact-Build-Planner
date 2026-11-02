@@ -50,8 +50,15 @@ export default async function TeamsPage() {
     prisma.team.findMany({
       where: { gameProfileId: profile.id },
       include: {
+        // orderBy: id asc -- a team's own slot positions are this row
+        // order (see TeamCard's own comment: "array position IS slot
+        // identity"), and replaceTeamBuild (actions.ts) depends on a
+        // replaced build's row keeping the same id/position rather than
+        // moving -- made explicit here instead of relying on whatever
+        // Postgres's own default (unspecified) order happens to return.
         teamBuilds: {
           include: { build: { include: { ownedCharacter: { include: { character: true } } } } },
+          orderBy: { id: "asc" },
         },
       },
       // Most recently created first -- a fresh team naturally lands here,

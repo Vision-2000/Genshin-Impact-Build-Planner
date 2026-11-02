@@ -130,3 +130,62 @@ export async function removeTeamBuild(teamId: number, buildId: number) {
   // addTeamBuild above.
   await prisma.teamBuild.deleteMany({ where: { teamId, buildId, team: { gameProfileId: profile.id } } });
 }
+
+// Swaps which build an OCCUPIED slot holds, in place -- updates the
+// existing TeamBuild row's own buildId/ownedCharacterId rather than
+// deleting it and creating a new one (the old remove+add sequence
+// handleSlotChange used to use for a replace). That distinction matters:
+// teamBuilds are rendered in `id` order (see page.tsx's own orderBy), so a
+// brand-new row always lands at the END regardless of which slot it's
+// conceptually replacing, while updating the row that was ALREADY there
+// keeps its id -- and therefore its position -- exactly where it was.
+// Same real-game behavior the user confirmed this should match: replacing
+// a party member swaps them into that same slot, not the back of the line.
+export async function replaceTeamBuild(teamId: number, oldBuildId: number, newBuildId: number): Promise<AddTeamBuildResult> {
+  const profile = await requireActiveProfile();
+
+  const team = await prisma.team.findFirst({
+    where: { id: teamId, gameProfileId: profile.id },
+    include: {
+      teamBuilds: {
+        include: {
+          build: {
+            include: { ownedCharacter: { include: { character: true } }, buildArtifacts: true },
+          },
+        },
+      },
+    },
+  });
+  if (!team) return { error: "Team not found." };
+
+  const candidateBuild = await prisma.build.findFirst({
+    where: { id: newBuildId, ownedCharacter: { gameProfileId: profile.id } },
+    include: { ownedCharacter: { include: { character: true } }, buildArtifacts: true },
+  });
+  if (!candidateBuild) return { error: "Build not found." };
+
+  // The slot being replaced is excluded from the overlap check -- it's
+  // about to stop holding oldBuildId, so oldBuildId's own weapon/artifacts/
+  // character no longer count as "already in the team" for this check.
+  const existing = team.teamBuilds.filter((tb) => tb.buildId !== oldBuildId).map((tb) => toOverlapCheckBuild(tb.build));
+  const candidate = toOverlapCheckBuild(candidateBuild);
+
+  if (detectOverlaps([...existing, candidate]).length > 0) {
+    return { error: "This build conflicts with another build already in the team." };
+  }
+
+  const result = await prisma.teamBuild.updateMany({
+    where: { teamId, buildId: oldBuildId, team: { gameProfileId: profile.id } },
+    data: { buildId: candidateBuild.id, ownedCharacterId: candidateBuild.ownedCharacterId },
+  });
+  if (result.count === 0) return { error: "Team not found." };
+
+  return {
+    member: {
+      buildId: candidateBuild.id,
+      name: candidateBuild.name,
+      characterName: travelerDisplayName(candidateBuild.ownedCharacter.character.name),
+      characterIconUrl: candidateBuild.ownedCharacter.character.iconUrl,
+    },
+  };
+}
