@@ -5,7 +5,7 @@ import Image from "next/image";
 import { paginate } from "@/lib/paginate";
 import { detectOverlaps } from "@/lib/overlap";
 import { useDialogs } from "@/components/dialog-provider";
-import { PaginationControls } from "../pagination-controls";
+import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import { createRoster, updateRosterName, deleteRoster, addRosterBuild, removeRosterBuild } from "./actions";
 import type { CreateRosterErrors } from "./schemas";
 import { filterRosters, toOverlapCheckBuild, type BuildOption, type RosterItem } from "./filter-sort";
@@ -200,9 +200,16 @@ export function RosterManager({ builds, initialRosters }: { builds: BuildOption[
           className="rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
         />
 
-        <p className="text-sm text-gray-500">
-          {filtered.length} roster{filtered.length === 1 ? "" : "s"}
-        </p>
+        {/* min-h-8 -- same fix as the Teams/Builds pages' own top row:
+            without a reserved height, crossing into a 2nd page grows this
+            row (PaginationNavButtons' own buttons are taller than the
+            count text alone) and visibly shifts the list below it down. */}
+        <div className="flex min-h-8 items-center justify-between gap-3">
+          <p className="text-sm text-gray-500">
+            {filtered.length} roster{filtered.length === 1 ? "" : "s"}
+          </p>
+          <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
+        </div>
 
         <ul className="space-y-2">
           {pageItems.map((roster) => (

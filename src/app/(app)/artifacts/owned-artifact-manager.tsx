@@ -12,7 +12,7 @@ import { MiniatureCard } from "@/components/miniature-card";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import type { SortDirection } from "@/lib/sort";
-import { PaginationControls } from "../pagination-controls";
+import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import { removeArtifact, removeArtifacts, updateArtifact } from "./actions";
 import { ArtifactCard } from "./artifact-card";
 import { ArtifactSlotFilterRow } from "./artifact-slot-filter-row";
@@ -358,36 +358,39 @@ export function OwnedArtifactManager({
         ))}
       </div>
 
-      <div className="flex items-center gap-2">
-        <p className="text-sm text-gray-500 dark:text-gray-300">
-          {selectMode
-            // Counts selections across every filtered page, not just the
-            // one currently shown -- `selectedIds.size` itself (used for
-            // the Delete button) is the same number here, since a
-            // selection made before narrowing a filter stays selected even
-            // once it's filtered out of view, same reasoning as the
-            // weapons page.
-            ? `${filtered.filter((a) => selectedIds.has(a.id)).length}/${filtered.length} artifact${filtered.length === 1 ? "" : "s"} selected`
-            : `${filtered.length} artifact${filtered.length === 1 ? "" : "s"}`}
-        </p>
-        {selectMode && (
-          <button
-            type="button"
-            onClick={handleToggleSelectAll}
-            // pt-[3px] pb-px (not symmetric py-0.5) -- same fix as the
-            // artifact edit modal's dropdowns: Arial's own line-height
-            // metrics aren't split evenly above/below the glyphs, so the
-            // text sat visibly high within its own border; more
-            // padding-top than padding-bottom nudges it down to
-            // compensate. A first attempt at pt-1/pb-px (4px/1px)
-            // overcorrected -- this keeps the same 4px total as the
-            // original symmetric py-0.5 (2px/2px), just redistributed
-            // less aggressively (3px/1px).
-            className="relative -top-0.5 rounded border px-2 pb-px pt-[3px] text-xs transition-colors hover:bg-foreground/10"
-          >
-            {allFilteredSelected ? "Unselect all" : "Select all"}
-          </button>
-        )}
+      {/* min-h-8 -- same fix as the Teams/Builds/Rosters/Lineups pages'
+          own top row: without a reserved height, crossing into a 2nd page
+          grows this row (PaginationNavButtons' own buttons are taller
+          than the count text alone) and visibly shifts the grid below it
+          down. */}
+      <div className="flex min-h-8 items-center justify-between gap-2">
+        {/* pt-1 -- the count text + Select all button as a GROUP read
+            higher than PaginationNavButtons beside them (same issue found
+            and fixed on the Weapons page) -- this nudges the whole group
+            down together rather than tuning each child individually. */}
+        <div className="flex items-center gap-2 pt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-300">
+            {selectMode
+              // Counts selections across every filtered page, not just the
+              // one currently shown -- `selectedIds.size` itself (used for
+              // the Delete button) is the same number here, since a
+              // selection made before narrowing a filter stays selected even
+              // once it's filtered out of view, same reasoning as the
+              // weapons page.
+              ? `${filtered.filter((a) => selectedIds.has(a.id)).length}/${filtered.length} artifact${filtered.length === 1 ? "" : "s"} selected`
+              : `${filtered.length} artifact${filtered.length === 1 ? "" : "s"}`}
+          </p>
+          {selectMode && (
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="rounded border px-2 py-1 text-xs transition-colors hover:bg-foreground/10"
+            >
+              {allFilteredSelected ? "Unselect all" : "Select all"}
+            </button>
+          )}
+        </div>
+        <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
       </div>
 
       {/* Empty-state message replaces the <ul> rather than sitting inside

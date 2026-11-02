@@ -12,7 +12,7 @@ import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import type { SortDirection } from "@/lib/sort";
-import { PaginationControls } from "../pagination-controls";
+import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import { ElementFilterRow } from "../characters/element-filter-row";
 import { updateBuildName, updateBuildWeapon, setBuildArtifact, deleteBuild, getBuildContainerNames } from "./actions";
 import { ArtifactSlotPicker } from "./artifact-slot-picker";
@@ -522,9 +522,17 @@ export function OwnedBuildManager({
           }}
         />
 
-        <p className="text-sm text-gray-500 dark:text-gray-300">
-          {filtered.length} build{filtered.length === 1 ? "" : "s"}
-        </p>
+        {/* min-h-8 -- PaginationNavButtons renders nothing below a 2nd
+            page; without a reserved height, crossing into one grows this
+            row (its own buttons are taller than the count text alone)
+            and visibly shifts the grid below it down. Same fix as the
+            Teams page's own top row. */}
+        <div className="flex min-h-8 items-center justify-between gap-3">
+          <p className="text-sm text-gray-500 dark:text-gray-300">
+            {filtered.length} build{filtered.length === 1 ? "" : "s"}
+          </p>
+          <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
+        </div>
 
         {/* The empty-state message replaces the <ul> rather than sitting
             inside it -- a <ul> may only directly contain <li>, and a <p>

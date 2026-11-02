@@ -9,12 +9,12 @@ import type { TeamEffect } from "@/lib/team-effect";
 import { useDialogs } from "@/components/dialog-provider";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { ELEMENT_ICON_URL } from "../characters/element-icons";
-import { PaginationControls } from "../pagination-controls";
+import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import { createTeam, updateTeamName, deleteTeam, addTeamBuild, removeTeamBuild, bumpTeamToFront } from "./actions";
 import { MAX_TEAM_SIZE, filterTeams, toOverlapCheckBuild, type BuildOption, type TeamItem } from "./filter-sort";
 import { BuildSlotPicker } from "./build-slot-picker";
 
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 10;
 // A 3-wide/2-tall rectangle, not a square -- matches BuildPortrait's own
 // aspect ratio (see build-slot-picker.tsx's own comment on why a filled
 // slot uses BuildPortrait instead of a square CharacterCard at all: a
@@ -470,28 +470,45 @@ export function TeamManager({
           />
         </div>
 
-        {/* Sits right next to the count it immediately changes, not off
-            at the far end of the row -- and not in the header row next
-            to the title either (see Builds' own "Create build"), since
-            that position implies opening something (a modal or a
-            separate page), which this no longer does (see
-            DEFAULT_TEAM_NAME's own comment: it's a single instant action
-            with no form). A small pill (rounded-full, not the bordered
-            rounded-lg "Create X" shape every other page uses) marks it
-            as that different, lighter-weight kind of action rather than
-            reusing a button shape that implies the same modal/page
-            pattern. */}
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-gray-500 dark:text-gray-300">
-            {filtered.length} team{filtered.length === 1 ? "" : "s"}
-          </p>
-          <button
-            type="button"
-            onClick={handleCreate}
-            className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5"
-          >
-            <span className="text-sm leading-none">+</span> New Team
-          </button>
+        {/* justify-between -- the count+Create group stays on the left
+            (unchanged from before), and PaginationNavButtons joins on the
+            right so Previous/Next are reachable from both the top and
+            bottom of the list, not just the bottom (same grouped pair
+            PaginationControls itself renders at the bottom). min-h-8 --
+            PaginationNavButtons renders nothing at all below 10 teams
+            (pageCount <= 1), so without a reserved height this row was
+            only as tall as the count text/New Team button; crossing into
+            a 2nd page then grew the row to fit the (taller) nav buttons,
+            visibly shifting everything below it down. Pinning this row's
+            own height up front means that growth never happens -- the
+            nav buttons just fade into a row that was always big enough
+            for them. */}
+        <div className="flex min-h-8 items-center justify-between gap-3">
+          {/* Sits right next to the count it immediately changes, not off
+              at the far end of the row -- and not in the header row next
+              to the title either (see Builds' own "Create build"), since
+              that position implies opening something (a modal or a
+              separate page), which this no longer does (see
+              DEFAULT_TEAM_NAME's own comment: it's a single instant
+              action with no form). A small pill (rounded-full, not the
+              bordered rounded-lg "Create X" shape every other page uses)
+              marks it as that different, lighter-weight kind of action
+              rather than reusing a button shape that implies the same
+              modal/page pattern. */}
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-gray-500 dark:text-gray-300">
+              {filtered.length} team{filtered.length === 1 ? "" : "s"}
+            </p>
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <span className="text-sm leading-none">+</span> New Team
+            </button>
+          </div>
+
+          <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
         </div>
 
         {/* Always 1 column, never the usual square-card multi-column grids
