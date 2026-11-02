@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { WeaponType } from "@/generated/prisma/enums";
 import { useDialogs } from "@/components/dialog-provider";
 import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation";
+import { paginate } from "@/lib/paginate";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { Modal } from "@/components/modal";
@@ -11,6 +12,7 @@ import { TrashIcon } from "@/components/trash-icon";
 import { MiniatureCard } from "@/components/miniature-card";
 import type { SortDirection } from "@/lib/sort";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
+import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import { WeaponCard, WeaponHoverCardContent } from "./weapon-card";
 import { removeWeapon, removeWeapons, updateWeaponProgression } from "./actions";
 import type { UpdateWeaponProgressionInput } from "./schemas";
@@ -24,6 +26,13 @@ import {
 
 // Weapons are seeded from 3-5 star (see prisma/seed.ts).
 const RARITIES = [5, 4, 3];
+// Same page size as Builds/Artifacts -- it turns out to be just as easy to
+// accumulate more weapons than any of those (every pull/craft is its own
+// copy, and there's no reason to ever delete one that's still usable on
+// some character), so this page needs the same "genuinely unbounded"
+// treatment, not the "bounded, render it all" treatment Characters still
+// gets.
+const PAGE_SIZE = 60;
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -57,6 +66,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
   const [secondaryStatFilter, setSecondaryStatFilter] = useState("");
   const [sortKey, setSortKey] = useState<OwnedSortKey>("obtained");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   // Bulk-delete select mode -- selectedIds is intentionally independent of
@@ -75,6 +85,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
     sortKey,
     sortDirection,
   });
+  const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
   const editingWeapon = editingId === null ? null : (owned.find((w) => w.id === editingId) ?? null);
   // Drives the select-all/unselect-all toggle button below -- true only
   // once every CURRENTLY FILTERED item is selected (an empty filtered list
@@ -173,7 +184,10 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           type="text"
           placeholder="Search by name..."
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
           className="rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
         />
         <select
@@ -190,7 +204,10 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
         <select
           value={secondaryStatFilter}
-          onChange={(event) => setSecondaryStatFilter(event.target.value)}
+          onChange={(event) => {
+            setSecondaryStatFilter(event.target.value);
+            setPage(1);
+          }}
           className="rounded border bg-white px-3 py-2 text-sm text-black"
         >
           <option value="">Weapon stat: Any</option>
@@ -244,47 +261,57 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
 
       <WeaponTypeFilterRow
         weaponTypeFilter={weaponTypeFilter}
-        onToggle={(weaponType) => setWeaponTypeFilter((prev) => toggleInSet(prev, weaponType))}
+        onToggle={(weaponType) => {
+          setWeaponTypeFilter((prev) => toggleInSet(prev, weaponType));
+          setPage(1);
+        }}
       />
       <RarityFilterRow
         rarities={RARITIES}
         rarityFilter={rarityFilter}
-        onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
+        onToggle={(rarity) => {
+          setRarityFilter((prev) => toggleInSet(prev, rarity));
+          setPage(1);
+        }}
       />
 
-      <div className="flex items-center gap-2">
-        <p className="text-sm text-gray-500 dark:text-gray-300">
-          {selectMode
-            // Counts only currently-visible selections against the visible
-            // total -- `selectedIds.size` itself (used for the Delete
-            // button) can be larger, since a selection made before
-            // narrowing a filter stays selected even once it's filtered
-            // out of view.
-            ? `${filtered.filter((weapon) => selectedIds.has(weapon.id)).length}/${filtered.length} weapon${filtered.length === 1 ? "" : "s"} selected`
-            : `${filtered.length} weapon${filtered.length === 1 ? "" : "s"}`}
-        </p>
-        {selectMode && (
-          <button
-            type="button"
-            onClick={handleToggleSelectAll}
-            // pt-[3px] pb-px (not symmetric py-0.5) -- same fix as the
-            // artifact edit modal's dropdowns: Arial's own line-height
-            // metrics aren't split evenly above/below the glyphs, so the
-            // text sat visibly high within its own border; more
-            // padding-top than padding-bottom nudges it down to
-            // compensate. A first attempt at pt-1/pb-px (4px/1px)
-            // overcorrected -- this keeps the same 4px total as the
-            // original symmetric py-0.5 (2px/2px), just redistributed
-            // less aggressively (3px/1px).
-            className="relative -top-0.5 rounded border px-2 pb-px pt-[3px] text-xs transition-colors hover:bg-foreground/10"
-          >
-            {allFilteredSelected ? "Unselect all" : "Select all"}
-          </button>
-        )}
+      {/* min-h-8 -- same fix as the Teams/Builds/Rosters/Lineups/Artifacts
+          pages' own top row: without a reserved height, crossing into a
+          2nd page grows this row (PaginationNavButtons' own buttons are
+          taller than the count text alone) and visibly shifts the grid
+          below it down. */}
+      <div className="flex min-h-8 items-center justify-between gap-2">
+        {/* pt-1 -- the count text + Select all button as a GROUP read
+            higher than PaginationNavButtons beside them, even once each
+            one's own internal text-centering was sorted out -- this
+            nudges the whole group down together rather than re-tuning
+            each child individually again. */}
+        <div className="flex items-center gap-2 pt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-300">
+            {selectMode
+              // Counts only currently-visible selections against the visible
+              // total -- `selectedIds.size` itself (used for the Delete
+              // button) can be larger, since a selection made before
+              // narrowing a filter stays selected even once it's filtered
+              // out of view.
+              ? `${filtered.filter((weapon) => selectedIds.has(weapon.id)).length}/${filtered.length} weapon${filtered.length === 1 ? "" : "s"} selected`
+              : `${filtered.length} weapon${filtered.length === 1 ? "" : "s"}`}
+          </p>
+          {selectMode && (
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="rounded border px-2 py-1 text-xs transition-colors hover:bg-foreground/10"
+            >
+              {allFilteredSelected ? "Unselect all" : "Select all"}
+            </button>
+          )}
+        </div>
+        <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
       </div>
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-        {filtered.map((weapon) => (
+        {pageItems.map((weapon) => (
           <WeaponCard
             key={weapon.id}
             name={weapon.name}
@@ -303,6 +330,8 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         ))}
         {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
       </ul>
+
+      <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
 
       <Modal
         open={editingWeapon !== null}

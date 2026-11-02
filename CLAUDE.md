@@ -373,12 +373,17 @@ the app or the seed script.
   (`pathname.startsWith(item.href + "/")`) already keeps "Weapons" highlighted
   on `/weapons/add` and navigates back to `/weapons` for free — this is why
   the add route must stay nested under `/weapons`, not a sibling route.
-  Same reasoning as Characters applies to pagination here too: both
-  `/weapons` and `/weapons/add` render their full filtered list rather than
-  paginating — the catalog is bounded/slow-growing master data (same
-  reasoning as Characters), and an owned-weapon collection is nowhere near
-  Artifacts-scale unbounded (a refinement is one value per copy, not a
-  physical-piece entity with per-substat rows).
+  `/weapons/add`'s catalog still renders its full filtered list rather than
+  paginating — same reasoning as Characters: it's bounded/slow-growing
+  master data (~230 weapons). `/weapons` (owned copies) originally got the
+  same treatment, on the reasoning that a refinement is one value per copy,
+  not a physical-piece entity with per-substat rows, so it'd stay nowhere
+  near Artifacts-scale unbounded — reversed once real usage showed that
+  reasoning wrong: it's genuinely easy to accumulate more weapon copies
+  than, say, Teams, since every pull/craft is its own copy and there's no
+  reason to ever delete one that's still usable on some character. `/weapons`
+  now paginates the same way Builds/Artifacts do (`PAGE_SIZE = 60`), while
+  `/weapons/add` keeps the Characters-style full list.
 - `/weapons/add`'s catalog card no longer has an inline refinement picker.
   It defaults to a representative "fully leveled" state —
   `defaultWeaponProgression()` in `@/lib/weapon-scaling`, level 90/R1 for
