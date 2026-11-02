@@ -62,12 +62,20 @@ export function BuildSlotPicker({
   otherOverlapBuilds,
   value,
   onChange,
+  // Opens a read-only "view build details" popover elsewhere (the Teams
+  // page's own BuildDetailModal) instead of this slot's own swap modal --
+  // optional since the empty-slot state has nothing to view. Scoped to a
+  // fixed bottom strip of the card (see the "View" zone below), not a
+  // hover reveal: the whole rest of the card keeps its existing click-to-
+  // swap/drag-to-reorder behavior untouched.
+  onView,
   boxSizeClassName = "h-32 w-32",
 }: {
   builds: BuildOption[];
   otherOverlapBuilds: OverlapCheckBuild[];
   value: number | null;
   onChange: (buildId: number | null) => void;
+  onView?: (buildId: number) => void;
   boxSizeClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -113,7 +121,14 @@ export function BuildSlotPicker({
             event.preventDefault();
             setOpen(true);
           }}
-          className={`flex ${boxSizeClassName} shrink-0 cursor-pointer overflow-hidden rounded-lg border border-white shadow hover:opacity-90 ${rarityGradientClasses(
+          // has-[.view-zone:hover]:opacity-100! -- overrides the card's own
+          // hover:opacity-90 specifically while the View button itself is
+          // being hovered, so the card doesn't ALSO look "hovered" at the
+          // same time as the button shows its own separate hover feedback
+          // (bg-black/80 below). The ! forces this to win regardless of
+          // which of the two same-specificity hover/has- rules Tailwind
+          // happens to emit later in its generated stylesheet.
+          className={`group relative flex ${boxSizeClassName} shrink-0 cursor-pointer overflow-hidden rounded-lg border border-white shadow hover:opacity-90 has-[.view-zone:hover]:opacity-100! ${rarityGradientClasses(
             selected.rarity
           )}`}
         >
@@ -127,6 +142,33 @@ export function BuildSlotPicker({
             characterWeaponType={selected.weaponType}
             activeSetEffects={selected.activeSetEffects}
           />
+
+          {onView && (
+            // Bottom 15% of the card, full width -- a fixed zone (always
+            // there, not revealed on hover itself), but kept invisible
+            // (opacity-0) until the CARD is hovered (group-hover, via the
+            // `group` class on the outer card above). Stops BOTH
+            // pointerdown and click from bubbling: pointerdown so the
+            // ancestor slot wrapper's own drag-start handler (team-
+            // manager.tsx) never sees this gesture begin at all (so a
+            // click or drag here can never start a reorder), and click so
+            // it doesn't also trigger this card's own onClick above
+            // (which would open the swap modal at the same time).
+            // Everywhere else on the card keeps its existing click-to-
+            // swap/drag-to-reorder behavior untouched.
+            <button
+              type="button"
+              title="View build details"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onView(selected.buildId);
+              }}
+              className="view-zone absolute inset-x-0 bottom-0 flex h-[20%] items-center justify-center bg-black/60 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black"
+            >
+              View
+            </button>
+          )}
         </div>
       ) : (
         <button

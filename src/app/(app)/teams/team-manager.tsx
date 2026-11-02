@@ -11,6 +11,7 @@ import type { TeamEffect } from "@/lib/team-effect";
 import { useDialogs } from "@/components/dialog-provider";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { BuildPortrait } from "@/components/build-portrait";
+import { BuildDetailModal } from "../builds/build-detail-modal";
 import { ELEMENT_ICON_URL } from "../characters/element-icons";
 import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import {
@@ -125,6 +126,7 @@ function TeamCard({
   onUpdateName,
   onSlotChange,
   onReorder,
+  onView,
   onBumpToFront,
   onDelete,
 }: {
@@ -137,6 +139,10 @@ function TeamCard({
   // endpoints at once, and the dragged slot's own buildId is still
   // reachable via slotBuildIds[fromIndex] if a future caller needs it.
   onReorder: (fromIndex: number, toIndex: number) => void;
+  // Opens TeamManager's own single, shared BuildDetailModal -- not a
+  // modal owned by this card or by BuildSlotPicker itself, since only one
+  // of these should ever be open across the whole page at once.
+  onView: (buildId: number) => void;
   onBumpToFront: () => void;
   onDelete: () => void;
 }) {
@@ -537,6 +543,7 @@ function TeamCard({
                 otherOverlapBuilds={otherBuilds}
                 value={buildId}
                 onChange={(newBuildId) => onSlotChange(buildId, newBuildId)}
+                onView={onView}
                 boxSizeClassName={SLOT_SIZE_CLASS}
               />
             </div>
@@ -605,6 +612,11 @@ export function TeamManager({
   const [teams, setTeams] = useState(initialTeams);
   const [, startTransition] = useTransition();
   const { confirm, notify } = useDialogs();
+
+  // One shared BuildDetailModal for the whole page, not one per TeamCard --
+  // at most one can ever be open at a time regardless of which slot
+  // triggered it.
+  const [viewingBuildId, setViewingBuildId] = useState<number | null>(null);
 
   // Two separate boxes (see filterTeams' own comment on why they combine
   // as AND, not one shared box OR-ing team name against character name).
@@ -871,6 +883,7 @@ export function TeamManager({
                 onUpdateName={(name) => handleUpdateName(team.id, name)}
                 onSlotChange={(oldBuildId, newBuildId) => handleSlotChange(team.id, oldBuildId, newBuildId)}
                 onReorder={(fromIndex, toIndex) => handleReorderSlots(team.id, fromIndex, toIndex)}
+                onView={setViewingBuildId}
                 onBumpToFront={() => handleBumpToFront(team.id)}
                 onDelete={() => handleDelete(team.id)}
               />
@@ -880,6 +893,8 @@ export function TeamManager({
 
         <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
       </div>
+
+      <BuildDetailModal buildId={viewingBuildId} onClose={() => setViewingBuildId(null)} />
     </div>
   );
 }
