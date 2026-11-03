@@ -119,13 +119,15 @@ export function buildTooltipContent(artifact: OwnedArtifactOption) {
 // only ever be exercised here. Plain icon-only square, same as
 // NoneWeaponCard -- the modal grid's own cards are icon-only now too (hover
 // for detail), not the always-visible stat block this used to need to match.
-function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
+function NoneArtifactCard({ onSelect, selected = false }: { onSelect: () => void; selected?: boolean }) {
   return (
     <li>
       {/* border border-white -- matches the real ArtifactCard entries
           in this same grid now, for consistency, not because this
           card's own light bg-foreground/10 fill has the same
-          blends-into-black problem those have. */}
+          blends-into-black problem those have. Swapped for blue, same
+          width, when this slot currently has no piece equipped (the
+          whole point of `selected` existing at all). */}
       <div
         onClick={onSelect}
         role="button"
@@ -135,7 +137,9 @@ function NoneArtifactCard({ onSelect }: { onSelect: () => void }) {
           event.preventDefault();
           onSelect();
         }}
-        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border border-white bg-foreground/10 shadow hover:opacity-90"
+        className={`flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border bg-foreground/10 shadow hover:opacity-90 ${
+          selected ? "border-blue-500" : "border-white"
+        }`}
       >
         <span className="text-lg font-semibold text-gray-400">None</span>
       </div>
@@ -396,7 +400,7 @@ export function ArtifactSlotPicker({
           </p>
 
           <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto [scrollbar-gutter:stable] sm:grid-cols-4 md:grid-cols-5">
-            <NoneArtifactCard onSelect={() => select(null)} />
+            <NoneArtifactCard onSelect={() => select(null)} selected={value === null} />
             {filtered.map((artifact) => (
               <ArtifactCard
                 key={artifact.ownedArtifactId}
@@ -413,8 +417,12 @@ export function ArtifactSlotPicker({
                 // border border-white -- same thin-border fix as the
                 // compact slot card (marks where the card ends against
                 // its own near-black bottom gradient, which otherwise
-                // blends into this modal's own dark background).
-                borderClassName="border border-white"
+                // blends into this modal's own dark background). Swapped
+                // for blue, same width, when this is the currently
+                // equipped piece.
+                borderClassName={
+                  artifact.ownedArtifactId === value ? "border border-blue-500" : "border border-white"
+                }
               />
             ))}
           </ul>

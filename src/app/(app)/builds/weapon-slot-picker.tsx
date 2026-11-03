@@ -298,8 +298,12 @@ export function WeaponSlotPicker({
                 // border border-white -- same thin-border fix as the
                 // compact slot card (marks where the card ends against
                 // its own near-black bottom gradient, which otherwise
-                // blends into this modal's own dark background).
-                borderClassName="border border-white"
+                // blends into this modal's own dark background). Swapped
+                // for blue, same width, when this is the currently
+                // equipped weapon (value === null) -- so it's obvious at
+                // a glance which option is already selected instead of
+                // having to close the modal to check.
+                borderClassName={value === null ? "border border-blue-500" : "border border-white"}
               />
             )}
             {filtered.map((weapon) => (
@@ -318,7 +322,7 @@ export function WeaponSlotPicker({
                 hoverDetail={weapon.hoverDetail}
                 onSelect={() => select(weapon.ownedWeaponId)}
                 showWeaponTypeBadge={false}
-                borderClassName="border border-white"
+                borderClassName={weapon.ownedWeaponId === value ? "border border-blue-500" : "border border-white"}
               />
             ))}
           </ul>

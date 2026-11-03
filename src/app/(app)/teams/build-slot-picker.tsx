@@ -14,7 +14,7 @@ import { toOverlapCheckBuild, type BuildOption } from "./filter-sort";
 // clearing a filled slot back to empty is just another option to click,
 // not a separate control outside the grid -- same pattern as
 // NoneCharacterCard/NoneArtifactCard in the build pickers.
-function NoneBuildCard({ onSelect }: { onSelect: () => void }) {
+function NoneBuildCard({ onSelect, selected = false }: { onSelect: () => void; selected?: boolean }) {
   return (
     <li>
       <div
@@ -26,7 +26,12 @@ function NoneBuildCard({ onSelect }: { onSelect: () => void }) {
           event.preventDefault();
           onSelect();
         }}
-        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border border-white bg-foreground/10 shadow hover:opacity-90"
+        // Blue, same width, when this slot is currently empty (value ===
+        // null) -- same "mark the currently selected option" treatment
+        // WeaponSlotPicker/ArtifactSlotPicker's own grids now use.
+        className={`flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border bg-foreground/10 shadow hover:opacity-90 ${
+          selected ? "border-blue-500" : "border-white"
+        }`}
       >
         <span className="text-lg font-semibold text-gray-400">None</span>
       </div>
@@ -124,23 +129,25 @@ export function BuildSlotPicker({
   const selected = value !== null ? builds.find((b) => b.buildId === value) : undefined;
 
   const query = search.trim().toLowerCase();
-  // A candidate can never be the one currently in THIS slot (re-picking
-  // yourself is a no-op, so it's left out rather than offered) -- every
-  // other owned build is included unless it would create a duplicate-
-  // character/exclusivity/shared-weapon/shared-artifact conflict with
-  // whatever's already in this team's other slots (see detectOverlaps'
-  // own comment -- all four are hard blocks, not advisory warnings, so a
-  // conflicting build simply never appears here rather than being
-  // selectable then rejected). Only conflicts the CANDIDATE itself would
-  // be part of count -- not just "is detectOverlaps' result non-empty at
-  // all" over the whole set, which would also reject every candidate
-  // whenever two of the OTHER slots already conflict with each other
-  // (possible since a build's weapon/artifacts can change after it's
-  // already in a team -- see computeTeamConflicts in filter-sort.ts). That
-  // pre-existing conflict is real and flagged elsewhere on the team card,
-  // but it has nothing to do with whether THIS candidate is safe to add.
+  // THIS slot's own current build is no longer excluded (re-picking it is
+  // a harmless no-op, same as WeaponSlotPicker/ArtifactSlotPicker already
+  // allow for their own current selection) -- keeping it in the grid is
+  // what lets it be blue-bordered below, so it's visible which option is
+  // already selected without having to close the modal first. Every other
+  // owned build is included unless it would create a duplicate-character/
+  // exclusivity/shared-weapon/shared-artifact conflict with whatever's
+  // already in this team's other slots (see detectOverlaps' own comment --
+  // all four are hard blocks, not advisory warnings, so a conflicting
+  // build simply never appears here rather than being selectable then
+  // rejected). Only conflicts the CANDIDATE itself would be part of count
+  // -- not just "is detectOverlaps' result non-empty at all" over the
+  // whole set, which would also reject every candidate whenever two of the
+  // OTHER slots already conflict with each other (possible since a
+  // build's weapon/artifacts can change after it's already in a team --
+  // see computeTeamConflicts in filter-sort.ts). That pre-existing
+  // conflict is real and flagged elsewhere on the team card, but it has
+  // nothing to do with whether THIS candidate is safe to add.
   const candidates = builds.filter((build) => {
-    if (build.buildId === value) return false;
     if (
       !build.characterName.toLowerCase().includes(query) &&
       !build.name.toLowerCase().includes(query)
@@ -251,7 +258,7 @@ export function BuildSlotPicker({
           </p>
 
           <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto [scrollbar-gutter:stable] sm:grid-cols-4 md:grid-cols-5">
-            <NoneBuildCard onSelect={() => select(null)} />
+            <NoneBuildCard onSelect={() => select(null)} selected={value === null} />
             {candidates.map((build) => (
               <CharacterCard
                 key={build.buildId}
@@ -261,7 +268,10 @@ export function BuildSlotPicker({
                 rarity={build.rarity}
                 iconUrl={build.characterIconUrl}
                 onSelect={() => select(build.buildId)}
-                borderClassName="border border-white"
+                // Blue, same width, for this slot's own current build --
+                // same "mark the currently selected option" treatment
+                // WeaponSlotPicker/ArtifactSlotPicker's own grids now use.
+                borderClassName={build.buildId === value ? "border border-blue-500" : "border border-white"}
               />
             ))}
           </ul>
