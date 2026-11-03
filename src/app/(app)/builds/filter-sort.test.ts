@@ -25,7 +25,8 @@ function buildItem(overrides: Partial<BuildItem>): BuildItem {
 }
 
 const baseFilters = {
-  search: "",
+  buildNameSearch: "",
+  characterNameSearch: "",
   elementFilter: new Set<Element>(),
   weaponTypeFilter: new Set<WeaponType>(),
   rarityFilter: new Set<number>(),
@@ -46,13 +47,27 @@ describe("filterAndSortBuilds", () => {
   });
 
   it("filters by case-insensitive, whitespace-trimmed build name", () => {
-    const result = filterAndSortBuilds(builds, { ...baseFilters, search: "  main  " });
+    const result = filterAndSortBuilds(builds, { ...baseFilters, buildNameSearch: "  main  " });
     expect(result.map((b) => b.name)).toEqual(["Main DPS"]);
   });
 
-  it("filters by character name too, not just build name", () => {
-    const result = filterAndSortBuilds(builds, { ...baseFilters, search: "kazuha" });
+  it("filters by character name via the separate character query", () => {
+    const result = filterAndSortBuilds(builds, { ...baseFilters, characterNameSearch: "kazuha" });
     expect(result.map((b) => b.name)).toEqual(["Support"]);
+  });
+
+  it("combines both queries as AND, not OR", () => {
+    // "Hu Tao" matches two builds' own character, but only one of them is
+    // also named "Alt Build" -- a build has to satisfy BOTH to show up.
+    const result = filterAndSortBuilds(builds, {
+      ...baseFilters,
+      buildNameSearch: "alt",
+      characterNameSearch: "hu tao",
+    });
+    expect(result.map((b) => b.name)).toEqual(["Alt Build"]);
+
+    const none = filterAndSortBuilds(builds, { ...baseFilters, buildNameSearch: "alt", characterNameSearch: "kazuha" });
+    expect(none).toEqual([]);
   });
 
   it("sorts by character, breaking ties by build name", () => {
@@ -66,7 +81,7 @@ describe("filterAndSortBuilds", () => {
   });
 
   it("returns an empty array when nothing matches", () => {
-    const result = filterAndSortBuilds(builds, { ...baseFilters, search: "nonexistent" });
+    const result = filterAndSortBuilds(builds, { ...baseFilters, buildNameSearch: "nonexistent" });
     expect(result).toEqual([]);
   });
 

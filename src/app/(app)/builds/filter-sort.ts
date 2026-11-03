@@ -276,7 +276,16 @@ export function activeSetEffectsFromArtifacts(artifacts: OwnedArtifactOption[]):
 export type BuildSortKey = "obtained" | "character";
 
 export type BuildFilters = {
-  search: string;
+  // Two independent queries, not one shared box -- each narrows the
+  // result further when non-empty (AND, not OR), same convention
+  // filterTeams (teams/filter-sort.ts) already uses for its own team-name/
+  // character-name split: searching "Main DPS" + "Hu Tao" means "a build
+  // named Main DPS that's also for Hu Tao", not "anything matching either
+  // word". Replaced an earlier single search box that OR'd a query against
+  // both fields at once, which made it impossible to narrow by one
+  // specifically (e.g. every "Hu Tao"-matching build regardless of name).
+  buildNameSearch: string;
+  characterNameSearch: string;
   // Same character-page filters (element/weapon type/rarity), matched
   // against the build's own character -- a build IS a character, so
   // filtering by the character's own attributes is exactly filtering the
@@ -290,15 +299,17 @@ export type BuildFilters = {
 
 export function filterAndSortBuilds(
   builds: BuildItem[],
-  { search, elementFilter, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: BuildFilters
+  { buildNameSearch, characterNameSearch, elementFilter, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: BuildFilters
 ): BuildItem[] {
   let result = builds;
 
-  const query = search.trim().toLowerCase();
-  if (query) {
-    result = result.filter(
-      (build) => build.name.toLowerCase().includes(query) || build.characterName.toLowerCase().includes(query)
-    );
+  const nameQuery = buildNameSearch.trim().toLowerCase();
+  const characterQuery = characterNameSearch.trim().toLowerCase();
+  if (nameQuery) {
+    result = result.filter((build) => build.name.toLowerCase().includes(nameQuery));
+  }
+  if (characterQuery) {
+    result = result.filter((build) => build.characterName.toLowerCase().includes(characterQuery));
   }
   if (elementFilter.size > 0) {
     result = result.filter((build) => elementFilter.has(build.characterElement));

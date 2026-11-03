@@ -327,7 +327,12 @@ export function OwnedBuildManager({
   const [, startTransition] = useTransition();
   const { confirm } = useDialogs();
 
-  const [search, setSearch] = useState("");
+  // Two separate boxes (see BuildFilters' own comment on why they combine
+  // as AND, not one shared box OR-ing build name against character name),
+  // same split Teams already established for its own team-name/
+  // character-name search.
+  const [buildNameSearch, setBuildNameSearch] = useState("");
+  const [characterNameSearch, setCharacterNameSearch] = useState("");
   const [elementFilter, setElementFilter] = useState<Set<Element>>(new Set());
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
   const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
@@ -356,7 +361,8 @@ export function OwnedBuildManager({
   }, []);
 
   const filtered = filterAndSortBuilds(builds, {
-    search,
+    buildNameSearch,
+    characterNameSearch,
     elementFilter,
     weaponTypeFilter,
     rarityFilter,
@@ -502,10 +508,20 @@ export function OwnedBuildManager({
         <div className="flex flex-wrap items-center gap-3">
           <input
             type="text"
-            placeholder="Search by build or character name..."
-            value={search}
+            placeholder="Search by build name..."
+            value={buildNameSearch}
             onChange={(event) => {
-              setSearch(event.target.value);
+              setBuildNameSearch(event.target.value);
+              setPage(1);
+            }}
+            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+          />
+          <input
+            type="text"
+            placeholder="Search by character name..."
+            value={characterNameSearch}
+            onChange={(event) => {
+              setCharacterNameSearch(event.target.value);
               setPage(1);
             }}
             className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
