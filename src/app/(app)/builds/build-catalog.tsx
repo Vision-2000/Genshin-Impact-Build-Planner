@@ -236,8 +236,45 @@ export function BuildCatalog({
     onClose();
   }
 
+  // Smaller than Modal's own h-10 close button (h-7, tighter px) -- same
+  // sizing as BuildEditor's own headerActions button, and BuildDetailModal's
+  // before that (both owned-build-manager.tsx/build-detail-modal.tsx).
+  const headerButtonClassName = "flex h-7 items-center whitespace-nowrap rounded border px-2 text-xs font-semibold";
+
   return (
-    <Modal open onClose={handleClose} maxWidthClassName="max-w-7xl" hideCloseButton>
+    <Modal
+      open
+      onClose={handleClose}
+      maxWidthClassName="max-w-7xl"
+      // The editable Name field itself, not a static heading -- same
+      // reasoning as BuildEditor's own identical title now uses
+      // (owned-build-manager.tsx): there's no fixed character/build
+      // identity to show yet at this point, since picking a character is
+      // part of this same form. font-normal on the input overrides the
+      // title row's own font-semibold, which would otherwise bold the
+      // typed text too.
+      title={
+        <label className="flex items-center gap-2">
+          <span>Name:</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-normal text-black"
+          />
+        </label>
+      }
+      headerActions={
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!character}
+          className={`${headerButtonClassName} border-white bg-black text-white hover:bg-gray-800 disabled:opacity-50`}
+        >
+          Save build
+        </button>
+      }
+    >
       <div className="space-y-4">
         {characters.length === 0 ? (
           <p className="text-base text-gray-500">
@@ -254,38 +291,16 @@ export function BuildCatalog({
           // siblings; wrapping them here keeps the two flush against each
           // other instead.
           <div>
-            {/* Dedicated top row -- name and the final submit action are
-                form-level concerns, not part of any one slot, so they get
-                their own row above the character/weapon/artifact pickers
-                rather than sitting at the bottom of the (now two-column)
-                body below. */}
-            <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
-              <div>
-                {/* pt-1.5/pb-0.5 (not py-1) -- same Arial line-height
-                    fix as the search fields, see build-stats-summary.tsx's
-                    own comment on the root cause. */}
-                <label className="block text-sm">
-                  Name:
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    className="ml-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
-                  />
-                </label>
+            {/* Name/Save's own validation errors -- the fields themselves
+                moved up into the Modal's title/headerActions (see above),
+                but these still need to land somewhere visible, so they're
+                the first thing in the body, right below. */}
+            {(errors.name || errors.ownedCharacterId) && (
+              <div className="mb-3 space-y-0.5">
                 {errors.name && <p className="text-sm text-red-600">{errors.name[0]}</p>}
                 {errors.ownedCharacterId && <p className="text-sm text-red-600">{errors.ownedCharacterId[0]}</p>}
               </div>
-
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!character}
-                className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
-              >
-                Save build
-              </button>
-            </div>
+            )}
 
             {/* flex-row (sm+) puts the character splash (see
                 CharacterSlotPicker) as its own left column, same two-column

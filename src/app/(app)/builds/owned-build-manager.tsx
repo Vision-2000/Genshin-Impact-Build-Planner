@@ -139,6 +139,7 @@ function BuildEditor({
   artifacts,
   onSave,
   onDelete,
+  onClose,
 }: {
   build: BuildItem;
   character: OwnedCharacterOption;
@@ -146,6 +147,13 @@ function BuildEditor({
   artifacts: OwnedArtifactOption[];
   onSave: (draft: BuildEditDraft) => void;
   onDelete: () => void;
+  // Owns its own Modal now (see this component's own top-level return) --
+  // same reasoning BuildCatalog's own Modal-ownership comment already
+  // gives: OwnedBuildManager only mounts this while editingBuild/
+  // editingCharacter are non-null, so there's nothing left for a separate
+  // `open` prop to say that mounting it didn't already say. onClose is
+  // what lets OwnedBuildManager actually clear that state back to null.
+  onClose: () => void;
 }) {
   const [name, setName] = useState(build.name);
   const [weaponId, setWeaponId] = useState(build.ownedWeaponId);
@@ -163,47 +171,58 @@ function BuildEditor({
     return ownedArtifactId !== undefined ? artifacts.find((a) => a.ownedArtifactId === ownedArtifactId) : undefined;
   }).filter((a): a is OwnedArtifactOption => a !== undefined);
 
+  // Smaller than Modal's own h-10 close button (h-7, tighter px) -- same
+  // sizing as BuildDetailModal's own headerActions buttons
+  // (build-detail-modal.tsx), so Delete/Save read as proportional to the
+  // plain X beside them instead of oversized.
+  const headerButtonClassName = "flex h-7 items-center whitespace-nowrap rounded border px-2 text-xs font-semibold";
+
   return (
-    <div className="space-y-4">
-      {/* Same top row shape as BuildCatalog's own (name + form-level
-          actions) -- Delete alongside Save here, since this form has both:
-          deleting is still immediate (a separately confirmed, already-
-          destructive action, not part of the staged draft), Save is what
-          commits the staged name/weapon/artifacts. Same Delete/Save
-          styling and placement as WeaponProgressionForm/
-          ArtifactProgressionForm (solid red, directly left of Save). */}
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded border p-4">
-        {/* pt-1.5/pb-0.5 (not py-1) -- same Arial line-height fix as the
-            search fields, see build-stats-summary.tsx's own comment on
-            the root cause. */}
-        <label className="block text-sm">
-          Name:
+    <Modal
+      open
+      onClose={onClose}
+      maxWidthClassName="max-w-7xl"
+      // The editable Name field itself, not a static heading -- this is
+      // the one Modal caller in the app whose "title" is actually a form
+      // field, since BuildEditor has no other fixed identity to show (the
+      // character/build pairing is exactly what's being edited here).
+      // font-normal on the input overrides the title row's own
+      // font-semibold, which would otherwise bold the typed text too.
+      title={
+        <label className="flex items-center gap-2">
+          <span>Name:</span>
           <input
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="ml-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
+            className="rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-normal text-black"
           />
         </label>
-
-        <div className="flex gap-2">
+      }
+      // Delete alongside Save, both now living next to the close button
+      // instead of their own bordered row -- deleting is still immediate
+      // (a separately confirmed, already-destructive action, not part of
+      // the staged draft), Save is what commits the staged name/weapon/
+      // artifacts.
+      headerActions={
+        <>
           <button
             type="button"
             onClick={onDelete}
-            className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+            className={`${headerButtonClassName} border-red-600 bg-red-600 text-white hover:bg-red-700`}
           >
             Delete build
           </button>
           <button
             type="button"
             onClick={() => onSave({ name: name.trim() || build.name, ownedWeaponId: weaponId, slots })}
-            className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+            className={`${headerButtonClassName} border-white bg-black text-white hover:bg-gray-800`}
           >
             Save build
           </button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <div className="flex w-full flex-col sm:flex-row">
         <CharacterSlotPicker characters={[character]} value={character.ownedCharacterId} onChange={() => {}} locked />
 
@@ -264,7 +283,7 @@ function BuildEditor({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -560,24 +579,22 @@ export function OwnedBuildManager({
 
         <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
 
-        <Modal
-          open={editingBuild !== null}
-          onClose={() => setEditingId(null)}
-          maxWidthClassName="max-w-7xl"
-          hideCloseButton
-        >
-          {editingBuild && editingCharacter && (
-            <BuildEditor
-              key={editingBuild.id}
-              build={editingBuild}
-              character={editingCharacter}
-              weapons={weapons}
-              artifacts={artifacts}
-              onSave={(draft) => handleSaveEdit(editingBuild, draft)}
-              onDelete={() => handleDelete(editingBuild.id)}
-            />
-          )}
-        </Modal>
+        {/* BuildEditor owns its own Modal now (see its own top-level
+            return) -- mounting it here only while both are non-null is
+            what controls "open", the same pattern BuildCatalog's own
+            conditional mount below already uses. */}
+        {editingBuild && editingCharacter && (
+          <BuildEditor
+            key={editingBuild.id}
+            build={editingBuild}
+            character={editingCharacter}
+            weapons={weapons}
+            artifacts={artifacts}
+            onSave={(draft) => handleSaveEdit(editingBuild, draft)}
+            onDelete={() => handleDelete(editingBuild.id)}
+            onClose={() => setEditingId(null)}
+          />
+        )}
 
         {creating && (
           <BuildCatalog
