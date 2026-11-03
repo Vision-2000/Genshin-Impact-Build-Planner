@@ -1179,11 +1179,16 @@ export function TeamManager({
         buildId={viewing?.buildId ?? null}
         weaponConflict={viewing?.weaponConflict ?? false}
         conflictingArtifactIds={viewing?.conflictingArtifactIds ?? []}
-        onSelectAnother={
-          viewing ? () => {
-            setReopenPicker({ teamId: viewing.teamId, slotIndex: viewing.slotIndex });
-            setViewing(null);
-          } : undefined
+        selectAction={
+          viewing
+            ? {
+                label: "Select another build",
+                onClick: () => {
+                  setReopenPicker({ teamId: viewing.teamId, slotIndex: viewing.slotIndex });
+                  setViewing(null);
+                },
+              }
+            : undefined
         }
         onClose={() => setViewing(null)}
       />

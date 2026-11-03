@@ -24,7 +24,7 @@ export function BuildDetailModal({
   buildId,
   weaponConflict = false,
   conflictingArtifactIds = [],
-  onSelectAnother,
+  selectAction,
   onClose,
 }: {
   buildId: number | null;
@@ -34,13 +34,18 @@ export function BuildDetailModal({
   // Both default to false/empty for any other caller.
   weaponConflict?: boolean;
   conflictingArtifactIds?: number[];
-  // Teams page only -- closes this modal and reopens the ORIGINATING
-  // team slot's own BuildSlotPicker (team-manager.tsx owns that wiring,
-  // since only it knows which team/slot "View" was opened from). Omitted
-  // entirely (not just a no-op) for any other caller, which is what hides
-  // the "Select another build" button below -- there's nothing for it to
-  // reopen outside a team slot.
-  onSelectAnother?: () => void;
+  // The header's own "selection" button, next to Edit build -- its label
+  // and behavior depend on where "View" was opened from, so the caller
+  // owns both rather than this component guessing at wording:
+  // - team-manager.tsx (a team's own filled slot): "Select another
+  //   build", closes this modal and reopens the originating slot's own
+  //   BuildSlotPicker.
+  // - build-slot-picker.tsx (a candidate in the "Choose build" modal's own
+  //   grid): "Select build", picks exactly this candidate -- the same
+  //   effect as clicking its card directly -- and closes both modals.
+  // Omitted entirely (not just a no-op) for any other caller, which hides
+  // the button -- there's nothing to select from outside either flow.
+  selectAction?: { label: string; onClick: () => void };
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -82,9 +87,9 @@ export function BuildDetailModal({
   const headerActions =
     buildId !== null ? (
       <>
-        {onSelectAnother && (
-          <button type="button" onClick={onSelectAnother} className={headerButtonClassName}>
-            Select another build
+        {selectAction && (
+          <button type="button" onClick={selectAction.onClick} className={headerButtonClassName}>
+            {selectAction.label}
           </button>
         )}
         <button

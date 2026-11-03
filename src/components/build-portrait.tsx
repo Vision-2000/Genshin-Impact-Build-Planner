@@ -32,6 +32,7 @@ export function BuildPortrait({
   activeSetEffects,
   weaponConflict = false,
   artifactConflict = false,
+  showCharacterName = true,
 }: {
   characterIconUrl: string | null;
   characterElement: Element;
@@ -51,6 +52,14 @@ export function BuildPortrait({
   // BuildCard) renders exactly as before without passing either.
   weaponConflict?: boolean;
   artifactConflict?: boolean;
+  // false only for the Teams page's own "Choose build" modal grid
+  // (build-slot-picker.tsx's BuildOptionCard) -- those cards render
+  // noticeably smaller than a team slot's own filled display, where both
+  // lines still fit comfortably, so showing the build name alone (already
+  // enough to tell same-character builds apart, with the character icon
+  // itself still visible) avoids a second line of text getting cramped or
+  // truncated at that size.
+  showCharacterName?: boolean;
 }) {
   // Same loaded-flag/spinner-overlay technique as CharacterCard/
   // ArtifactCard/WeaponCard -- a freshly-started dev server (or just a cold
@@ -106,7 +115,7 @@ export function BuildPortrait({
 
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-2 pt-8">
           <p className="truncate text-center text-sm font-semibold text-white">{buildName}</p>
-          <p className="truncate text-center text-xs text-gray-300">{characterName}</p>
+          {showCharacterName && <p className="truncate text-center text-xs text-gray-300">{characterName}</p>}
         </div>
       </div>
 

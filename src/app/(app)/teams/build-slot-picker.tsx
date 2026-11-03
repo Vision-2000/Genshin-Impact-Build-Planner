@@ -7,13 +7,15 @@ import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { Modal } from "@/components/modal";
 import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
 import { BuildPortrait } from "@/components/build-portrait";
-import { CharacterCard } from "../characters/character-card";
+import { BuildDetailModal } from "../builds/build-detail-modal";
 import { toOverlapCheckBuild, type BuildOption } from "./filter-sort";
 
-// Sits alongside the real CharacterCard entries in the modal grid so
+// Sits alongside the real build-portrait cards in the modal grid so
 // clearing a filled slot back to empty is just another option to click,
 // not a separate control outside the grid -- same pattern as
-// NoneCharacterCard/NoneArtifactCard in the build pickers.
+// NoneCharacterCard/NoneArtifactCard in the build pickers. aspect-[3/2]
+// (not aspect-square) to match BuildOptionCard's own shape below, now
+// that the grid is all rectangular cards instead of square ones.
 function NoneBuildCard({ onSelect, selected = false }: { onSelect: () => void; selected?: boolean }) {
   return (
     <li>
@@ -29,7 +31,7 @@ function NoneBuildCard({ onSelect, selected = false }: { onSelect: () => void; s
         // Blue, same width, when this slot is currently empty (value ===
         // null) -- same "mark the currently selected option" treatment
         // WeaponSlotPicker/ArtifactSlotPicker's own grids now use.
-        className={`flex aspect-square w-full cursor-pointer items-center justify-center rounded-xl border bg-foreground/10 shadow hover:opacity-90 ${
+        className={`flex aspect-[3/2] w-full cursor-pointer items-center justify-center rounded-xl border bg-foreground/10 shadow hover:opacity-90 ${
           selected ? "border-blue-500" : "border-white"
         }`}
       >
@@ -39,17 +41,91 @@ function NoneBuildCard({ onSelect, selected = false }: { onSelect: () => void; s
   );
 }
 
+// A candidate in the modal's own grid -- same BuildPortrait content (and
+// rarity-gradient background) as a team slot's own filled display below,
+// so a build's equipped weapon/artifact-set-effects are visible at a
+// glance while browsing, not just after picking it. Replaced an earlier
+// design that used CharacterCard with a "<character> — <build>" label
+// instead (character context alone, no loadout preview) -- found
+// inconvenient once a team already has several similar builds and the
+// user can't tell which is which without opening each one first.
+function BuildOptionCard({
+  build,
+  selected,
+  onSelect,
+  onView,
+}: {
+  build: BuildOption;
+  selected: boolean;
+  onSelect: () => void;
+  // Same bottom-strip "View" zone (hover-revealed, stops both pointerdown
+  // and click from bubbling) as a team slot's own filled display -- opens
+  // THIS picker's own BuildDetailModal (see the bottom of this file),
+  // not the Teams page's shared one, since a candidate here was never
+  // added to the team at all.
+  onView: (buildId: number) => void;
+}) {
+  return (
+    <li>
+      <div
+        onClick={onSelect}
+        role="button"
+        tabIndex={0}
+        title={`${build.characterName} — ${build.name}`}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onSelect();
+        }}
+        // group/has-[.view-zone:hover]:opacity-100! -- same reasoning as
+        // the filled slot's own identical card below: without it, hovering
+        // the View button itself would ALSO trigger this card's own
+        // hover:opacity-90, showing both hover states disagreeing at once.
+        className={`group relative flex w-full cursor-pointer overflow-hidden rounded-lg border shadow hover:opacity-90 has-[.view-zone:hover]:opacity-100! ${
+          selected ? "border-blue-500" : "border-white"
+        } ${rarityGradientClasses(build.rarity)}`}
+      >
+        <BuildPortrait
+          characterIconUrl={build.characterIconUrl}
+          characterElement={build.element}
+          buildName={build.name}
+          characterName={build.characterName}
+          weaponIconUrl={build.weaponIconUrl}
+          weaponRarity={build.weaponRarity}
+          characterWeaponType={build.weaponType}
+          activeSetEffects={build.activeSetEffects}
+          // These cards render smaller than a team slot's own filled
+          // display -- the build name alone (still enough to tell
+          // same-character builds apart, with the character icon itself
+          // still visible) avoids a cramped/truncated second line here.
+          showCharacterName={false}
+        />
+
+        <button
+          type="button"
+          title="View build details"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onView(build.buildId);
+          }}
+          className="view-zone absolute inset-x-0 bottom-0 flex h-[20%] items-center justify-center bg-black/60 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black"
+        >
+          View
+        </button>
+      </div>
+    </li>
+  );
+}
+
 // One of a team's (up to 4) build slots -- same click-a-box/modal-grid
 // interaction as WeaponSlotPicker/ArtifactSlotPicker. The filled slot's own
 // card uses BuildPortrait (the same character-icon-beside-weapon-and-
-// artifact-effects-icons layout BuildCard uses on the Builds page) rather
-// than CharacterCard -- a small circular badge was tried first for the
-// weapon/set-effect icons and found genuinely too small to read at a
-// glance, which is the whole point of showing them here at all. The
-// modal's own candidate grid still uses CharacterCard with the combined
-// "<character> — <build>" label, since scanning a list of many builds
-// across many characters needs that character context up front, and
-// doesn't need the full equipped-loadout preview a filled slot does.
+// artifact-effects-icons layout BuildCard uses on the Builds page), and so
+// does the modal's own candidate grid now (BuildOptionCard above) -- a
+// small circular badge was tried first for the weapon/set-effect icons and
+// found genuinely too small to read at a glance, which is the whole point
+// of showing them here at all.
 // Unlike WeaponSlotPicker/ArtifactSlotPicker, there's no `disabled` state
 // here -- a team slot is always choosable (there's no upstream field like
 // a character that narrows candidates first), and the team-size cap is
@@ -107,6 +183,14 @@ export function BuildSlotPicker({
 }) {
   const [open, setOpenState] = useState(false);
   const [search, setSearch] = useState("");
+  // Which candidate's own "View build details" popover is open -- a
+  // SEPARATE BuildDetailModal from the Teams page's shared one
+  // (team-manager.tsx), since a candidate here was never added to a team
+  // at all, so there's no team/slot context for that one to show
+  // conflicts against (and nothing stops a user from viewing a candidate
+  // while this picker's own "Choose build" modal stays open behind it --
+  // both Modals share the same z-40, stacking in mount order).
+  const [viewingCandidateId, setViewingCandidateId] = useState<number | null>(null);
 
   function setOpen(next: boolean) {
     setOpenState(next);
@@ -238,7 +322,14 @@ export function BuildSlotPicker({
         </button>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Choose build" maxWidthClassName="max-w-4xl">
+      {/* max-w-6xl (not WeaponSlotPicker/ArtifactSlotPicker's own
+          max-w-4xl) -- BuildOptionCard's own cards are rectangular
+          (aspect-[3/2], like a team slot's own filled display), wider
+          than those pickers' square ones, so the grid needs a bit more
+          room to still fit a reasonable number of columns. max-w-5xl
+          (tried first) left the 3rd column's own cards butted right up
+          against the grid's own scrollbar gutter, overlapping it. */}
+      <Modal open={open} onClose={() => setOpen(false)} title="Choose build" maxWidthClassName="max-w-6xl">
         <div className="space-y-3">
           <input
             type="text"
@@ -257,27 +348,54 @@ export function BuildSlotPicker({
             .
           </p>
 
-          <ul className="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto [scrollbar-gutter:stable] sm:grid-cols-4 md:grid-cols-5">
+          {/* grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 -- far fewer columns
+              than the square-card pickers' own grid-cols-3..5, since each
+              card is now a wide rectangle rather than a small square. */}
+          {/* pr-2 -- [scrollbar-gutter:stable] alone only reserves the
+              scrollbar's own track width, flush against this grid's last
+              column; these cards are wide enough (rectangular, 3 columns
+              max vs the square-card pickers' 4-5) that the gutter read as
+              no breathing room at all, not a real gap. max-h-[40rem] (not
+              the square-card pickers' own max-h-96) -- these cards are
+              roughly twice as tall (aspect-[3/2] at 3 columns vs a square
+              at 4-5), so the same max-h-96 only fit about one row. */}
+          <ul className="grid max-h-[40rem] grid-cols-1 gap-3 overflow-y-auto pr-2 [scrollbar-gutter:stable] sm:grid-cols-2 lg:grid-cols-3">
             <NoneBuildCard onSelect={() => select(null)} selected={value === null} />
             {candidates.map((build) => (
-              <CharacterCard
+              <BuildOptionCard
                 key={build.buildId}
-                name={`${build.characterName} — ${build.name}`}
-                element={build.element}
-                weaponType={build.weaponType}
-                rarity={build.rarity}
-                iconUrl={build.characterIconUrl}
+                build={build}
+                selected={build.buildId === value}
                 onSelect={() => select(build.buildId)}
-                // Blue, same width, for this slot's own current build --
-                // same "mark the currently selected option" treatment
-                // WeaponSlotPicker/ArtifactSlotPicker's own grids now use.
-                borderClassName={build.buildId === value ? "border border-blue-500" : "border border-white"}
+                onView={setViewingCandidateId}
               />
             ))}
           </ul>
           {candidates.length === 0 && <p className="p-2 text-sm text-gray-500">No builds match this search.</p>}
         </div>
       </Modal>
+
+      {/* A candidate's own "View build details" popover -- see
+          viewingCandidateId's own comment above on why this is a separate
+          BuildDetailModal from the Teams page's shared one. "Select
+          build" has the exact same effect as clicking the candidate's
+          card directly in the grid above (select() already closes THIS
+          picker's own modal too), closing this popover on top of it. */}
+      <BuildDetailModal
+        buildId={viewingCandidateId}
+        selectAction={
+          viewingCandidateId !== null
+            ? {
+                label: "Select build",
+                onClick: () => {
+                  select(viewingCandidateId);
+                  setViewingCandidateId(null);
+                },
+              }
+            : undefined
+        }
+        onClose={() => setViewingCandidateId(null)}
+      />
     </>
   );
 }
