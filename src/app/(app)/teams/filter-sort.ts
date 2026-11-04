@@ -1,6 +1,8 @@
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
 import type { ActiveSetEffectItem } from "@/lib/active-set-effects";
+import type { SortDirection } from "@/lib/sort";
+import type { BuildSortKey } from "../builds/filter-sort";
 
 export const MAX_TEAM_SIZE = 4;
 
@@ -43,6 +45,10 @@ export type BuildOption = {
   weaponIconUrl: string | null;
   weaponRarity: number | null;
   activeSetEffects: ActiveSetEffectItem[];
+  // Backs filterAndSortBuildOptions' own "obtained" sort (below), the same
+  // field BuildItem (builds/filter-sort.ts) already carries for its own
+  // identical sort key.
+  createdAt: number;
 };
 
 export type TeamMemberItem = {
@@ -80,6 +86,67 @@ export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
     ownedWeaponId: build.ownedWeaponId,
     ownedArtifactIds: build.ownedArtifacts.map((a) => a.ownedArtifactId),
   };
+}
+
+export type BuildOptionFilters = {
+  // Two independent queries, not one shared box -- same AND-combined
+  // convention filterAndSortBuilds (builds/filter-sort.ts) and filterTeams
+  // (above) both already use for their own name-search splits.
+  buildNameSearch: string;
+  characterNameSearch: string;
+  elementFilter: ReadonlySet<Element>;
+  weaponTypeFilter: ReadonlySet<WeaponType>;
+  rarityFilter: ReadonlySet<number>;
+  sortKey: BuildSortKey;
+  sortDirection: SortDirection;
+};
+
+// Same filter/sort semantics as the Builds page's own filterAndSortBuilds
+// (builds/filter-sort.ts) -- BuildSlotPicker's own "Choose build" modal
+// imports the exact same search/filter/sort options that page offers, so
+// picking from a long owned-builds list works the same way in both
+// places. Not literally the same function: BuildOption's own element/
+// weaponType/rarity fields are deliberately named differently from
+// BuildItem's characterElement/characterWeaponType/characterRarity (see
+// BuildOption's own top comment -- it backs BuildPortrait/CharacterCard
+// display, not BuildCard, which is why the two types were never unified),
+// so the two are kept in sync by hand rather than sharing one
+// implementation. A behavior change to one's semantics should be mirrored
+// in the other.
+export function filterAndSortBuildOptions(
+  builds: BuildOption[],
+  { buildNameSearch, characterNameSearch, elementFilter, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: BuildOptionFilters
+): BuildOption[] {
+  let result = builds;
+
+  const nameQuery = buildNameSearch.trim().toLowerCase();
+  const characterQuery = characterNameSearch.trim().toLowerCase();
+  if (nameQuery) {
+    result = result.filter((build) => build.name.toLowerCase().includes(nameQuery));
+  }
+  if (characterQuery) {
+    result = result.filter((build) => build.characterName.toLowerCase().includes(characterQuery));
+  }
+  if (elementFilter.size > 0) {
+    result = result.filter((build) => elementFilter.has(build.element));
+  }
+  if (weaponTypeFilter.size > 0) {
+    result = result.filter((build) => weaponTypeFilter.has(build.weaponType));
+  }
+  if (rarityFilter.size > 0) {
+    result = result.filter((build) => rarityFilter.has(build.rarity));
+  }
+
+  const direction = sortDirection === "desc" ? -1 : 1;
+
+  return [...result].sort((a, b) => {
+    if (sortKey === "character") {
+      return direction * a.characterName.localeCompare(b.characterName) || a.name.localeCompare(b.name);
+    }
+    // "obtained" -- same -direction (forward = newest first) convention
+    // every other owned page's own "obtained" sort uses.
+    return -direction * (a.createdAt - b.createdAt) || a.name.localeCompare(b.name);
+  });
 }
 
 // Narrowed, display-ready version of detectOverlaps' own OverlapConflict --

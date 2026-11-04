@@ -2,13 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Element, WeaponType } from "@/generated/prisma/enums";
 import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
+import type { SortDirection } from "@/lib/sort";
 import { Modal } from "@/components/modal";
 import { BlinkingPlusIcon } from "@/components/blinking-plus-icon";
 import { BuildPortrait } from "@/components/build-portrait";
+import { RarityFilterRow } from "@/components/rarity-filter-row";
+import { SortDirectionToggle } from "@/components/sort-direction-toggle";
+import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
+import { ElementFilterRow } from "../characters/element-filter-row";
 import { BuildDetailModal } from "../builds/build-detail-modal";
-import { toOverlapCheckBuild, type BuildOption } from "./filter-sort";
+import type { BuildSortKey } from "../builds/filter-sort";
+import { toOverlapCheckBuild, filterAndSortBuildOptions, type BuildOption } from "./filter-sort";
+
+// Same tiny toggle-in-set helper every other filter-row caller in this app
+// keeps its own local copy of (weapon-slot-picker.tsx, artifact-slot-
+// picker.tsx, owned-build-manager.tsx, ...) rather than importing one
+// shared version -- small enough that duplicating it reads clearer than a
+// cross-file dependency for 5 lines.
+function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
+  const next = new Set(set);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
+
+// Same RARITIES the Builds/Characters pages themselves filter by --
+// playable characters are only ever seeded at 4-5 star, and a build's own
+// rarity filter is really its character's.
+const RARITIES = [5, 4];
 
 // Sits alongside the real build-portrait cards in the modal grid so
 // clearing a filled slot back to empty is just another option to click,
@@ -182,7 +206,23 @@ export function BuildSlotPicker({
   boxSizeClassName?: string;
 }) {
   const [open, setOpenState] = useState(false);
-  const [search, setSearch] = useState("");
+  // Same search/filter/sort options the Builds page itself offers
+  // (owned-build-manager.tsx), imported here via filterAndSortBuildOptions
+  // (filter-sort.ts) so picking from a long owned-builds list works the
+  // same way in both places -- same two-box AND search, same element/
+  // weapon-type/rarity filters, same "obtained"/"character" sort with a
+  // direction toggle. Own local state, not shared with the Builds page's
+  // own: each slot's picker is independent, and there's no reason a
+  // filter set on one team's slot should carry over to another's.
+  const [buildNameSearch, setBuildNameSearch] = useState("");
+  const [characterNameSearch, setCharacterNameSearch] = useState("");
+  const [elementFilter, setElementFilter] = useState<Set<Element>>(new Set());
+  const [weaponTypeFilter, setWeaponTypeFilter] = useState<Set<WeaponType>>(new Set());
+  const [rarityFilter, setRarityFilter] = useState<Set<number>>(new Set());
+  // "obtained" (not "character") -- matches the Builds page's own default
+  // exactly, not just offering the same options.
+  const [sortKey, setSortKey] = useState<BuildSortKey>("obtained");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   // Which candidate's own "View build details" popover is open -- a
   // SEPARATE BuildDetailModal from the Teams page's shared one
   // (team-manager.tsx), since a candidate here was never added to a team
@@ -212,7 +252,13 @@ export function BuildSlotPicker({
 
   const selected = value !== null ? builds.find((b) => b.buildId === value) : undefined;
 
-  const query = search.trim().toLowerCase();
+  // Search/filter/sort first (filterAndSortBuildOptions -- the imported
+  // Builds-page behavior), THEN exclude whatever would create a conflict
+  // with this team's other slots -- the two are independent concerns, so
+  // order between them doesn't change the result, but computing it this
+  // way keeps the "exclude a conflicting build" logic exactly as it was
+  // rather than tangling it into the new filter step.
+  //
   // THIS slot's own current build is no longer excluded (re-picking it is
   // a harmless no-op, same as WeaponSlotPicker/ArtifactSlotPicker already
   // allow for their own current selection) -- keeping it in the grid is
@@ -231,13 +277,16 @@ export function BuildSlotPicker({
   // see computeTeamConflicts in filter-sort.ts). That pre-existing
   // conflict is real and flagged elsewhere on the team card, but it has
   // nothing to do with whether THIS candidate is safe to add.
-  const candidates = builds.filter((build) => {
-    if (
-      !build.characterName.toLowerCase().includes(query) &&
-      !build.name.toLowerCase().includes(query)
-    ) {
-      return false;
-    }
+  const filtered = filterAndSortBuildOptions(builds, {
+    buildNameSearch,
+    characterNameSearch,
+    elementFilter,
+    weaponTypeFilter,
+    rarityFilter,
+    sortKey,
+    sortDirection,
+  });
+  const candidates = filtered.filter((build) => {
     const conflicts = detectOverlaps([...otherOverlapBuilds, toOverlapCheckBuild(build)]);
     return !conflicts.some((conflict) => conflict.buildIds.includes(build.buildId));
   });
@@ -330,17 +379,82 @@ export function BuildSlotPicker({
           (tried first) left the 3rd column's own cards butted right up
           against the grid's own scrollbar gutter, overlapping it. */}
       <Modal open={open} onClose={() => setOpen(false)} title="Choose build" maxWidthClassName="max-w-6xl">
-        <div className="space-y-3">
-          <input
-            type="text"
-            autoFocus
-            placeholder="Search by character or build name..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
-          />
+        {/* flex-col, not space-y-3 -- a vh-based max-height on the grid
+            alone (tried first) still let this modal's TOTAL content
+            (search/filter rows + grid) exceed Modal's own max-h-[90vh]
+            cap on shorter screens, since those rows have their own real,
+            non-negotiable pixel height on top of whatever the grid takes.
+            max-h-[calc(90vh-6rem)] here is Modal's own cap minus its own
+            fixed chrome -- p-5's 40px top+bottom, the title row's ~40px,
+            and the panel's own 2px border (all border-box-included in
+            that max-h-[90vh]) -- the budget actually available to THIS
+            div. 6rem (96px, not the 80px/5rem tried first, which missed
+            the border and left just enough overflow to barely scroll on
+            its own) leaves a little slack for that plus any sub-pixel/
+            line-height rounding. Every row but the grid is shrink-0 (keep
+            its natural height); the grid is flex-1 min-h-0 overflow-y-
+            auto, so it's the one thing that absorbs whatever space is
+            left AND the one thing that scrolls -- this div itself never
+            needs to, so Modal's own outer scroll never triggers either. */}
+        <div className="flex max-h-[calc(90vh-6rem)] flex-col gap-3">
+          {/* Same search/filter/sort row shapes as the Builds page itself
+              (owned-build-manager.tsx) -- see filterAndSortBuildOptions'
+              own comment on why this mirrors that page's options exactly
+              rather than offering some smaller subset. */}
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <input
+              type="text"
+              autoFocus
+              placeholder="Search by build name..."
+              value={buildNameSearch}
+              onChange={(event) => setBuildNameSearch(event.target.value)}
+              className="rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+            />
+            <input
+              type="text"
+              placeholder="Search by character name..."
+              value={characterNameSearch}
+              onChange={(event) => setCharacterNameSearch(event.target.value)}
+              className="rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+            />
+            <select
+              value={sortKey}
+              onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
+              className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+            >
+              <option value="obtained">Sort: Added</option>
+              <option value="character">Sort: Character</option>
+            </select>
+            <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+          </div>
 
-          <p className="text-sm text-gray-500">
+          {/* shrink-0 wrappers -- none of these filter-row components take
+              a className of their own to shrink-0 directly, and without
+              it a flex-col parent's default flex-shrink:1 could squeeze
+              these fixed-content rows below their natural height once
+              the column's own total content is taller than its bound
+              (see the wrapping div's own comment). */}
+          <div className="shrink-0">
+            <ElementFilterRow
+              elementFilter={elementFilter}
+              onToggle={(element) => setElementFilter((prev) => toggleInSet(prev, element))}
+            />
+          </div>
+          <div className="shrink-0">
+            <WeaponTypeFilterRow
+              weaponTypeFilter={weaponTypeFilter}
+              onToggle={(weaponType) => setWeaponTypeFilter((prev) => toggleInSet(prev, weaponType))}
+            />
+          </div>
+          <div className="shrink-0">
+            <RarityFilterRow
+              rarities={RARITIES}
+              rarityFilter={rarityFilter}
+              onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
+            />
+          </div>
+
+          <p className="shrink-0 text-sm text-gray-500">
             Need another build? Create one on the{" "}
             <Link href="/builds" className="underline hover:text-foreground">
               Builds page
@@ -355,11 +469,13 @@ export function BuildSlotPicker({
               scrollbar's own track width, flush against this grid's last
               column; these cards are wide enough (rectangular, 3 columns
               max vs the square-card pickers' 4-5) that the gutter read as
-              no breathing room at all, not a real gap. max-h-[40rem] (not
-              the square-card pickers' own max-h-96) -- these cards are
-              roughly twice as tall (aspect-[3/2] at 3 columns vs a square
-              at 4-5), so the same max-h-96 only fit about one row. */}
-          <ul className="grid max-h-[40rem] grid-cols-1 gap-3 overflow-y-auto pr-2 [scrollbar-gutter:stable] sm:grid-cols-2 lg:grid-cols-3">
+              no breathing room at all, not a real gap. flex-1 min-h-0 (not
+              a fixed max-height of its own) -- see the wrapping div's own
+              comment on why this grid absorbs whatever space the
+              surrounding flex column has left, rather than guessing at a
+              fixed/vh height that could still overflow the modal's own
+              cap once combined with the search/filter rows above it. */}
+          <ul className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto pr-2 [scrollbar-gutter:stable] sm:grid-cols-2 lg:grid-cols-3">
             <NoneBuildCard onSelect={() => select(null)} selected={value === null} />
             {candidates.map((build) => (
               <BuildOptionCard
@@ -371,7 +487,7 @@ export function BuildSlotPicker({
               />
             ))}
           </ul>
-          {candidates.length === 0 && <p className="p-2 text-sm text-gray-500">No builds match this search.</p>}
+          {candidates.length === 0 && <p className="shrink-0 p-2 text-sm text-gray-500">No builds match this search.</p>}
         </div>
       </Modal>
 

@@ -95,6 +95,7 @@ export default async function TeamsPage() {
       weaponIconUrl: build.ownedWeapon?.weapon.iconUrl ?? null,
       weaponRarity: build.ownedWeapon?.weapon.rarity ?? null,
       activeSetEffects: computeActiveSetEffects(build.buildArtifacts),
+      createdAt: build.createdAt.getTime(),
     };
   });
 
