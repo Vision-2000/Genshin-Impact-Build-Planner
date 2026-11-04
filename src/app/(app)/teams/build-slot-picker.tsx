@@ -76,11 +76,29 @@ function NoneBuildCard({ onSelect, selected = false }: { onSelect: () => void; s
 function BuildOptionCard({
   build,
   selected,
+  weaponConflict,
+  artifactConflict,
   onSelect,
   onView,
 }: {
   build: BuildOption;
   selected: boolean;
+  // Whether picking this candidate would share a weapon/artifact with a
+  // build already in one of this team's OTHER slots -- same red ring-
+  // inset/border BuildPortrait already draws on a team slot's own filled
+  // display for exactly this signal (see its own weaponConflict/
+  // artifactConflict props), reused here as-is. Unlike that card, a
+  // flagged candidate here can still be VIEWED (so the user can see
+  // exactly what collides and go edit a fix) but can't be SELECTED --
+  // these builds were previously excluded from the grid outright; showing
+  // them instead (with selection blocked) lets the user see where things
+  // went wrong rather than wondering why a build they know they own isn't
+  // listed. Duplicate-character/exclusivityGroup conflicts are NOT
+  // included here and still exclude a candidate entirely (see this
+  // component's own caller) -- there's no sensible tile to highlight for
+  // "wrong character", and no edit fixes it either.
+  weaponConflict: boolean;
+  artifactConflict: boolean;
   onSelect: () => void;
   // Same bottom-strip "View" zone (hover-revealed, stops both pointerdown
   // and click from bubbling) as a team slot's own filled display -- opens
@@ -89,25 +107,44 @@ function BuildOptionCard({
   // added to the team at all.
   onView: (buildId: number) => void;
 }) {
+  const conflicting = weaponConflict || artifactConflict;
+
   return (
     <li>
       <div
-        onClick={onSelect}
+        onClick={conflicting ? undefined : onSelect}
         role="button"
-        tabIndex={0}
-        title={`${build.characterName} — ${build.name}`}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          event.preventDefault();
-          onSelect();
-        }}
+        aria-disabled={conflicting}
+        tabIndex={conflicting ? undefined : 0}
+        title={
+          conflicting
+            ? `${build.characterName} — ${build.name} (shares a weapon/artifact with another slot -- view for details)`
+            : `${build.characterName} — ${build.name}`
+        }
+        onKeyDown={
+          conflicting
+            ? undefined
+            : (event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                onSelect();
+              }
+        }
         // group/has-[.view-zone:hover]:opacity-100! -- same reasoning as
         // the filled slot's own identical card below: without it, hovering
         // the View button itself would ALSO trigger this card's own
         // hover:opacity-90, showing both hover states disagreeing at once.
-        className={`group relative flex w-full cursor-pointer overflow-hidden rounded-lg border shadow hover:opacity-90 has-[.view-zone:hover]:opacity-100! ${
-          selected ? "border-blue-500" : "border-white"
-        } ${rarityGradientClasses(build.rarity)}`}
+        // conflicting drops cursor-pointer/hover:opacity-90 in favor of
+        // cursor-not-allowed -- the card itself is inert (View is still
+        // reachable via its own always-active button). border-red-500
+        // (same default border WIDTH as the selected/plain cases, just a
+        // different color, same as the Teams page's own whole-team-card
+        // conflict border) takes priority over "selected" -- the whole
+        // card is flagged, not just the weapon/artifact tile BuildPortrait
+        // itself already highlights below.
+        className={`group relative flex w-full overflow-hidden rounded-lg border shadow has-[.view-zone:hover]:opacity-100! ${
+          conflicting ? "cursor-not-allowed" : "cursor-pointer hover:opacity-90"
+        } ${conflicting ? "border-red-500" : selected ? "border-blue-500" : "border-white"} ${rarityGradientClasses(build.rarity)}`}
       >
         <BuildPortrait
           characterIconUrl={build.characterIconUrl}
@@ -123,6 +160,8 @@ function BuildOptionCard({
           // same-character builds apart, with the character icon itself
           // still visible) avoids a cramped/truncated second line here.
           showCharacterName={false}
+          weaponConflict={weaponConflict}
+          artifactConflict={artifactConflict}
         />
 
         <button
@@ -229,8 +268,17 @@ export function BuildSlotPicker({
   // at all, so there's no team/slot context for that one to show
   // conflicts against (and nothing stops a user from viewing a candidate
   // while this picker's own "Choose build" modal stays open behind it --
-  // both Modals share the same z-40, stacking in mount order).
-  const [viewingCandidateId, setViewingCandidateId] = useState<number | null>(null);
+  // both Modals share the same z-40, stacking in mount order). Carries
+  // this candidate's own weaponConflict/conflictingArtifactIds alongside
+  // its id (computed once, in the grid below, from the SAME per-candidate
+  // conflict check `candidates` itself already did) so the popover can
+  // highlight the exact colliding weapon/artifact tile, not just open
+  // plain.
+  const [viewingCandidate, setViewingCandidate] = useState<{
+    buildId: number;
+    weaponConflict: boolean;
+    conflictingArtifactIds: number[];
+  } | null>(null);
 
   function setOpen(next: boolean) {
     setOpenState(next);
@@ -263,20 +311,29 @@ export function BuildSlotPicker({
   // a harmless no-op, same as WeaponSlotPicker/ArtifactSlotPicker already
   // allow for their own current selection) -- keeping it in the grid is
   // what lets it be blue-bordered below, so it's visible which option is
-  // already selected without having to close the modal first. Every other
-  // owned build is included unless it would create a duplicate-character/
-  // exclusivity/shared-weapon/shared-artifact conflict with whatever's
-  // already in this team's other slots (see detectOverlaps' own comment --
-  // all four are hard blocks, not advisory warnings, so a conflicting
-  // build simply never appears here rather than being selectable then
-  // rejected). Only conflicts the CANDIDATE itself would be part of count
-  // -- not just "is detectOverlaps' result non-empty at all" over the
-  // whole set, which would also reject every candidate whenever two of the
-  // OTHER slots already conflict with each other (possible since a
-  // build's weapon/artifacts can change after it's already in a team --
-  // see computeTeamConflicts in filter-sort.ts). That pre-existing
-  // conflict is real and flagged elsewhere on the team card, but it has
-  // nothing to do with whether THIS candidate is safe to add.
+  // already selected without having to close the modal first.
+  //
+  // Every other owned build is still checked against detectOverlaps (all
+  // four of its conflict types are hard blocks -- see its own comment),
+  // but only duplicate-character/exclusivityGroup conflicts still exclude
+  // a candidate outright now: there's no sensible tile to highlight for
+  // "wrong character for this slot", and no edit to a build's own weapon/
+  // artifacts would ever fix it either. A shared-weapon/shared-artifact
+  // conflict instead STAYS in the grid, flagged via weaponConflict/
+  // artifactConflict (BuildOptionCard's own props, same red highlight
+  // BuildPortrait already draws on a team slot's filled display) with
+  // selecting it blocked -- showing the user exactly which owned build
+  // collides, rather than silently omitting it, so they can go edit a
+  // non-colliding version instead of wondering where it went.
+  //
+  // Only conflicts the CANDIDATE itself would be part of count -- not just
+  // "is detectOverlaps' result non-empty at all" over the whole set, which
+  // would also reject every candidate whenever two of the OTHER slots
+  // already conflict with each other (possible since a build's weapon/
+  // artifacts can change after it's already in a team -- see
+  // computeTeamConflicts in filter-sort.ts). That pre-existing conflict is
+  // real and flagged elsewhere on the team card, but it has nothing to do
+  // with whether THIS candidate is safe to add.
   const filtered = filterAndSortBuildOptions(builds, {
     buildNameSearch,
     characterNameSearch,
@@ -286,9 +343,28 @@ export function BuildSlotPicker({
     sortKey,
     sortDirection,
   });
-  const candidates = filtered.filter((build) => {
-    const conflicts = detectOverlaps([...otherOverlapBuilds, toOverlapCheckBuild(build)]);
-    return !conflicts.some((conflict) => conflict.buildIds.includes(build.buildId));
+  const candidates = filtered.flatMap((build) => {
+    const ownConflicts = detectOverlaps([...otherOverlapBuilds, toOverlapCheckBuild(build)]).filter((conflict) =>
+      conflict.buildIds.includes(build.buildId)
+    );
+    const hasHardConflict = ownConflicts.some(
+      (conflict) => conflict.type === "duplicate-character" || conflict.type === "exclusivity-conflict"
+    );
+    if (hasHardConflict) return [];
+    // conflictingArtifactIds (the actual ids, not just a boolean) -- so
+    // the candidate's own "View build details" popover (below) can
+    // highlight the EXACT colliding artifact slot(s), same as the Teams
+    // page's own BuildDetailModal already does for an already-added
+    // build's View button (team-manager.tsx's own buildConflictFlags).
+    return [
+      {
+        build,
+        weaponConflict: ownConflicts.some((conflict) => conflict.type === "shared-weapon"),
+        conflictingArtifactIds: ownConflicts
+          .filter((conflict) => conflict.type === "shared-artifact")
+          .map((conflict) => conflict.ownedArtifactId),
+      },
+    ];
   });
 
   function select(buildId: number | null) {
@@ -477,13 +553,15 @@ export function BuildSlotPicker({
               cap once combined with the search/filter rows above it. */}
           <ul className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto pr-2 [scrollbar-gutter:stable] sm:grid-cols-2 lg:grid-cols-3">
             <NoneBuildCard onSelect={() => select(null)} selected={value === null} />
-            {candidates.map((build) => (
+            {candidates.map(({ build, weaponConflict, conflictingArtifactIds }) => (
               <BuildOptionCard
                 key={build.buildId}
                 build={build}
                 selected={build.buildId === value}
+                weaponConflict={weaponConflict}
+                artifactConflict={conflictingArtifactIds.length > 0}
                 onSelect={() => select(build.buildId)}
-                onView={setViewingCandidateId}
+                onView={() => setViewingCandidate({ buildId: build.buildId, weaponConflict, conflictingArtifactIds })}
               />
             ))}
           </ul>
@@ -492,25 +570,29 @@ export function BuildSlotPicker({
       </Modal>
 
       {/* A candidate's own "View build details" popover -- see
-          viewingCandidateId's own comment above on why this is a separate
+          viewingCandidate's own comment above on why this is a separate
           BuildDetailModal from the Teams page's shared one. "Select
           build" has the exact same effect as clicking the candidate's
           card directly in the grid above (select() already closes THIS
-          picker's own modal too), closing this popover on top of it. */}
+          picker's own modal too), closing this popover on top of it --
+          omitted entirely (not just a no-op) for a conflicting candidate,
+          same as the card itself already blocks selecting one directly. */}
       <BuildDetailModal
-        buildId={viewingCandidateId}
+        buildId={viewingCandidate?.buildId ?? null}
+        weaponConflict={viewingCandidate?.weaponConflict ?? false}
+        conflictingArtifactIds={viewingCandidate?.conflictingArtifactIds ?? []}
         selectAction={
-          viewingCandidateId !== null
+          viewingCandidate !== null && !viewingCandidate.weaponConflict && viewingCandidate.conflictingArtifactIds.length === 0
             ? {
                 label: "Select build",
                 onClick: () => {
-                  select(viewingCandidateId);
-                  setViewingCandidateId(null);
+                  select(viewingCandidate.buildId);
+                  setViewingCandidate(null);
                 },
               }
             : undefined
         }
-        onClose={() => setViewingCandidateId(null)}
+        onClose={() => setViewingCandidate(null)}
       />
     </>
   );
