@@ -137,7 +137,7 @@ model GameProfile {
   ownedArtifacts  OwnedArtifact[]
   teams           Team[]
   rosters         Roster[]
-  lineups         Lineup[]
+  groups          Group[]
 
   @@unique([userId, name])
   @@map("game_profiles")
@@ -709,7 +709,7 @@ model Team {
 
   gameProfile GameProfile  @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
   teamBuilds  TeamBuild[]
-  lineupTeams LineupTeam[]
+  groupTeams  GroupTeam[]
 
   @@map("teams")
 }
@@ -761,28 +761,36 @@ model RosterBuild {
 }
 
 // A saved combination of Teams only (Rosters are always validated alone,
-// never combined).
-model Lineup {
+// never combined). Managed entirely from the Teams page itself (see
+// team-manager.tsx) -- "group mode" switches that page into a mass-select
+// UI (same pattern as the owned-weapons/artifacts pages' own bulk-delete
+// select mode) to pick which teams belong, rather than a dedicated route.
+model Group {
   id            Int      @id @default(autoincrement())
   gameProfileId Int      @map("game_profile_id")
   name          String
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  gameProfile GameProfile  @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
-  lineupTeams LineupTeam[]
+  gameProfile GameProfile @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  groupTeams  GroupTeam[]
 
-  @@map("lineups")
+  @@map("groups")
 }
 
-model LineupTeam {
-  id       Int @id @default(autoincrement())
-  lineupId Int @map("lineup_id")
-  teamId   Int @map("team_id")
+// Row `id` order IS the team's own display position within the group --
+// same "explicit id order = slot order" convention TeamBuild already
+// relies on (see its own comment) -- a team appended to the group later
+// always gets a higher id, so ordering by id asc reproduces "order
+// selected" with no separate position column needed.
+model GroupTeam {
+  id      Int @id @default(autoincrement())
+  groupId Int @map("group_id")
+  teamId  Int @map("team_id")
 
-  lineup Lineup @relation(fields: [lineupId], references: [id], onDelete: Cascade)
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@unique([lineupId, teamId])
-  @@map("lineup_teams")
+  @@unique([groupId, teamId])
+  @@map("group_teams")
 }

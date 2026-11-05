@@ -3,6 +3,7 @@ import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import {
   filterTeams,
   filterAndSortBuildOptions,
+  combinedOverlapBuilds,
   computeTeamConflicts,
   buildConflictFlags,
   describeTeamConflict,
@@ -88,6 +89,39 @@ describe("filterTeams", () => {
   it("returns an empty array when nothing matches", () => {
     const result = filterTeams(teams, "nonexistent", "");
     expect(result).toEqual([]);
+  });
+});
+
+describe("combinedOverlapBuilds", () => {
+  const teamsWithMembers: TeamItem[] = [
+    team({ id: 1, name: "Team A", members: [member({ buildId: 1 })] }),
+    team({ id: 2, name: "Team B", members: [member({ buildId: 2 })] }),
+    team({ id: 3, name: "Team C", members: [member({ buildId: 3 })] }),
+  ];
+  const builds: BuildOption[] = [
+    buildOption({ buildId: 1, ownedCharacterId: 1, ownedWeaponId: 10 }),
+    buildOption({ buildId: 2, ownedCharacterId: 2, ownedWeaponId: 20 }),
+    buildOption({ buildId: 3, ownedCharacterId: 3, ownedWeaponId: 30 }),
+  ];
+
+  it("flattens builds only from the given team ids", () => {
+    const result = combinedOverlapBuilds(teamsWithMembers, builds, [1, 3]);
+    expect(result.map((b) => b.buildId)).toEqual([1, 3]);
+  });
+
+  it("returns an empty list when no team ids are given", () => {
+    expect(combinedOverlapBuilds(teamsWithMembers, builds, [])).toEqual([]);
+  });
+
+  it("carries each build's own overlap-relevant fields through", () => {
+    const [result] = combinedOverlapBuilds(teamsWithMembers, builds, [1]);
+    expect(result).toEqual({
+      buildId: 1,
+      ownedCharacterId: 1,
+      exclusivityGroup: null,
+      ownedWeaponId: 10,
+      ownedArtifactIds: [],
+    });
   });
 });
 

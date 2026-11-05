@@ -7,18 +7,20 @@ import { isMoonsignTalentName, isHexereiTalentName } from "@/lib/moonsign-hexere
 import { computeActiveSetEffects } from "@/lib/active-set-effects";
 import { HelpButton } from "@/components/help-button";
 import { TeamManager } from "./team-manager";
-import type { BuildOption, TeamItem } from "./filter-sort";
+import type { BuildOption, TeamItem, GroupItem } from "./filter-sort";
 
 export const metadata: Metadata = {
   title: "Teams",
 };
 
-const HELP_TEXT = `This page shows the teams you've assembled from your builds. Click "Create team" to start a new one; click an empty slot on a team to assign a build to it, or a filled slot to swap/remove it. A team holds up to 4 builds, and a build can't be reused across two slots in the same team if doing so would duplicate a character, share a weapon, or share an artifact -- those builds simply won't show up as candidates.`;
+const HELP_TEXT = `This page shows the teams you've assembled from your builds. Click "Create team" to start a new one; click an empty slot on a team to assign a build to it, or a filled slot to swap/remove it. A team holds up to 4 builds, and a build can't be reused across two slots in the same team if doing so would duplicate a character, share a weapon, or share an artifact -- those builds simply won't show up as candidates.
+
+Groups save a combination of teams meant to be used together (e.g. several teams across a run that shouldn't share gear). Click "Create group" to switch into group mode and pick which teams belong; the dropdown above the list lets you view a saved group on its own, or switch back to "All teams". Saving a group still requires its teams to be conflict-free with each other, but a saved group can drift into conflict later if you edit one of its teams afterward -- that's flagged (in red, in the dropdown) rather than blocked.`;
 
 export default async function TeamsPage() {
   const profile = await requireActiveProfile();
 
-  const [builds, teams] = await Promise.all([
+  const [builds, teams, groups] = await Promise.all([
     prisma.build.findMany({
       where: { ownedCharacter: { gameProfileId: profile.id, isOwned: true } },
       include: {
@@ -69,6 +71,16 @@ export default async function TeamsPage() {
       // move a team -- see those actions' own comments.
       orderBy: { createdAt: "desc" },
     }),
+    prisma.group.findMany({
+      where: { gameProfileId: profile.id },
+      include: {
+        // orderBy: id asc -- a group's own "order selected" display (see
+        // GroupTeam's own schema comment) is this row order, same
+        // reasoning as teamBuilds' own orderBy right above.
+        groupTeams: { orderBy: { id: "asc" } },
+      },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const buildOptions: BuildOption[] = builds.map((build) => {
@@ -110,6 +122,12 @@ export default async function TeamsPage() {
     })),
   }));
 
+  const groupItems: GroupItem[] = groups.map((group) => ({
+    id: group.id,
+    name: group.name,
+    teamIds: group.groupTeams.map((gt) => gt.teamId),
+  }));
+
   return (
     <div className="min-h-full bg-primary-page">
       <div className="mx-auto max-w-[110rem] p-4">
@@ -129,6 +147,7 @@ export default async function TeamsPage() {
           }
           builds={buildOptions}
           initialTeams={teamItems}
+          initialGroups={groupItems}
         />
       </div>
     </div>

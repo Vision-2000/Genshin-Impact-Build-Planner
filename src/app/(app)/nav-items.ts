@@ -25,7 +25,9 @@ export const NAV_ITEMS: NavItem[] = [
   // on this page (see OwnedBuildManager's own "Create build" button)
   // instead of navigating to a dedicated /builds/create page.
   { href: "/builds", label: "Builds" },
+  // Groups (a saved combination of Teams) are managed from within this
+  // page itself -- "group mode" (team-manager.tsx) -- rather than a
+  // dedicated route, so there's no separate nav entry for them.
   { href: "/teams", label: "Teams" },
   { href: "/rosters", label: "Rosters" },
-  { href: "/lineups", label: "Lineups" },
 ];

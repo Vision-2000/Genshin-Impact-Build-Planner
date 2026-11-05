@@ -1,5 +1,5 @@
 // Generic overlap-detection over "a set of builds" — shared by team/roster
-// live selection warnings, full validation, and saved Lineup display. Do not
+// live selection warnings, full validation, and saved Group display. Do not
 // reimplement this per screen (see CLAUDE.md).
 //
 // All four conflict types are hard blocks, not advisory warnings: a

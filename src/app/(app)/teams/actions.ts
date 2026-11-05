@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
 import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
 import { travelerDisplayName } from "@/lib/character-scaling";
-import { CreateTeamSchema, type CreateTeamErrors } from "./schemas";
+import { CreateTeamSchema, type CreateTeamErrors, CreateGroupSchema, type CreateGroupErrors } from "./schemas";
 import { MAX_TEAM_SIZE, type TeamMemberItem } from "./filter-sort";
 
 export type CreateTeamResult = { team: { id: number; name: string } } | { errors: CreateTeamErrors };
@@ -72,6 +72,24 @@ function toOverlapCheckBuild(build: {
   };
 }
 
+// Shared `include` shape for fetching a team's own builds with everything
+// toOverlapCheckBuild needs -- used by addTeamBuild/replaceTeamBuild (one
+// team's own existing builds) and the group actions below (every member
+// team's builds at once, for the combined cross-team check).
+const TEAM_OVERLAP_INCLUDE = {
+  teamBuilds: {
+    include: {
+      build: {
+        include: { ownedCharacter: { include: { character: true } }, buildArtifacts: true },
+      },
+    },
+  },
+} as const;
+
+function teamOverlapBuilds(team: { teamBuilds: { build: Parameters<typeof toOverlapCheckBuild>[0] }[] }): OverlapCheckBuild[] {
+  return team.teamBuilds.map((tb) => toOverlapCheckBuild(tb.build));
+}
+
 export type AddTeamBuildResult = { member: TeamMemberItem } | { error: string };
 
 export async function addTeamBuild(teamId: number, buildId: number): Promise<AddTeamBuildResult> {
@@ -79,15 +97,7 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
 
   const team = await prisma.team.findFirst({
     where: { id: teamId, gameProfileId: profile.id },
-    include: {
-      teamBuilds: {
-        include: {
-          build: {
-            include: { ownedCharacter: { include: { character: true } }, buildArtifacts: true },
-          },
-        },
-      },
-    },
+    include: TEAM_OVERLAP_INCLUDE,
   });
   if (!team) return { error: "Team not found." };
   if (team.teamBuilds.length >= MAX_TEAM_SIZE) return { error: "This team already has 4 builds." };
@@ -98,7 +108,7 @@ export async function addTeamBuild(teamId: number, buildId: number): Promise<Add
   });
   if (!candidateBuild) return { error: "Build not found." };
 
-  const existing = team.teamBuilds.map((tb) => toOverlapCheckBuild(tb.build));
+  const existing = teamOverlapBuilds(team);
   const candidate = toOverlapCheckBuild(candidateBuild);
 
   // Only rejects conflicts the CANDIDATE is actually part of -- not just
@@ -155,15 +165,7 @@ export async function replaceTeamBuild(teamId: number, oldBuildId: number, newBu
 
   const team = await prisma.team.findFirst({
     where: { id: teamId, gameProfileId: profile.id },
-    include: {
-      teamBuilds: {
-        include: {
-          build: {
-            include: { ownedCharacter: { include: { character: true } }, buildArtifacts: true },
-          },
-        },
-      },
-    },
+    include: TEAM_OVERLAP_INCLUDE,
   });
   if (!team) return { error: "Team not found." };
 
@@ -176,7 +178,7 @@ export async function replaceTeamBuild(teamId: number, oldBuildId: number, newBu
   // The slot being replaced is excluded from the overlap check -- it's
   // about to stop holding oldBuildId, so oldBuildId's own weapon/artifacts/
   // character no longer count as "already in the team" for this check.
-  const existing = team.teamBuilds.filter((tb) => tb.buildId !== oldBuildId).map((tb) => toOverlapCheckBuild(tb.build));
+  const existing = teamOverlapBuilds({ teamBuilds: team.teamBuilds.filter((tb) => tb.buildId !== oldBuildId) });
   const candidate = toOverlapCheckBuild(candidateBuild);
 
   // Same "only reject conflicts the candidate itself is part of" fix as
@@ -254,4 +256,97 @@ export async function reorderTeamBuilds(teamId: number, orderedBuildIds: number[
   ]);
 
   return { success: true };
+}
+
+export type SaveGroupResult = { group: { id: number; name: string } } | { errors: CreateGroupErrors } | { error: string };
+
+// Validates every given team belongs to this profile and that their
+// COMBINED builds don't conflict with each other (combinedOverlapBuilds'
+// own reasoning in filter-sort.ts: a build can collide with one from a
+// DIFFERENT team, not just within the same team) -- shared by
+// createGroup/updateGroup below, since both need the exact same check
+// before writing anything.
+// Returns an error message, or null once every team is confirmed to
+// belong to this profile and their combined builds are conflict-free.
+async function validateGroupTeams(profileId: number, teamIds: number[]): Promise<string | null> {
+  const uniqueTeamIds = [...new Set(teamIds)];
+
+  const teams = await prisma.team.findMany({
+    where: { id: { in: uniqueTeamIds }, gameProfileId: profileId },
+    include: TEAM_OVERLAP_INCLUDE,
+  });
+  if (teams.length !== uniqueTeamIds.length) return "One or more teams were not found.";
+
+  const allBuilds = teams.flatMap(teamOverlapBuilds);
+  if (detectOverlaps(allBuilds).length > 0) {
+    return "These teams share a weapon, artifact, or character with each other.";
+  }
+
+  return null;
+}
+
+// Creates the group and its membership together, in the GIVEN order (not
+// re-sorted) -- GroupTeam rows are inserted one at a time inside this same
+// transaction so each gets the next autoincrement id in that exact order,
+// which is what later reproduces "order selected" on display (see
+// GroupTeam's own schema comment). Client-side "group mode" (team-
+// manager.tsx) already prevents picking conflicting teams into the draft,
+// but this re-validates against the DB regardless -- same defense-in-depth
+// reasoning addTeamBuild's own comment gives for not just trusting the
+// client.
+export async function createGroup(name: string, teamIds: number[]): Promise<SaveGroupResult> {
+  const profile = await requireActiveProfile();
+
+  const validated = CreateGroupSchema.safeParse({ name });
+  if (!validated.success) return { errors: validated.error.flatten().fieldErrors };
+
+  const validationError = await validateGroupTeams(profile.id, teamIds);
+  if (validationError) return { error: validationError };
+
+  const uniqueTeamIds = [...new Set(teamIds)];
+  const group = await prisma.$transaction(async (tx) => {
+    const created = await tx.group.create({ data: { gameProfileId: profile.id, name: validated.data.name } });
+    for (const teamId of uniqueTeamIds) {
+      await tx.groupTeam.create({ data: { groupId: created.id, teamId } });
+    }
+    return created;
+  });
+
+  return { group: { id: group.id, name: group.name } };
+}
+
+// Replaces the group's own name and FULL membership at once (not an
+// incremental add/remove the way Team's own builds work) -- "group mode"
+// always collects the complete intended selection client-side before ever
+// calling this, so one combined save matches that interaction exactly.
+// Membership is delete-then-recreate (not reused ids the way
+// reorderTeamBuilds' own technique does for TeamBuild) -- nothing else
+// references a GroupTeam row's own id, so there's no position to
+// preserve across the rewrite beyond the NEW order this call is given.
+export async function updateGroup(groupId: number, name: string, teamIds: number[]): Promise<SaveGroupResult> {
+  const profile = await requireActiveProfile();
+
+  const validated = CreateGroupSchema.safeParse({ name });
+  if (!validated.success) return { errors: validated.error.flatten().fieldErrors };
+
+  const group = await prisma.group.findFirst({ where: { id: groupId, gameProfileId: profile.id } });
+  if (!group) return { error: "Group not found." };
+
+  const validationError = await validateGroupTeams(profile.id, teamIds);
+  if (validationError) return { error: validationError };
+
+  const uniqueTeamIds = [...new Set(teamIds)];
+  await prisma.$transaction([
+    prisma.group.update({ where: { id: groupId }, data: { name: validated.data.name } }),
+    prisma.groupTeam.deleteMany({ where: { groupId } }),
+    ...uniqueTeamIds.map((teamId) => prisma.groupTeam.create({ data: { groupId, teamId } })),
+  ]);
+
+  return { group: { id: groupId, name: validated.data.name } };
+}
+
+export async function deleteGroup(groupId: number) {
+  const profile = await requireActiveProfile();
+
+  await prisma.group.deleteMany({ where: { id: groupId, gameProfileId: profile.id } });
 }

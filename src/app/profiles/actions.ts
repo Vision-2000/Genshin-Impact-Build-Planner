@@ -53,7 +53,7 @@ export async function selectProfile(profileId: number) {
 
 // Cascades (DB-level, onDelete: Cascade) through everything scoped to this
 // profile -- owned characters/weapons/artifacts, builds, teams, rosters, and
-// lineups. The confirm prompt on the client names this before calling in.
+// groups. The confirm prompt on the client names this before calling in.
 export async function deleteProfile(profileId: number) {
   const session = await requireSession();
 

@@ -64,6 +64,18 @@ export type TeamItem = {
   members: TeamMemberItem[];
 };
 
+// A saved combination of Teams (formerly its own "Lineup" entity/page, now
+// managed entirely from "group mode" on this page -- see team-manager.tsx's
+// own top comment). teamIds is already in the group's own saved order
+// (GroupTeam rows ordered by id asc -- see that model's own schema
+// comment on why id order IS selection order), so a caller never needs to
+// re-derive it.
+export type GroupItem = {
+  id: number;
+  name: string;
+  teamIds: number[];
+};
+
 // A team's own members, resolved against the full owned-builds list --
 // team.members only carries buildId/name/characterName/characterIconUrl
 // (TeamMemberItem, enough for the plain member list), not the full
@@ -86,6 +98,23 @@ export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
     ownedWeaponId: build.ownedWeaponId,
     ownedArtifactIds: build.ownedArtifacts.map((a) => a.ownedArtifactId),
   };
+}
+
+// Flattens every given team's own builds into one list, so detectOverlaps
+// can be run once across the whole group -- a build can conflict with a
+// build from ANOTHER team, not just another build in the same team. Used
+// both for group-mode's own live validation (an in-progress draft
+// selection) and for flagging an already-saved group that's drifted into
+// conflict since it was last saved (a team's own builds can change after
+// the fact, same reasoning computeTeamConflicts above already has for a
+// single team). Order of `teamIds` doesn't matter here -- detectOverlaps
+// itself doesn't care which build came from which team, only that none of
+// them collide.
+export function combinedOverlapBuilds(teams: TeamItem[], builds: BuildOption[], teamIds: number[]): OverlapCheckBuild[] {
+  const idSet = new Set(teamIds);
+  return teams
+    .filter((team) => idSet.has(team.id))
+    .flatMap((team) => memberBuildsForTeam(team, builds).map(toOverlapCheckBuild));
 }
 
 export type BuildOptionFilters = {

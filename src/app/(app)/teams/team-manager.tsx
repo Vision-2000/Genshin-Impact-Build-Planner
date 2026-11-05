@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { computeElementalResonances } from "@/lib/elemental-resonance";
 import { computeMoonsignHexereiEffects } from "@/lib/moonsign-hexerei";
+import { detectOverlaps } from "@/lib/overlap";
 import { paginate } from "@/lib/paginate";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import type { TeamEffect } from "@/lib/team-effect";
@@ -24,6 +25,9 @@ import {
   replaceTeamBuild,
   reorderTeamBuilds,
   bumpTeamToFront,
+  createGroup,
+  updateGroup,
+  deleteGroup,
   type AddTeamBuildResult,
 } from "./actions";
 import {
@@ -34,8 +38,10 @@ import {
   computeTeamConflicts,
   buildConflictFlags,
   describeTeamConflict,
+  combinedOverlapBuilds,
   type BuildOption,
   type TeamItem,
+  type GroupItem,
 } from "./filter-sort";
 import { BuildSlotPicker } from "./build-slot-picker";
 
@@ -208,6 +214,13 @@ function TeamCard({
   onPickerOpenChange,
   onBumpToFront,
   onDelete,
+  // Non-null only while the page is in "group mode" (team-manager.tsx's
+  // own groupDraft state) -- renders a full-card overlay that intercepts
+  // every click/drag on this card (rename, slot swap, drag-reorder,
+  // bump-to-front, delete, all of it) in favor of a single toggle, plus a
+  // checkmark badge reflecting `selected`. Undefined in ordinary use,
+  // which renders nothing extra here at all.
+  groupSelection,
 }: {
   team: TeamItem;
   builds: BuildOption[];
@@ -235,6 +248,7 @@ function TeamCard({
   onPickerOpenChange: (slotIndex: number, open: boolean) => void;
   onBumpToFront: () => void;
   onDelete: () => void;
+  groupSelection?: { selected: boolean; onToggle: () => void };
 }) {
   const slotBuildIds: (number | null)[] = [
     ...team.members.map((m) => m.buildId),
@@ -414,10 +428,49 @@ function TeamCard({
   const draggedBuild = draggedIndex !== null ? builds.find((b) => b.buildId === slotBuildIds[draggedIndex]) : undefined;
 
   return (
-    // border-red-500 (overriding the plain default border) once this
-    // team's own builds have drifted into conflict -- see conflicts'
-    // own comment above.
-    <li className={`space-y-3 rounded-xl border p-4 ${conflicts.length > 0 ? "border-red-500" : ""}`}>
+    // relative -- lets the group-select overlay below (position: absolute)
+    // cover exactly this card, regardless of group mode; harmless when
+    // groupSelection is undefined, same as always. Border color: red
+    // (conflicts.length > 0) wins over blue (groupSelection?.selected) --
+    // a drifted-into-conflict team is the more urgent signal of the two
+    // -- which in turn wins over the plain default border. Same border-
+    // only "selected" convention WeaponCard/CharacterCard/the build
+    // picker's own cards already use (a color swap on the SAME border
+    // width, not a tinted overlay or a separate badge) -- this used to be
+    // its own translucent-tint + checkmark-badge treatment, replaced
+    // here for visual consistency with the rest of the app.
+    <li
+      className={`relative space-y-3 rounded-xl border p-4 ${
+        conflicts.length > 0 ? "border-red-500" : groupSelection?.selected ? "border-blue-500" : ""
+      }`}
+    >
+      {/* Full-card click-catcher -- see this component's own groupSelection
+          prop comment on why this is simpler and safer than threading a
+          "disabled" flag through every one of this card's own interactive
+          elements (rename input, 4 BuildSlotPickers, drag start, bump-to-
+          front, delete). z-20 (an explicit stacking context) keeps it on
+          top of this card's own plain, non-positioned content regardless
+          of DOM order; BuildSlotPicker's own Modal (z-40) and the drag
+          preview's own portal (z-50) are unaffected since both escape this
+          card's local stacking entirely via position: fixed. No tint/
+          badge of its own any more -- the card's own border above (blue
+          when selected) is the only visual now, same as every other
+          "selected" card in this app. */}
+      {groupSelection && (
+        <div
+          onClick={groupSelection.onToggle}
+          role="button"
+          aria-pressed={groupSelection.selected}
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            groupSelection.onToggle();
+          }}
+          className="absolute inset-0 z-20 cursor-pointer rounded-xl hover:bg-white/5"
+        />
+      )}
+
       {/* min-h-10 -- matches the Moonsign/Hexerei badges' own fixed h-10,
           the tallest thing this row can ever contain. Without it, a team
           with no active resonance/Moonsign/Hexerei rendered a shorter row
@@ -739,6 +792,7 @@ export function TeamManager({
   header,
   builds,
   initialTeams,
+  initialGroups,
 }: {
   // The page's own title block -- same reasoning as OwnedBuildManager's
   // own header prop (see page.tsx's own comment): "Create team" drives
@@ -747,6 +801,7 @@ export function TeamManager({
   header: ReactNode;
   builds: BuildOption[];
   initialTeams: TeamItem[];
+  initialGroups: GroupItem[];
 }) {
   // Following "Edit build" (build-detail-modal.tsx) to the Builds page and
   // back via the browser Back button -- or any other same-document
@@ -765,8 +820,67 @@ export function TeamManager({
     setPrevInitialTeams(initialTeams);
     setTeams(initialTeams);
   }
+  // Same staleness fix, same reason, for the saved groups list.
+  const [groups, setGroups] = useState(initialGroups);
+  const [prevInitialGroups, setPrevInitialGroups] = useState(initialGroups);
+  if (initialGroups !== prevInitialGroups) {
+    setPrevInitialGroups(initialGroups);
+    setGroups(initialGroups);
+  }
   const [, startTransition] = useTransition();
   const { confirm, notify } = useDialogs();
+
+  // null outside "group mode"; set by "Create group"/"Edit group" below.
+  // groupId is null while CREATING (nothing to update yet) and the saved
+  // group's own id while editing. teamIds is the in-progress draft
+  // selection, in the order teams were added to it -- appended to on
+  // select, spliced out on deselect -- which is what the saved group's
+  // own "order selected" display (GroupTeam's own schema comment) reflects
+  // once this is saved.
+  const [groupDraft, setGroupDraft] = useState<{ groupId: number | null; name: string; teamIds: number[] } | null>(
+    null
+  );
+  // A server-side error from the last save attempt (e.g. a team deleted by
+  // another tab between this draft's own live client-side check and the
+  // actual save) -- distinct from the live validation below, which is
+  // purely derived from current teams/builds and never itself an
+  // error object.
+  const [groupSaveError, setGroupSaveError] = useState<string | null>(null);
+  const inGroupMode = groupDraft !== null;
+
+  // Live, non-blocking validation of the in-progress draft -- same
+  // generic detectOverlaps this app's own Key decisions mandate reusing
+  // everywhere, via combinedOverlapBuilds (filter-sort.ts). Unlike a
+  // single team's own build-picker (which hard-blocks a conflicting
+  // candidate from ever being selectable), picking a conflicting TEAM
+  // into a group draft is allowed -- only saving is gated on this being
+  // empty -- since seeing the full intended set before deciding what to
+  // swap out is more useful here than blocking the pick outright.
+  const groupDraftConflicts = groupDraft ? detectOverlaps(combinedOverlapBuilds(teams, builds, groupDraft.teamIds)) : [];
+
+  // Which dropdown entry is selected -- null is "All teams" (the default,
+  // shows every team, unfiltered). Reset to null whenever the selected
+  // group no longer exists (e.g. it was deleted in another tab) so the
+  // dropdown doesn't silently point at nothing.
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  // Plain render-time state adjustment (same shape as the
+  // prevInitialTeams/prevInitialGroups comparisons above), not an effect
+  // -- safe from infinite recursion since the condition itself becomes
+  // false the instant this runs (selectedGroupId !== null fails on the
+  // next render).
+  if (selectedGroupId !== null && !groups.some((g) => g.id === selectedGroupId)) {
+    setSelectedGroupId(null);
+  }
+
+  // Whether each saved group's OWN current members have drifted into
+  // conflict since it was last saved (a team's builds can change after
+  // the fact, same reasoning computeTeamConflicts already has for a
+  // single team) -- computed for every group up front, not just whichever
+  // one is selected, so the dropdown itself can flag a drifted group
+  // before the user even opens it.
+  const groupConflictById = new Map(
+    groups.map((group) => [group.id, detectOverlaps(combinedOverlapBuilds(teams, builds, group.teamIds)).length > 0])
+  );
 
   // One shared BuildDetailModal for the whole page, not one per TeamCard --
   // at most one can ever be open at a time regardless of which slot
@@ -900,7 +1014,22 @@ export function TeamManager({
   const [characterSearch, setCharacterSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const filtered = filterTeams(teams, teamNameSearch, characterSearch);
+  // While a specific group is selected (and NOT in group mode -- group
+  // mode always shows the full list, see TeamCard's own groupSelection
+  // prop comment on why everything needs to stay pickable then), the list
+  // is scoped to exactly that group's own teams, in ITS saved order (see
+  // GroupItem's own comment on why teamIds is already in that order) --
+  // filterTeams only filters, never re-sorts, so search still narrows
+  // within that order rather than disturbing it.
+  const selectedGroup = selectedGroupId !== null ? groups.find((g) => g.id === selectedGroupId) : undefined;
+  const displayedTeams =
+    !inGroupMode && selectedGroup
+      ? selectedGroup.teamIds
+          .map((teamId) => teams.find((t) => t.id === teamId))
+          .filter((team): team is TeamItem => team !== undefined)
+      : teams;
+
+  const filtered = filterTeams(displayedTeams, teamNameSearch, characterSearch);
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
 
   // No form, no modal -- see DEFAULT_TEAM_NAME's own comment. Errors from
@@ -925,6 +1054,91 @@ export function TeamManager({
       setCharacterSearch("");
       setPage(1);
       setTeams((prev) => [{ id: result.team.id, name: result.team.name, members: [] }, ...prev]);
+      // Auto-selects a freshly created team into the in-progress group
+      // draft, per the user's own request -- "New Team" is only even
+      // visible right now because we're either in group mode or viewing
+      // "All teams" (see its own render below), and only the group-mode
+      // case needs this.
+      if (groupDraft) {
+        setGroupDraft((prev) => (prev ? { ...prev, teamIds: [...prev.teamIds, result.team.id] } : prev));
+      }
+    });
+  }
+
+  function handleCreateGroup() {
+    setGroupDraft({ groupId: null, name: "New Group", teamIds: [] });
+    setGroupSaveError(null);
+  }
+
+  function handleEditGroup() {
+    if (!selectedGroup) return;
+    setGroupDraft({ groupId: selectedGroup.id, name: selectedGroup.name, teamIds: [...selectedGroup.teamIds] });
+    setGroupSaveError(null);
+  }
+
+  // Only deletes the Group/GroupTeam rows -- same as deleting a Team or
+  // Roster, this never touches the teams themselves, just the saved
+  // combination of them.
+  async function handleDeleteGroup() {
+    if (!selectedGroup) return;
+    const groupId = selectedGroup.id;
+    const confirmed = await confirm(`Delete the group "${selectedGroup.name}"? This can't be undone.`, {
+      title: "Delete group",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    startTransition(() => {
+      const previous = groups;
+      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      setSelectedGroupId(null);
+      deleteGroup(groupId).catch(() => setGroups(previous));
+    });
+  }
+
+  function handleCancelGroupMode() {
+    setGroupDraft(null);
+    setGroupSaveError(null);
+  }
+
+  function handleToggleGroupTeam(teamId: number) {
+    setGroupDraft((prev) => {
+      if (!prev) return prev;
+      // Splice out on deselect, append on select -- append (not insert at
+      // the front) is what makes "order selected" mean what it says: a
+      // team re-added after being removed goes back to the END of the
+      // order, not its old position.
+      const teamIds = prev.teamIds.includes(teamId)
+        ? prev.teamIds.filter((id) => id !== teamId)
+        : [...prev.teamIds, teamId];
+      return { ...prev, teamIds };
+    });
+  }
+
+  function handleSaveGroup() {
+    if (!groupDraft) return;
+    const draft = groupDraft;
+    startTransition(async () => {
+      const result =
+        draft.groupId === null
+          ? await createGroup(draft.name, draft.teamIds)
+          : await updateGroup(draft.groupId, draft.name, draft.teamIds);
+      if ("errors" in result) {
+        setGroupSaveError(result.errors.name?.[0] ?? "Couldn't save this group.");
+        return;
+      }
+      if ("error" in result) {
+        setGroupSaveError(result.error);
+        return;
+      }
+      const saved: GroupItem = { id: result.group.id, name: result.group.name, teamIds: draft.teamIds };
+      setGroups((prev) => {
+        const next = prev.some((g) => g.id === saved.id) ? prev.map((g) => (g.id === saved.id ? saved : g)) : [...prev, saved];
+        return [...next].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setSelectedGroupId(saved.id);
+      setGroupDraft(null);
+      setGroupSaveError(null);
     });
   }
 
@@ -1098,6 +1312,108 @@ export function TeamManager({
           />
         </div>
 
+        {/* "Group mode" -- see groupDraft's own comment. Replaces the
+            dropdown/Create group/Edit group row entirely while active
+            (switching groups mid-edit doesn't mean anything), rather than
+            disabling it in place. */}
+        {groupDraft ? (
+          <div className="space-y-2 rounded-lg border border-blue-500 bg-blue-500/5 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-sm font-semibold" htmlFor="group-draft-name">
+                Group name:
+              </label>
+              <input
+                id="group-draft-name"
+                type="text"
+                autoFocus
+                value={groupDraft.name}
+                onChange={(event) => setGroupDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+                className="w-64 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
+              />
+              <span className="text-sm text-gray-500 dark:text-gray-300">
+                {groupDraft.teamIds.length} team{groupDraft.teamIds.length === 1 ? "" : "s"} selected
+              </span>
+              <div className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelGroupMode}
+                  className="rounded border px-3 py-1.5 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveGroup}
+                  disabled={groupDraftConflicts.length > 0 || groupDraft.name.trim() === ""}
+                  className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+                >
+                  Save group
+                </button>
+              </div>
+            </div>
+            {/* Live, not a save-time response -- re-evaluated on every
+                selection change (groupDraftConflicts' own comment), so
+                this appears/disappears as teams are picked, not only
+                after a failed Save attempt. */}
+            {groupDraftConflicts.length > 0 && (
+              <p className="text-sm text-red-500">
+                These selected teams share a weapon, artifact, or character with each other -- remove one before
+                saving.
+              </p>
+            )}
+            {groupSaveError && <p className="text-sm text-red-500">{groupSaveError}</p>}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedGroupId ?? ""}
+              onChange={(event) => {
+                setSelectedGroupId(event.target.value === "" ? null : Number(event.target.value));
+                setPage(1);
+              }}
+              className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+            >
+              <option value="">All teams</option>
+              {groups.map((group) => (
+                // text-red-600 -- flags a saved group that's drifted into
+                // conflict since it was last saved (groupConflictById's
+                // own comment), without forcing the user to fix it before
+                // viewing/using it -- the " (conflict)" suffix carries the
+                // same signal for anyone who can't rely on the color alone.
+                <option key={group.id} value={group.id} className={groupConflictById.get(group.id) ? "text-red-600" : undefined}>
+                  {group.name}
+                  {groupConflictById.get(group.id) ? " (conflict)" : ""}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleCreateGroup}
+              className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <span className="text-sm leading-none">+</span> Create group
+            </button>
+            {selectedGroup && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleEditGroup}
+                  className="rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  Edit group
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteGroup}
+                  className="rounded-full border border-red-600 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-600/10"
+                >
+                  Delete group
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {/* justify-between -- the count+Create group stays on the left
             (unchanged from before), and PaginationNavButtons joins on the
             right so Previous/Next are reachable from both the top and
@@ -1130,13 +1446,22 @@ export function TeamManager({
             <p className="text-sm text-gray-500 dark:text-gray-300">
               {filtered.length} team{filtered.length === 1 ? "" : "s"}
             </p>
-            <button
-              type="button"
-              onClick={handleCreate}
-              className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
-            >
-              <span className="text-sm leading-none">+</span> New Team
-            </button>
+            {/* Hidden while viewing a specific group outside group mode --
+                creating a plain team there wouldn't belong to the group
+                being viewed, which would read as it silently vanishing.
+                Still shown for "All teams" (selectedGroup undefined) and
+                for group mode itself (inGroupMode), where a freshly
+                created team is auto-selected into the draft (see
+                handleCreate's own comment). */}
+            {(inGroupMode || !selectedGroup) && (
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                <span className="text-sm leading-none">+</span> New Team
+              </button>
+            )}
           </div>
 
           <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
@@ -1167,6 +1492,11 @@ export function TeamManager({
                 onPickerOpenChange={(slotIndex, open) => handlePickerOpenChange(team.id, slotIndex, open)}
                 onBumpToFront={() => handleBumpToFront(team.id)}
                 onDelete={() => handleDelete(team.id)}
+                groupSelection={
+                  groupDraft
+                    ? { selected: groupDraft.teamIds.includes(team.id), onToggle: () => handleToggleGroupTeam(team.id) }
+                    : undefined
+                }
               />
             ))}
           </ul>

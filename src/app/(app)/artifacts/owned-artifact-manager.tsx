@@ -358,7 +358,7 @@ export function OwnedArtifactManager({
         ))}
       </div>
 
-      {/* min-h-8 -- same fix as the Teams/Builds/Rosters/Lineups pages'
+      {/* min-h-8 -- same fix as the Teams/Builds/Rosters pages'
           own top row: without a reserved height, crossing into a 2nd page
           grows this row (PaginationNavButtons' own buttons are taller
           than the count text alone) and visibly shifts the grid below it
