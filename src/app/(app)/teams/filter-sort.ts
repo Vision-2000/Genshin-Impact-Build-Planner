@@ -1,5 +1,5 @@
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
-import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
+import { detectOverlaps, type OverlapCheckBuild, type OverlapConflict } from "@/lib/overlap";
 import type { ActiveSetEffectItem } from "@/lib/active-set-effects";
 import type { SortDirection } from "@/lib/sort";
 import type { BuildSortKey } from "../builds/filter-sort";
@@ -110,11 +110,156 @@ export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
 // single team). Order of `teamIds` doesn't matter here -- detectOverlaps
 // itself doesn't care which build came from which team, only that none of
 // them collide.
+// Deliberately NOT deduped by buildId -- unlike reusing the same build
+// across unrelated Teams (fine on its own, per CLAUDE.md: "a build can be
+// reused across multiple teams/rosters simultaneously"), a GROUP exists
+// specifically to bundle teams meant to be used TOGETHER. The same build
+// sitting in two of a group's own teams means the same real character/
+// weapon/artifacts would need to be active in two places simultaneously
+// -- not something any actual in-game content allows -- so this has to
+// stay flagged as a genuine conflict (duplicate-character, structurally,
+// since it's the same ownedCharacterId appearing twice) rather than
+// silently deduped away. See describeCharacterConflict's own
+// teamNamesForBuild for the other half of this: correctly naming BOTH
+// teams a reused build sits in, not just whichever one happens to be
+// found first.
 export function combinedOverlapBuilds(teams: TeamItem[], builds: BuildOption[], teamIds: number[]): OverlapCheckBuild[] {
   const idSet = new Set(teamIds);
   return teams
     .filter((team) => idSet.has(team.id))
     .flatMap((team) => memberBuildsForTeam(team, builds).map(toOverlapCheckBuild));
+}
+
+// Same structured-parts shape as TeamConflictPart, plus teamName on each
+// build -- the one thing a single team's own conflict message
+// (describeTeamConflict) never needed to say, since everything there was
+// already understood to be in the same team.
+export type GroupConflictPart =
+  | { type: "build"; characterName: string; buildName: string; teamName: string }
+  | { type: "text"; text: string };
+
+function teamNameForBuild(buildId: number, teams: TeamItem[]): string {
+  return teams.find((team) => team.members.some((member) => member.buildId === buildId))?.name ?? "Unknown team";
+}
+
+// EVERY team containing this build, not just the first -- needed
+// specifically for the "same build reused across two of the group's own
+// teams" case (combinedOverlapBuilds' own comment on why that stays a
+// real conflict): detectOverlaps sees that as the same ownedCharacterId
+// appearing twice, so conflict.buildIds comes back as [X, X] -- two
+// IDENTICAL ids, not two different builds. teamNameForBuild's own
+// .find() would then return the SAME (first-matching) team for both
+// occurrences, collapsing the message down to just one team once
+// deduped -- which is exactly the bug this fixes, by finding every team
+// a given id sits in instead of stopping at the first.
+function teamNamesForBuild(buildId: number, teams: TeamItem[]): string[] {
+  return teams.filter((team) => team.members.some((member) => member.buildId === buildId)).map((team) => team.name);
+}
+
+// Character-level conflicts (duplicate-character, and exclusivity-conflict
+// -- currently always Traveler, the only exclusivityGroup value this app
+// ever sets, see Character's own schema comment) take priority over
+// weapon/artifact conflicts in the group-mode UI -- see
+// prioritizeGroupConflicts below. Deliberately a flat sentence, not the
+// build-enumeration shape describeGroupConflict's own weapon/artifact
+// branch uses below it -- which build within the group happens to hold
+// that character isn't the useful part of this message, which team(s)
+// it's duplicated across is.
+function describeCharacterConflict(
+  conflict: Extract<OverlapConflict, { type: "duplicate-character" | "exclusivity-conflict" }>,
+  teams: TeamItem[],
+  builds: BuildOption[]
+): GroupConflictPart[] {
+  const characterName =
+    conflict.type === "duplicate-character"
+      ? builds.find((b) => b.ownedCharacterId === conflict.ownedCharacterId)?.characterName ?? "This character"
+      : // exclusivityGroup itself (e.g. "traveler"), not any one involved
+        // build's own characterName -- the two conflicting builds can be
+        // DIFFERENT Traveler elements/genders, so there's no single
+        // "the character" to name; the shared group identity is what's
+        // actually being duplicated.
+        conflict.exclusivityGroup.charAt(0).toUpperCase() + conflict.exclusivityGroup.slice(1);
+
+  // flatMap (not map) -- a conflict between the SAME build reused across
+  // two teams comes back as buildIds [X, X], so mapping to one name per
+  // id would only ever find one team per (identical) id; flatMap over
+  // teamNamesForBuild's own per-id list of every team that build sits in
+  // is what actually recovers both.
+  const teamNames = [...new Set(conflict.buildIds.flatMap((id) => teamNamesForBuild(id, teams)))];
+
+  return [{ type: "text", text: `${characterName} is present in multiple teams: ${teamNames.join(", ")}` }];
+}
+
+// Describes one detectOverlaps conflict across a GROUP's own draft/saved
+// selection of teams (team-manager.tsx's own groupDraftConflicts) --
+// unlike describeTeamConflict, which only ever has to handle shared-
+// weapon/shared-artifact (a single already-SAVED team structurally can't
+// have a duplicate-character or exclusivityGroup conflict -- see
+// TeamConflict's own comment on why), a GROUP spans multiple teams, so
+// both of those ARE genuinely reachable here: the same character's build
+// sitting in two different teams, or two Traveler elements each in their
+// own team. Takes the raw, unnarrowed OverlapConflict (not TeamConflict)
+// for exactly that reason -- the character-level branch is split out into
+// describeCharacterConflict above, since its message shape is genuinely
+// different (no build enumeration at all), not just a different suffix.
+export function describeGroupConflict(conflict: OverlapConflict, teams: TeamItem[], builds: BuildOption[]): GroupConflictPart[] {
+  if (conflict.type === "duplicate-character" || conflict.type === "exclusivity-conflict") {
+    return describeCharacterConflict(conflict, teams, builds);
+  }
+
+  const involved = conflict.buildIds
+    .map((id) => {
+      const build = builds.find((b) => b.buildId === id);
+      return build ? { build, teamName: teamNameForBuild(id, teams) } : undefined;
+    })
+    .filter((entry): entry is { build: BuildOption; teamName: string } => entry !== undefined);
+
+  const parts: GroupConflictPart[] = [];
+  involved.forEach(({ build, teamName }, index) => {
+    if (index > 0) parts.push({ type: "text", text: " and " });
+    parts.push({ type: "build", characterName: build.characterName, buildName: build.name, teamName });
+  });
+
+  if (conflict.type === "shared-weapon") {
+    parts.push({ type: "text", text: " have the same weapon equipped" });
+  } else {
+    // shared-artifact -- the slot (OverlapConflict itself only carries the
+    // raw ownedArtifactId) is looked up from whichever involved build
+    // actually has it, same technique computeTeamConflicts uses for its
+    // own enriched TeamConflict.
+    const slot = builds.flatMap((b) => b.ownedArtifacts).find((a) => a.ownedArtifactId === conflict.ownedArtifactId)?.slot;
+    parts.push({ type: "text", text: ` have the same artifact${slot ? ` - ${slot}` : ""} equipped` });
+  }
+
+  return parts;
+}
+
+// Character-level conflicts (duplicate-character/exclusivity-conflict)
+// take priority over shared-weapon/shared-artifact ones, per the user's
+// own explicit request: once a build is already flagged for being the
+// wrong CHARACTER for this group (present in multiple teams, or sharing
+// Traveler's own exclusivity slot with another team), a weapon/artifact
+// it also happens to share is redundant noise on top of that -- the
+// character conflict is the one actually worth fixing, and showing both
+// at once read as more confusing, not more informative. Keeps every
+// character-level conflict unconditionally; drops a shared-weapon/
+// shared-artifact one only if it shares a build with some character-
+// level conflict (not necessarily the SAME pair -- any one of its own
+// builds already being character-flagged is enough to suppress it).
+export function prioritizeGroupConflicts(conflicts: OverlapConflict[]): OverlapConflict[] {
+  const characterConflicts = conflicts.filter(
+    (conflict) => conflict.type === "duplicate-character" || conflict.type === "exclusivity-conflict"
+  );
+  const flaggedBuildIds = new Set(characterConflicts.flatMap((conflict) => conflict.buildIds));
+
+  const otherConflicts = conflicts.filter(
+    (conflict) =>
+      conflict.type !== "duplicate-character" &&
+      conflict.type !== "exclusivity-conflict" &&
+      !conflict.buildIds.some((id) => flaggedBuildIds.has(id))
+  );
+
+  return [...characterConflicts, ...otherConflicts];
 }
 
 export type BuildOptionFilters = {

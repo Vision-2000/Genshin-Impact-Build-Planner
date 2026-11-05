@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
+import { detectOverlaps } from "@/lib/overlap";
 import {
   filterTeams,
   filterAndSortBuildOptions,
@@ -7,6 +8,9 @@ import {
   computeTeamConflicts,
   buildConflictFlags,
   describeTeamConflict,
+  describeGroupConflict,
+  prioritizeGroupConflicts,
+  toOverlapCheckBuild,
   type TeamItem,
   type TeamMemberItem,
   type BuildOption,
@@ -122,6 +126,21 @@ describe("combinedOverlapBuilds", () => {
       ownedWeaponId: 10,
       ownedArtifactIds: [],
     });
+  });
+
+  // Deliberately NOT deduped -- a build reused across two of the GROUP's
+  // own teams has to keep showing up once per team (see
+  // combinedOverlapBuilds' own comment on why: unlike two unrelated
+  // teams, a group's teams are meant to be used together, so the same
+  // build in two of them is a genuine conflict detectOverlaps needs to
+  // actually see, not one that gets silently merged away first).
+  it("does NOT dedupe a build that's a member of more than one of the given teams", () => {
+    const reusedBuildTeams: TeamItem[] = [
+      team({ id: 1, name: "Team A", members: [member({ buildId: 1 })] }),
+      team({ id: 2, name: "Team B", members: [member({ buildId: 1 })] }),
+    ];
+    const result = combinedOverlapBuilds(reusedBuildTeams, builds, [1, 2]);
+    expect(result.map((b) => b.buildId)).toEqual([1, 1]);
   });
 });
 
@@ -330,5 +349,143 @@ describe("describeTeamConflict", () => {
       { type: "build", characterName: "Xingqiu", buildName: "Support" },
       { type: "text", text: " have the same artifact - Circlet equipped" },
     ]);
+  });
+});
+
+describe("describeGroupConflict", () => {
+  const hutaoMainDps = buildOption({ buildId: 1, name: "Main DPS", characterName: "Hu Tao", ownedWeaponId: 10 });
+  const xingqiuSupport = buildOption({
+    buildId: 2,
+    name: "Support",
+    characterName: "Xingqiu",
+    ownedCharacterId: 2,
+    ownedWeaponId: 10,
+  });
+  const builds = [hutaoMainDps, xingqiuSupport];
+  const teams: TeamItem[] = [
+    team({ id: 1, name: "Team A", members: [member({ buildId: 1 })] }),
+    team({ id: 2, name: "Team B", members: [member({ buildId: 2 })] }),
+  ];
+
+  it("names both builds and their own team for a shared weapon", () => {
+    const [conflict] = detectOverlaps(builds.map(toOverlapCheckBuild));
+    expect(describeGroupConflict(conflict, teams, builds)).toEqual([
+      { type: "build", characterName: "Hu Tao", buildName: "Main DPS", teamName: "Team A" },
+      { type: "text", text: " and " },
+      { type: "build", characterName: "Xingqiu", buildName: "Support", teamName: "Team B" },
+      { type: "text", text: " have the same weapon equipped" },
+    ]);
+  });
+
+  it("names both builds and their own team for a shared artifact, with its own slot", () => {
+    const artifactBuilds = [
+      buildOption({
+        buildId: 1,
+        name: "Main DPS",
+        characterName: "Hu Tao",
+        ownedArtifacts: [{ ownedArtifactId: 20, slot: ArtifactSlot.Circlet }],
+      }),
+      buildOption({
+        buildId: 2,
+        name: "Support",
+        characterName: "Xingqiu",
+        ownedCharacterId: 2,
+        ownedArtifacts: [{ ownedArtifactId: 20, slot: ArtifactSlot.Circlet }],
+      }),
+    ];
+    const [conflict] = detectOverlaps(artifactBuilds.map(toOverlapCheckBuild));
+    expect(describeGroupConflict(conflict, teams, artifactBuilds)).toEqual([
+      { type: "build", characterName: "Hu Tao", buildName: "Main DPS", teamName: "Team A" },
+      { type: "text", text: " and " },
+      { type: "build", characterName: "Xingqiu", buildName: "Support", teamName: "Team B" },
+      { type: "text", text: " have the same artifact - Circlet equipped" },
+    ]);
+  });
+
+  // A duplicate-character/exclusivity-conflict can genuinely occur across
+  // TWO different teams (unlike within one already-saved team -- see
+  // TeamConflict's own comment) -- this is exactly the case
+  // describeGroupConflict exists to handle that describeTeamConflict
+  // never needs to. A flat "<character> is present in multiple teams"
+  // sentence, not the build-enumeration shape the weapon/artifact cases
+  // above use -- which build holds the character isn't the useful part
+  // of this message.
+  it("names the character and its own teams for a duplicate character, across two different teams", () => {
+    const duplicateCharacterBuilds = [
+      buildOption({ buildId: 1, name: "Main DPS", characterName: "Hu Tao", ownedCharacterId: 1 }),
+      buildOption({ buildId: 2, name: "Alt Build", characterName: "Hu Tao", ownedCharacterId: 1 }),
+    ];
+    const [conflict] = detectOverlaps(duplicateCharacterBuilds.map(toOverlapCheckBuild));
+    expect(describeGroupConflict(conflict, teams, duplicateCharacterBuilds)).toEqual([
+      { type: "text", text: "Hu Tao is present in multiple teams: Team A, Team B" },
+    ]);
+  });
+
+  it("names the capitalized exclusivity group (not either build's own differing characterName) for an exclusivity conflict", () => {
+    const travelerBuilds = [
+      buildOption({ buildId: 1, name: "Anemo Build", characterName: "Traveler (Female) (Anemo)", exclusivityGroup: "traveler" }),
+      buildOption({
+        buildId: 2,
+        name: "Pyro Build",
+        characterName: "Traveler (Male) (Pyro)",
+        ownedCharacterId: 2,
+        exclusivityGroup: "traveler",
+      }),
+    ];
+    const [conflict] = detectOverlaps(travelerBuilds.map(toOverlapCheckBuild));
+    expect(describeGroupConflict(conflict, teams, travelerBuilds)).toEqual([
+      { type: "text", text: "Traveler is present in multiple teams: Team A, Team B" },
+    ]);
+  });
+
+  // Regression test: the SAME build (not just the same character) sitting
+  // in two of the group's own teams produces a duplicate-character
+  // conflict whose buildIds come back as [X, X] -- two IDENTICAL ids, not
+  // two different builds (see combinedOverlapBuilds/teamNamesForBuild's
+  // own comments on why). Naively resolving each id to "the" team it's
+  // in (singular, first match) would find the SAME team both times and
+  // report only one -- this confirms both teams the reused build
+  // actually sits in are named.
+  it("names BOTH teams when the exact same build (not just the same character) is reused across two teams", () => {
+    const reusedBuildTeams: TeamItem[] = [
+      team({ id: 1, name: "Team A", members: [member({ buildId: 1 })] }),
+      team({ id: 2, name: "Team B", members: [member({ buildId: 1 })] }),
+    ];
+    const [conflict] = detectOverlaps([hutaoMainDps, hutaoMainDps].map(toOverlapCheckBuild));
+    expect(describeGroupConflict(conflict, reusedBuildTeams, [hutaoMainDps])).toEqual([
+      { type: "text", text: "Hu Tao is present in multiple teams: Team A, Team B" },
+    ]);
+  });
+});
+
+describe("prioritizeGroupConflicts", () => {
+  it("keeps every character-level conflict unconditionally", () => {
+    const conflicts = detectOverlaps([
+      toOverlapCheckBuild(buildOption({ buildId: 1, ownedCharacterId: 1 })),
+      toOverlapCheckBuild(buildOption({ buildId: 2, ownedCharacterId: 1 })),
+    ]);
+    expect(prioritizeGroupConflicts(conflicts)).toEqual(conflicts);
+  });
+
+  it("drops a shared-weapon/shared-artifact conflict that shares a build with a character-level one", () => {
+    // Builds 1 and 2 are a duplicate-character conflict; build 1 ALSO
+    // shares a weapon with build 3 (a different, unrelated character) --
+    // that second conflict should be suppressed, since build 1 is already
+    // flagged for the more fundamental character conflict.
+    const conflicts = detectOverlaps([
+      toOverlapCheckBuild(buildOption({ buildId: 1, ownedCharacterId: 1, ownedWeaponId: 10 })),
+      toOverlapCheckBuild(buildOption({ buildId: 2, ownedCharacterId: 1 })),
+      toOverlapCheckBuild(buildOption({ buildId: 3, ownedCharacterId: 3, ownedWeaponId: 10 })),
+    ]);
+    expect(conflicts).toHaveLength(2); // sanity check: both conflicts exist before prioritizing
+    expect(prioritizeGroupConflicts(conflicts)).toEqual([{ type: "duplicate-character", ownedCharacterId: 1, buildIds: [1, 2] }]);
+  });
+
+  it("keeps a shared-weapon/shared-artifact conflict whose builds are untouched by any character-level conflict", () => {
+    const conflicts = detectOverlaps([
+      toOverlapCheckBuild(buildOption({ buildId: 1, ownedCharacterId: 1, ownedWeaponId: 10 })),
+      toOverlapCheckBuild(buildOption({ buildId: 2, ownedCharacterId: 2, ownedWeaponId: 10 })),
+    ]);
+    expect(prioritizeGroupConflicts(conflicts)).toEqual(conflicts);
   });
 });

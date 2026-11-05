@@ -39,6 +39,8 @@ import {
   buildConflictFlags,
   describeTeamConflict,
   combinedOverlapBuilds,
+  describeGroupConflict,
+  prioritizeGroupConflicts,
   type BuildOption,
   type TeamItem,
   type GroupItem,
@@ -1354,12 +1356,34 @@ export function TeamManager({
             {/* Live, not a save-time response -- re-evaluated on every
                 selection change (groupDraftConflicts' own comment), so
                 this appears/disappears as teams are picked, not only
-                after a failed Save attempt. */}
+                after a failed Save attempt. One line per conflict, each
+                naming the exact character/build/team on both sides (via
+                describeGroupConflict) rather than a single generic
+                sentence -- same build-name-italicized-in-parens
+                convention a single team's own drifted-conflict warning
+                already uses, with " in <team>" added since there's more
+                than one team's worth of builds in play here.
+                prioritizeGroupConflicts (not the raw list) is what's
+                actually rendered -- the disabled check above still uses
+                the unfiltered groupDraftConflicts, since Save should stay
+                blocked by a suppressed weapon/artifact conflict too, only
+                its own redundant message is hidden. */}
             {groupDraftConflicts.length > 0 && (
-              <p className="text-sm text-red-500">
-                These selected teams share a weapon, artifact, or character with each other -- remove one before
-                saving.
-              </p>
+              <ul className="space-y-1 text-sm text-red-500">
+                {prioritizeGroupConflicts(groupDraftConflicts).map((conflict, index) => (
+                  <li key={index}>
+                    {describeGroupConflict(conflict, teams, builds).map((part, partIndex) =>
+                      part.type === "build" ? (
+                        <span key={partIndex}>
+                          {part.characterName} (<em>{part.buildName}</em>) in {part.teamName}
+                        </span>
+                      ) : (
+                        <span key={partIndex}>{part.text}</span>
+                      )
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
             {groupSaveError && <p className="text-sm text-red-500">{groupSaveError}</p>}
           </div>
