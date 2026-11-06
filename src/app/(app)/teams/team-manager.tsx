@@ -135,6 +135,12 @@ function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: s
         if (trimmed && trimmed !== value) onCommit(trimmed);
         else setDraft(value);
       }}
+      // stopPropagation -- TeamCard's own root <li> now toggles group
+      // selection on click (see its own comment), so a click that's
+      // really just focusing this input to rename the team has to be
+      // stopped here, or it'd also toggle the card out from under the
+      // user while they're mid-click on an unrelated field.
+      onClick={(event) => event.stopPropagation()}
       // max-w-xs (not flex-1 alone) -- flex-1 used to be harmless when the
       // team card itself was narrow (a multi-column grid), but now that
       // the card spans the full page width (see the "always 1 column"
@@ -430,49 +436,34 @@ function TeamCard({
   const draggedBuild = draggedIndex !== null ? builds.find((b) => b.buildId === slotBuildIds[draggedIndex]) : undefined;
 
   return (
-    // relative -- lets the group-select overlay below (position: absolute)
-    // cover exactly this card, regardless of group mode; harmless when
-    // groupSelection is undefined, same as always. Border color: red
-    // (conflicts.length > 0) wins over blue (groupSelection?.selected) --
-    // a drifted-into-conflict team is the more urgent signal of the two
-    // -- which in turn wins over the plain default border. Same border-
-    // only "selected" convention WeaponCard/CharacterCard/the build
-    // picker's own cards already use (a color swap on the SAME border
-    // width, not a tinted overlay or a separate badge) -- this used to be
-    // its own translucent-tint + checkmark-badge treatment, replaced
-    // here for visual consistency with the rest of the app.
+    // Border color: red (conflicts.length > 0) wins over blue
+    // (groupSelection?.selected) -- a drifted-into-conflict team is the
+    // more urgent signal of the two -- which in turn wins over the plain
+    // default border. Same border-only "selected" convention WeaponCard/
+    // CharacterCard/the build picker's own cards already use (a color
+    // swap on the SAME border width).
+    //
+    // onClick toggles group selection directly on the card -- no full-
+    // card OVERLAY any more (that used to sit on TOP and block every one
+    // of this card's own interactive elements), and no longer limited to
+    // the small checkbox either (clicking it alone felt like an extra,
+    // unwanted step on top of what should just be "click the card").
+    // Instead, every genuinely interactive descendant (the checkbox
+    // itself, the rename input, each of the 4 BuildSlotPickers, Move to
+    // top, Delete) stops this click from bubbling any further in ITS OWN
+    // handler, so clicking one of those always takes priority and does
+    // its own thing; a click anywhere else on the card (empty space,
+    // labels, the resonance/Moonsign/Hexerei tooltip icons, which have no
+    // click behavior of their own to begin with) falls through to this
+    // handler and toggles selection instead. Undefined (not a no-op
+    // function) when groupSelection itself is undefined, so clicking the
+    // card outside group mode does nothing, same as always.
     <li
-      className={`relative space-y-3 rounded-xl border p-4 ${
+      onClick={groupSelection?.onToggle}
+      className={`space-y-3 rounded-xl border p-4 ${groupSelection ? "cursor-pointer" : ""} ${
         conflicts.length > 0 ? "border-red-500" : groupSelection?.selected ? "border-blue-500" : ""
       }`}
     >
-      {/* Full-card click-catcher -- see this component's own groupSelection
-          prop comment on why this is simpler and safer than threading a
-          "disabled" flag through every one of this card's own interactive
-          elements (rename input, 4 BuildSlotPickers, drag start, bump-to-
-          front, delete). z-20 (an explicit stacking context) keeps it on
-          top of this card's own plain, non-positioned content regardless
-          of DOM order; BuildSlotPicker's own Modal (z-40) and the drag
-          preview's own portal (z-50) are unaffected since both escape this
-          card's local stacking entirely via position: fixed. No tint/
-          badge of its own any more -- the card's own border above (blue
-          when selected) is the only visual now, same as every other
-          "selected" card in this app. */}
-      {groupSelection && (
-        <div
-          onClick={groupSelection.onToggle}
-          role="button"
-          aria-pressed={groupSelection.selected}
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
-            groupSelection.onToggle();
-          }}
-          className="absolute inset-0 z-20 cursor-pointer rounded-xl hover:bg-white/5"
-        />
-      )}
-
       {/* min-h-10 -- matches the Moonsign/Hexerei badges' own fixed h-10,
           the tallest thing this row can ever contain. Without it, a team
           with no active resonance/Moonsign/Hexerei rendered a shorter row
@@ -488,6 +479,24 @@ function TeamCard({
             placeholder) when it isn't active, since most teams won't have
             every one of these at once. */}
         <div className="flex min-w-0 items-center gap-2">
+          {/* A visible, explicit indicator of group-selection state (and a
+              keyboard/screen-reader-reachable way to toggle it) alongside
+              the card's own click-anywhere-to-toggle behavior (see this
+              component's own return comment) -- not the only way to
+              toggle any more, but still worth keeping for that reason.
+              stopPropagation -- otherwise a click here would ALSO bubble
+              up to the card's own onClick and toggle a second time,
+              canceling this one out. */}
+          {groupSelection && (
+            <input
+              type="checkbox"
+              checked={groupSelection.selected}
+              onChange={groupSelection.onToggle}
+              onClick={(event) => event.stopPropagation()}
+              title="Include this team in the group"
+              className="h-5 w-5 shrink-0 accent-blue-500"
+            />
+          )}
           <TeamNameInput value={team.name} onCommit={onUpdateName} />
 
           {/* One black pill PER active resonance (not one shared pill for
@@ -615,7 +624,13 @@ function TeamCard({
               red Delete button beside it. */}
           <button
             type="button"
-            onClick={onBumpToFront}
+            onClick={(event) => {
+              // stopPropagation -- see the card's own root <li> onClick
+              // comment on why every genuinely interactive element here
+              // needs this now.
+              event.stopPropagation();
+              onBumpToFront();
+            }}
             title="Move to top"
             className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
           >
@@ -636,7 +651,10 @@ function TeamCard({
               which no other instance in this app has ever needed. */}
           <button
             type="button"
-            onClick={onDelete}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
             className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
           >
             Delete
@@ -674,6 +692,14 @@ function TeamCard({
                 slotRefs.current[index] = el;
               }}
               data-team-slot-index={index}
+              // stopPropagation -- the card's own root <li> now toggles
+              // group selection on click (see its own comment); this slot
+              // (its own click-to-swap box, AND everything inside
+              // BuildSlotPicker's own Modal -- a DOM descendant of this
+              // div regardless of its fixed on-screen position) needs to
+              // take priority over that for every click anywhere within
+              // it, not just the slot box itself.
+              onClick={(event) => event.stopPropagation()}
               onPointerDown={
                 isFilled
                   ? (event) => {
@@ -1180,6 +1206,15 @@ export function TeamManager({
       setTeams((prev) => prev.filter((team) => team.id !== teamId));
       deleteTeam(teamId).catch(() => setTeams(previous));
     });
+    // Deleting a team is reachable from group mode now too (see
+    // groupSelection's own comment on why the card stays fully
+    // interactive there) -- if it was part of the in-progress draft
+    // selection, drop it from there as well, rather than leaving a
+    // reference to a team that no longer exists for Save to trip over
+    // later.
+    if (groupDraft) {
+      setGroupDraft((prev) => (prev ? { ...prev, teamIds: prev.teamIds.filter((id) => id !== teamId) } : prev));
+    }
   }
 
   // Handles all three slot actions (add/remove/replace) through one path,
@@ -1336,10 +1371,24 @@ export function TeamManager({
                 {groupDraft.teamIds.length} team{groupDraft.teamIds.length === 1 ? "" : "s"} selected
               </span>
               <div className="ml-auto flex gap-2">
+                {/* bg-white text-black (not a bare border like Edit/Create
+                    group below) -- same solid-white treatment the
+                    owned-weapons page's own bulk-select Cancel button
+                    uses. A bare border read as faded here specifically
+                    because this sits inside the group-mode panel's own
+                    translucent bg-blue-500/5 wash, which a border/text
+                    color with no fill of its own blends into; Edit/Create
+                    group don't have this problem since they sit on the
+                    plain page background instead. */}
                 <button
                   type="button"
                   onClick={handleCancelGroupMode}
-                  className="rounded border px-3 py-1.5 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                  // hover:bg-gray-200 (not the barely-different gray-100
+                  // tried first) -- needs a jump as visible as Save's own
+                  // bg-black -> hover:bg-gray-800 right next to it, not a
+                  // shade so close to the resting bg-white that the hover
+                  // feedback all but disappears.
+                  className="rounded border bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-gray-200"
                 >
                   Cancel
                 </button>
