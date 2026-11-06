@@ -1354,7 +1354,17 @@ export function TeamManager({
             (switching groups mid-edit doesn't mean anything), rather than
             disabling it in place. */}
         {groupDraft ? (
-          <div className="space-y-2 rounded-lg border border-blue-500 bg-blue-500/5 p-3">
+          // border-red-500 (not always border-blue-500) once the draft's
+          // own live validation has a conflict (groupDraftConflicts' own
+          // comment) -- same red-means-"something's wrong" convention
+          // the team card's own conflict border already uses, rather than
+          // staying blue regardless of whether the draft is actually
+          // savable.
+          <div
+            className={`space-y-2 rounded-lg border bg-blue-500/5 p-3 ${
+              groupDraftConflicts.length > 0 ? "border-red-500" : "border-blue-500"
+            }`}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <label className="text-sm font-semibold" htmlFor="group-draft-name">
                 Group name:
@@ -1396,7 +1406,18 @@ export function TeamManager({
                   type="button"
                   onClick={handleSaveGroup}
                   disabled={groupDraftConflicts.length > 0 || groupDraft.name.trim() === ""}
-                  className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+                  // disabled:cursor-not-allowed disabled:hover:bg-black --
+                  // disabled:opacity-50 alone (the only thing here before)
+                  // still looked clickable: a solid black button just
+                  // reads as a slightly duller black, not obviously
+                  // inert, and nothing stopped hover from still showing
+                  // its own bg-gray-800 feedback. Same combination the
+                  // owned-weapons page's own disabled bulk-delete button
+                  // already uses (disabled:opacity-50 disabled:hover:bg-*
+                  // reverting to the resting color), plus cursor-not-
+                  // allowed (pagination-controls.tsx's own convention for
+                  // the same signal).
+                  className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-black"
                 >
                   Save group
                 </button>

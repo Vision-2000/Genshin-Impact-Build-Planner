@@ -456,6 +456,28 @@ describe("describeGroupConflict", () => {
       { type: "text", text: "Hu Tao is present in multiple teams: Team A, Team B" },
     ]);
   });
+
+  // A team's own name is a plain user-typed label, not unique -- nothing
+  // enforces that two teams can't share one. Deduping the team list by
+  // NAME (tried first) wrongly collapsed two genuinely different teams
+  // with the same name down to one entry; this confirms both still show
+  // up, once each, for the ordinary "two different builds of the same
+  // character" case (not the separately-tested "same build reused" one
+  // above).
+  it("lists both teams even when they happen to share the exact same name", () => {
+    const sameNameTeams: TeamItem[] = [
+      team({ id: 1, name: "Team 1", members: [member({ buildId: 1 })] }),
+      team({ id: 2, name: "Team 1", members: [member({ buildId: 2 })] }),
+    ];
+    const duplicateCharacterBuilds = [
+      buildOption({ buildId: 1, name: "Main DPS", characterName: "Hu Tao", ownedCharacterId: 1 }),
+      buildOption({ buildId: 2, name: "Alt Build", characterName: "Hu Tao", ownedCharacterId: 1 }),
+    ];
+    const [conflict] = detectOverlaps(duplicateCharacterBuilds.map(toOverlapCheckBuild));
+    expect(describeGroupConflict(conflict, sameNameTeams, duplicateCharacterBuilds)).toEqual([
+      { type: "text", text: "Hu Tao is present in multiple teams: Team 1, Team 1" },
+    ]);
+  });
 });
 
 describe("prioritizeGroupConflicts", () => {

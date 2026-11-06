@@ -120,7 +120,7 @@ export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
 // stay flagged as a genuine conflict (duplicate-character, structurally,
 // since it's the same ownedCharacterId appearing twice) rather than
 // silently deduped away. See describeCharacterConflict's own
-// teamNamesForBuild for the other half of this: correctly naming BOTH
+// teamsForBuild for the other half of this: correctly naming BOTH
 // teams a reused build sits in, not just whichever one happens to be
 // found first.
 export function combinedOverlapBuilds(teams: TeamItem[], builds: BuildOption[], teamIds: number[]): OverlapCheckBuild[] {
@@ -151,9 +151,14 @@ function teamNameForBuild(buildId: number, teams: TeamItem[]): string {
 // .find() would then return the SAME (first-matching) team for both
 // occurrences, collapsing the message down to just one team once
 // deduped -- which is exactly the bug this fixes, by finding every team
-// a given id sits in instead of stopping at the first.
-function teamNamesForBuild(buildId: number, teams: TeamItem[]): string[] {
-  return teams.filter((team) => team.members.some((member) => member.buildId === buildId)).map((team) => team.name);
+// a given id sits in instead of stopping at the first. Returns the
+// TEAMS themselves, not their names -- describeCharacterConflict needs
+// to dedupe by team IDENTITY (id), not by display name, since two
+// genuinely different teams can share the same name (a team's own name
+// is a plain user-typed label, not unique -- nothing in this app
+// enforces that it is).
+function teamsForBuild(buildId: number, teams: TeamItem[]): TeamItem[] {
+  return teams.filter((team) => team.members.some((member) => member.buildId === buildId));
 }
 
 // Character-level conflicts (duplicate-character, and exclusivity-conflict
@@ -181,13 +186,19 @@ function describeCharacterConflict(
         conflict.exclusivityGroup.charAt(0).toUpperCase() + conflict.exclusivityGroup.slice(1);
 
   // flatMap (not map) -- a conflict between the SAME build reused across
-  // two teams comes back as buildIds [X, X], so mapping to one name per
+  // two teams comes back as buildIds [X, X], so mapping to one team per
   // id would only ever find one team per (identical) id; flatMap over
-  // teamNamesForBuild's own per-id list of every team that build sits in
-  // is what actually recovers both.
-  const teamNames = [...new Set(conflict.buildIds.flatMap((id) => teamNamesForBuild(id, teams)))];
+  // teamsForBuild's own per-id list of every team that build sits in is
+  // what actually recovers both. Deduped by id (a Map, not a Set of
+  // names) -- two DIFFERENT teams that happen to share the same name
+  // must still both show up here, once each; deduping on the name string
+  // itself would wrongly collapse them into one.
+  const involvedTeams = conflict.buildIds.flatMap((id) => teamsForBuild(id, teams));
+  const uniqueTeams = [...new Map(involvedTeams.map((team) => [team.id, team])).values()];
 
-  return [{ type: "text", text: `${characterName} is present in multiple teams: ${teamNames.join(", ")}` }];
+  return [
+    { type: "text", text: `${characterName} is present in multiple teams: ${uniqueTeams.map((team) => team.name).join(", ")}` },
+  ];
 }
 
 // Describes one detectOverlaps conflict across a GROUP's own draft/saved
