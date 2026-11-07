@@ -4,10 +4,17 @@ import { ArtifactSlot, ArtifactSetPiece } from "@/generated/prisma/enums";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireActiveProfile } from "@/lib/session";
+import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
 import { travelerDisplayName } from "@/lib/character-scaling";
 import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import { slotIconUrl } from "../artifacts/filter-sort";
-import { CreateBuildInputSchema, type CreateBuildInput, type CreateBuildErrors } from "./schemas";
+import {
+  CreateBuildInputSchema,
+  type CreateBuildInput,
+  type CreateBuildErrors,
+  CreateCollectionSchema,
+  type CreateCollectionErrors,
+} from "./schemas";
 import {
   toBuildItem,
   type BuildItem,
@@ -131,26 +138,28 @@ export async function setBuildArtifact(buildId: number, slot: ArtifactSlot, owne
   });
 }
 
-// Deleting a build cascades out of any team/roster it's in (DB-level, via
-// TeamBuild/RosterBuild's onDelete: Cascade) -- this lets the confirm prompt
-// name the affected teams/rosters first, per CLAUDE.md.
-export async function getBuildContainerNames(buildId: number): Promise<{ teamNames: string[]; rosterNames: string[] }> {
+// Deleting a build cascades out of any team/collection it's in (DB-level,
+// via TeamBuild/CollectionBuild's onDelete: Cascade) -- this lets the
+// confirm prompt name the affected teams/collections first, per CLAUDE.md.
+export async function getBuildContainerNames(
+  buildId: number
+): Promise<{ teamNames: string[]; collectionNames: string[] }> {
   const profile = await requireActiveProfile();
 
-  const [teamBuilds, rosterBuilds] = await Promise.all([
+  const [teamBuilds, collectionBuilds] = await Promise.all([
     prisma.teamBuild.findMany({
       where: { buildId, team: { gameProfileId: profile.id } },
       include: { team: true },
     }),
-    prisma.rosterBuild.findMany({
-      where: { buildId, roster: { gameProfileId: profile.id } },
-      include: { roster: true },
+    prisma.collectionBuild.findMany({
+      where: { buildId, collection: { gameProfileId: profile.id } },
+      include: { collection: true },
     }),
   ]);
 
   return {
     teamNames: teamBuilds.map((teamBuild) => teamBuild.team.name),
-    rosterNames: rosterBuilds.map((rosterBuild) => rosterBuild.roster.name),
+    collectionNames: collectionBuilds.map((collectionBuild) => collectionBuild.collection.name),
   };
 }
 
@@ -329,4 +338,138 @@ export async function getBuildDetail(buildId: number): Promise<GetBuildDetailRes
   });
 
   return { detail: { name: build.name, character, weapon, artifacts } };
+}
+
+// Builds a fresh OverlapCheckBuild list from the DB rather than trusting
+// whatever the client sent, same defense-in-depth reasoning
+// teams/actions.ts's own identical-shaped helper gives. The client's own
+// availableCollectionBuilds (filter-sort.ts) already prevents a
+// duplicate-character/exclusivityGroup conflict from ever being selected
+// in the first place, but this still checks for every conflict type
+// server-side regardless -- a client-side-only guarantee is never trusted
+// on its own.
+function toOverlapCheckBuild(build: {
+  id: number;
+  ownedCharacterId: number;
+  ownedWeaponId: number | null;
+  ownedCharacter: { character: { exclusivityGroup: string | null } };
+  buildArtifacts: { ownedArtifactId: number }[];
+}): OverlapCheckBuild {
+  return {
+    buildId: build.id,
+    ownedCharacterId: build.ownedCharacterId,
+    exclusivityGroup: build.ownedCharacter.character.exclusivityGroup,
+    ownedWeaponId: build.ownedWeaponId,
+    ownedArtifactIds: build.buildArtifacts.map((ba) => ba.ownedArtifactId),
+  };
+}
+
+const BUILD_OVERLAP_INCLUDE = {
+  ownedCharacter: { include: { character: true } },
+  buildArtifacts: true,
+} as const;
+
+// Returns an error message, or the ownedCharacterId for each validated
+// build (needed to create its own CollectionBuild row -- same
+// denormalization TeamBuild/GroupTeam already rely on) once every build
+// is confirmed to belong to this profile and the combined set has no
+// overlap at all (see toOverlapCheckBuild's own comment on why every
+// conflict type is re-checked here regardless of what the client already
+// prevented). Shared by createCollection/updateCollection below, since
+// both need the exact same check -- and the exact same already-fetched
+// builds -- before writing anything.
+async function validateCollectionBuilds(
+  profileId: number,
+  buildIds: number[]
+): Promise<{ error: string } | { ownedCharacterIdByBuildId: Map<number, number> }> {
+  const uniqueBuildIds = [...new Set(buildIds)];
+  if (uniqueBuildIds.length === 0) return { error: "A collection must contain at least one build." };
+
+  const builds = await prisma.build.findMany({
+    where: { id: { in: uniqueBuildIds }, ownedCharacter: { gameProfileId: profileId } },
+    include: BUILD_OVERLAP_INCLUDE,
+  });
+  if (builds.length !== uniqueBuildIds.length) return { error: "One or more builds were not found." };
+
+  if (detectOverlaps(builds.map(toOverlapCheckBuild)).length > 0) {
+    return { error: "These builds share a weapon, artifact, or character with each other." };
+  }
+
+  return { ownedCharacterIdByBuildId: new Map(builds.map((build) => [build.id, build.ownedCharacterId])) };
+}
+
+export type SaveCollectionResult =
+  | { collection: { id: number; name: string } }
+  | { errors: CreateCollectionErrors }
+  | { error: string };
+
+// Creates the collection and its membership together, in the GIVEN order
+// (not re-sorted) -- CollectionBuild rows are inserted one at a time
+// inside this same transaction so each gets the next autoincrement id in
+// that exact order, which is what later reproduces "order selected" on
+// display (see CollectionBuild's own schema comment). Same shape as
+// createGroup (teams/actions.ts), minus the team-indirection layer --
+// collection membership is already a flat list of builds, not builds
+// reached through teams.
+export async function createCollection(name: string, buildIds: number[]): Promise<SaveCollectionResult> {
+  const profile = await requireActiveProfile();
+
+  const validated = CreateCollectionSchema.safeParse({ name });
+  if (!validated.success) return { errors: validated.error.flatten().fieldErrors };
+
+  const validation = await validateCollectionBuilds(profile.id, buildIds);
+  if ("error" in validation) return { error: validation.error };
+  const { ownedCharacterIdByBuildId } = validation;
+
+  const collection = await prisma.$transaction(async (tx) => {
+    const created = await tx.collection.create({ data: { gameProfileId: profile.id, name: validated.data.name } });
+    for (const buildId of [...new Set(buildIds)]) {
+      await tx.collectionBuild.create({
+        data: { collectionId: created.id, buildId, ownedCharacterId: ownedCharacterIdByBuildId.get(buildId)! },
+      });
+    }
+    return created;
+  });
+
+  return { collection: { id: collection.id, name: collection.name } };
+}
+
+// Replaces the collection's own name and FULL membership at once (not an
+// incremental add/remove) -- same reasoning updateGroup's own comment
+// gives: "collection mode" always collects the complete intended
+// selection client-side before ever calling this.
+export async function updateCollection(
+  collectionId: number,
+  name: string,
+  buildIds: number[]
+): Promise<SaveCollectionResult> {
+  const profile = await requireActiveProfile();
+
+  const validated = CreateCollectionSchema.safeParse({ name });
+  if (!validated.success) return { errors: validated.error.flatten().fieldErrors };
+
+  const collection = await prisma.collection.findFirst({ where: { id: collectionId, gameProfileId: profile.id } });
+  if (!collection) return { error: "Collection not found." };
+
+  const validation = await validateCollectionBuilds(profile.id, buildIds);
+  if ("error" in validation) return { error: validation.error };
+  const { ownedCharacterIdByBuildId } = validation;
+
+  await prisma.$transaction([
+    prisma.collection.update({ where: { id: collectionId }, data: { name: validated.data.name } }),
+    prisma.collectionBuild.deleteMany({ where: { collectionId } }),
+    ...[...new Set(buildIds)].map((buildId) =>
+      prisma.collectionBuild.create({
+        data: { collectionId, buildId, ownedCharacterId: ownedCharacterIdByBuildId.get(buildId)! },
+      })
+    ),
+  ]);
+
+  return { collection: { id: collectionId, name: validated.data.name } };
+}
+
+export async function deleteCollection(collectionId: number) {
+  const profile = await requireActiveProfile();
+
+  await prisma.collection.deleteMany({ where: { id: collectionId, gameProfileId: profile.id } });
 }

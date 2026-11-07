@@ -52,7 +52,7 @@ export function PaginationNavButtons({ currentPage, pageCount, onPageChange }: P
 // Nothing to show at all once there's only one page -- no Previous/Next (a
 // disabled button that can never do anything isn't worth showing), and no
 // "Page 1 of 1" either, since that's the same as saying nothing. Shared by
-// Builds/Artifacts/Teams/Rosters, so this is never rendered with
+// Builds/Artifacts/Teams, so this is never rendered with
 // pageCount < 1 regardless of caller.
 export function PaginationControls({ currentPage, pageCount, onPageChange }: PaginationControlsProps) {
   if (pageCount <= 1) return null;

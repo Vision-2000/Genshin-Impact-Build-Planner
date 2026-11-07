@@ -270,6 +270,7 @@ export type SaveGroupResult = { group: { id: number; name: string } } | { errors
 // belong to this profile and their combined builds are conflict-free.
 async function validateGroupTeams(profileId: number, teamIds: number[]): Promise<string | null> {
   const uniqueTeamIds = [...new Set(teamIds)];
+  if (uniqueTeamIds.length === 0) return "A group must contain at least one team.";
 
   const teams = await prisma.team.findMany({
     where: { id: { in: uniqueTeamIds }, gameProfileId: profileId },

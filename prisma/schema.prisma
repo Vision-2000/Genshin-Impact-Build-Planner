@@ -136,7 +136,7 @@ model GameProfile {
   ownedWeapons    OwnedWeapon[]
   ownedArtifacts  OwnedArtifact[]
   teams           Team[]
-  rosters         Roster[]
+  collections     Collection[]
   groups          Group[]
 
   @@unique([userId, name])
@@ -154,8 +154,8 @@ model Character {
   weaponType       WeaponType @map("weapon_type")
   rarity           Int
   // Null for nearly every character. Set to the shared value "traveler" on
-  // all 6 elemental Traveler rows so team/roster composition checks can block
-  // more than one of them appearing together, since only one Traveler can
+  // all 6 elemental Traveler rows so team/collection composition checks can
+  // block more than one of them appearing together, since only one Traveler can
   // ever be in a party regardless of element and owned_character_id alone
   // can't express that. Reuse this field for any future character that needs
   // the same "only one of this group at a time" mechanic.
@@ -588,11 +588,11 @@ model OwnedCharacter {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  gameProfile  GameProfile   @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
-  character    Character     @relation(fields: [characterId], references: [id])
-  builds       Build[]
-  teamBuilds   TeamBuild[]
-  rosterBuilds RosterBuild[]
+  gameProfile      GameProfile       @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  character        Character         @relation(fields: [characterId], references: [id])
+  builds           Build[]
+  teamBuilds       TeamBuild[]
+  collectionBuilds CollectionBuild[]
 
   @@unique([gameProfileId, characterId])
   @@map("owned_characters")
@@ -670,11 +670,11 @@ model Build {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  ownedCharacter OwnedCharacter  @relation(fields: [ownedCharacterId], references: [id], onDelete: Cascade)
-  ownedWeapon    OwnedWeapon?    @relation(fields: [ownedWeaponId], references: [id], onDelete: SetNull)
-  buildArtifacts BuildArtifact[]
-  teamBuilds     TeamBuild[]
-  rosterBuilds   RosterBuild[]
+  ownedCharacter   OwnedCharacter    @relation(fields: [ownedCharacterId], references: [id], onDelete: Cascade)
+  ownedWeapon      OwnedWeapon?      @relation(fields: [ownedWeaponId], references: [id], onDelete: SetNull)
+  buildArtifacts   BuildArtifact[]
+  teamBuilds       TeamBuild[]
+  collectionBuilds CollectionBuild[]
 
   @@unique([ownedCharacterId, name])
   @@map("builds")
@@ -731,37 +731,45 @@ model TeamBuild {
   @@map("team_builds")
 }
 
-// Same shape as Team, no build cap.
-model Roster {
+// Same shape as Team, no build cap. Managed entirely from the Builds page
+// itself (see owned-build-manager.tsx) -- "collection mode" switches that
+// page into a mass-select UI, same pattern Group's own "group mode" uses
+// on the Teams page, rather than a dedicated route (formerly named
+// "Roster" with its own /rosters page; renamed once the Characters page's
+// own /characters/roster made that name ambiguous).
+model Collection {
   id            Int      @id @default(autoincrement())
   gameProfileId Int      @map("game_profile_id")
   name          String
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  gameProfile  GameProfile   @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
-  rosterBuilds RosterBuild[]
+  gameProfile      GameProfile       @relation(fields: [gameProfileId], references: [id], onDelete: Cascade)
+  collectionBuilds CollectionBuild[]
 
-  @@map("rosters")
+  @@map("collections")
 }
 
-// Same denormalization pattern as TeamBuild.
-model RosterBuild {
+// Same denormalization pattern as TeamBuild. Row `id` order IS the
+// build's own display position within the collection -- same "explicit
+// id order = slot order" convention TeamBuild/GroupTeam already rely on.
+model CollectionBuild {
   id               Int @id @default(autoincrement())
-  rosterId         Int @map("roster_id")
+  collectionId     Int @map("collection_id")
   buildId          Int @map("build_id")
   ownedCharacterId Int @map("owned_character_id")
 
-  roster         Roster         @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  collection     Collection     @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   build          Build          @relation(fields: [buildId], references: [id], onDelete: Cascade)
   ownedCharacter OwnedCharacter @relation(fields: [ownedCharacterId], references: [id], onDelete: Cascade)
 
-  @@unique([rosterId, ownedCharacterId])
-  @@map("roster_builds")
+  @@unique([collectionId, ownedCharacterId])
+  @@map("collection_builds")
 }
 
-// A saved combination of Teams only (Rosters are always validated alone,
-// never combined). Managed entirely from the Teams page itself (see
+// A saved combination of Teams only (Collections -- the build-level
+// equivalent of this same idea -- are always validated alone, never
+// combined). Managed entirely from the Teams page itself (see
 // team-manager.tsx) -- "group mode" switches that page into a mass-select
 // UI (same pattern as the owned-weapons/artifacts pages' own bulk-delete
 // select mode) to pick which teams belong, rather than a dedicated route.

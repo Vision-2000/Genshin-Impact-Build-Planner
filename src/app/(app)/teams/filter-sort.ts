@@ -112,7 +112,7 @@ export function toOverlapCheckBuild(build: BuildOption): OverlapCheckBuild {
 // them collide.
 // Deliberately NOT deduped by buildId -- unlike reusing the same build
 // across unrelated Teams (fine on its own, per CLAUDE.md: "a build can be
-// reused across multiple teams/rosters simultaneously"), a GROUP exists
+// reused across multiple teams/collections simultaneously"), a GROUP exists
 // specifically to bundle teams meant to be used TOGETHER. The same build
 // sitting in two of a group's own teams means the same real character/
 // weapon/artifacts would need to be active in two places simultaneously

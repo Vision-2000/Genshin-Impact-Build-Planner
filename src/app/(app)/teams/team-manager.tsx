@@ -1055,7 +1055,30 @@ export function TeamManager({
       ? selectedGroup.teamIds
           .map((teamId) => teams.find((t) => t.id === teamId))
           .filter((team): team is TeamItem => team !== undefined)
-      : teams;
+      : // EDITING an existing group (not creating a new one -- see
+        // handleCreateGroup/handleEditGroup's own groupId: null vs. a
+        // real id) bumps every currently-selected team to the top of the
+        // full list, in the draft's own order, so the teams the user
+        // actually came here to review/change are immediately visible
+        // instead of buried wherever they happen to sort naturally among
+        // every OTHER team. Only while editing -- a brand-new group
+        // starts with nothing selected, so there's nothing yet worth
+        // bumping, and the user didn't ask for newly-picked teams to jump
+        // around mid-create either. Array.prototype.sort is stable (ES
+        // 2019+), so every unselected team keeps its own existing
+        // relative order (comparator returns 0 for an unselected/
+        // unselected pair) -- this only ever reorders selected-vs-
+        // unselected, never two unselected teams against each other.
+        groupDraft?.groupId !== null && groupDraft
+          ? [...teams].sort((a, b) => {
+              const aIndex = groupDraft.teamIds.indexOf(a.id);
+              const bIndex = groupDraft.teamIds.indexOf(b.id);
+              if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+              if (aIndex !== -1) return -1;
+              if (bIndex !== -1) return 1;
+              return 0;
+            })
+          : teams;
 
   const filtered = filterTeams(displayedTeams, teamNameSearch, characterSearch);
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
@@ -1105,7 +1128,7 @@ export function TeamManager({
   }
 
   // Only deletes the Group/GroupTeam rows -- same as deleting a Team or
-  // Roster, this never touches the teams themselves, just the saved
+  // Collection, this never touches the teams themselves, just the saved
   // combination of them.
   async function handleDeleteGroup() {
     if (!selectedGroup) return;
@@ -1354,15 +1377,16 @@ export function TeamManager({
             (switching groups mid-edit doesn't mean anything), rather than
             disabling it in place. */}
         {groupDraft ? (
-          // border-red-500 (not always border-blue-500) once the draft's
-          // own live validation has a conflict (groupDraftConflicts' own
-          // comment) -- same red-means-"something's wrong" convention
-          // the team card's own conflict border already uses, rather than
-          // staying blue regardless of whether the draft is actually
-          // savable.
+          // border-red-500 (not always border-blue-500) once the draft
+          // isn't currently savable -- either a live overlap conflict
+          // (groupDraftConflicts' own comment) or the separate "must
+          // contain at least one team" rule below -- same red-means-
+          // "something's wrong" convention the team card's own conflict
+          // border already uses, rather than staying blue regardless of
+          // whether the draft is actually savable.
           <div
             className={`space-y-2 rounded-lg border bg-blue-500/5 p-3 ${
-              groupDraftConflicts.length > 0 ? "border-red-500" : "border-blue-500"
+              groupDraftConflicts.length > 0 || groupDraft.teamIds.length === 0 ? "border-red-500" : "border-blue-500"
             }`}
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -1405,7 +1429,7 @@ export function TeamManager({
                 <button
                   type="button"
                   onClick={handleSaveGroup}
-                  disabled={groupDraftConflicts.length > 0 || groupDraft.name.trim() === ""}
+                  disabled={groupDraftConflicts.length > 0 || groupDraft.name.trim() === "" || groupDraft.teamIds.length === 0}
                   // disabled:cursor-not-allowed disabled:hover:bg-black --
                   // disabled:opacity-50 alone (the only thing here before)
                   // still looked clickable: a solid black button just
@@ -1455,6 +1479,13 @@ export function TeamManager({
                 ))}
               </ul>
             )}
+            {/* Can't co-occur with the conflict list above (a conflict
+                needs at least 2 teams' worth of builds to begin with, so
+                groupDraftConflicts is always empty here), but checked
+                independently of it regardless -- this is a separate rule
+                (a group has to contain SOMETHING), not another flavor of
+                overlap conflict. */}
+            {groupDraft.teamIds.length === 0 && <p className="text-sm text-red-500">A group must contain at least one team.</p>}
             {groupSaveError && <p className="text-sm text-red-500">{groupSaveError}</p>}
           </div>
         ) : (

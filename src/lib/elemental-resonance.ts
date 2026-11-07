@@ -5,7 +5,7 @@ import type { TeamEffect } from "./team-effect";
 // per-character data (these are fixed, global party-composition bonuses,
 // independent of which characters/builds are actually in the slots), so
 // this is hand-maintained text here rather than seeded master data. Scoped
-// to Teams for now (see elementalResonances' own comment); Rosters would
+// to Teams for now (see elementalResonances' own comment); Collections would
 // reuse this unchanged if it ever wants the same display, since a
 // resonance only cares about which elements are present, not team size
 // beyond that.

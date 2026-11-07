@@ -1,4 +1,5 @@
 import { ArtifactSlot, Element, TalentSlot, WeaponType } from "@/generated/prisma/enums";
+import { detectOverlaps, type OverlapCheckBuild } from "@/lib/overlap";
 import type { SortDirection } from "@/lib/sort";
 import { travelerDisplayName } from "@/lib/character-scaling";
 import type { WeaponHoverDetail } from "@/lib/weapon-hover-detail";
@@ -161,6 +162,12 @@ export type BuildItem = {
   characterElement: Element;
   characterRarity: number;
   characterWeaponType: WeaponType;
+  // Null for nearly every character; shared (e.g. "traveler") across the
+  // handful that can never coexist in the same party -- see Character's
+  // own schema comment. Backs availableCollectionBuilds' own candidate
+  // exclusion below, the same signal detectOverlaps already uses for
+  // Team/Group composition elsewhere in this app.
+  exclusivityGroup: string | null;
   ownedWeaponId: number | null;
   weaponName: string | null;
   weaponIconUrl: string | null;
@@ -190,7 +197,14 @@ type BuildRow = {
   ownedWeaponId: number | null;
   createdAt: Date;
   ownedCharacter: {
-    character: { name: string; iconUrl: string | null; element: Element; rarity: number; weaponType: WeaponType };
+    character: {
+      name: string;
+      iconUrl: string | null;
+      element: Element;
+      rarity: number;
+      weaponType: WeaponType;
+      exclusivityGroup: string | null;
+    };
   };
   ownedWeapon: {
     refinement: number;
@@ -216,6 +230,7 @@ export function toBuildItem(row: BuildRow): BuildItem {
     characterElement: row.ownedCharacter.character.element,
     characterRarity: row.ownedCharacter.character.rarity,
     characterWeaponType: row.ownedCharacter.character.weaponType,
+    exclusivityGroup: row.ownedCharacter.character.exclusivityGroup,
     ownedWeaponId: row.ownedWeaponId,
     weaponName: row.ownedWeapon?.weapon.name ?? null,
     weaponIconUrl: row.ownedWeapon?.weapon.iconUrl ?? null,
@@ -297,9 +312,19 @@ export type BuildFilters = {
   sortDirection: SortDirection;
 };
 
-export function filterAndSortBuilds(
+export type BuildFilterCriteria = Omit<BuildFilters, "sortKey" | "sortDirection">;
+
+// The filtering half of filterAndSortBuilds, split out so collection mode
+// (owned-build-manager.tsx) can apply the same search/element/weapon-type/
+// rarity narrowing to a build list whose ORDER already means something
+// (a saved collection's own order, or the selected-first order while
+// editing one) without filterAndSortBuilds's own sort silently overriding
+// it -- same "filter-only, caller controls order" split filterTeams
+// (teams/filter-sort.ts) already has, there because Teams never had a
+// sort control to begin with.
+export function filterBuilds(
   builds: BuildItem[],
-  { buildNameSearch, characterNameSearch, elementFilter, weaponTypeFilter, rarityFilter, sortKey, sortDirection }: BuildFilters
+  { buildNameSearch, characterNameSearch, elementFilter, weaponTypeFilter, rarityFilter }: BuildFilterCriteria
 ): BuildItem[] {
   let result = builds;
 
@@ -321,14 +346,154 @@ export function filterAndSortBuilds(
     result = result.filter((build) => rarityFilter.has(build.characterRarity));
   }
 
-  const direction = sortDirection === "desc" ? -1 : 1;
+  return result;
+}
+
+export function filterAndSortBuilds(builds: BuildItem[], filters: BuildFilters): BuildItem[] {
+  const result = filterBuilds(builds, filters);
+  const direction = filters.sortDirection === "desc" ? -1 : 1;
 
   return [...result].sort((a, b) => {
-    if (sortKey === "character") {
+    if (filters.sortKey === "character") {
       return direction * a.characterName.localeCompare(b.characterName) || a.name.localeCompare(b.name);
     }
     // "obtained" -- same -direction (forward = newest first) convention
     // every other owned page's own "obtained" sort uses.
     return -direction * (a.createdAt - b.createdAt) || a.name.localeCompare(b.name);
   });
+}
+
+// A saved combination of Builds (the build-level equivalent of Teams' own
+// Group -- see Collection's own schema comment) -- managed entirely from
+// this page via "collection mode" (owned-build-manager.tsx), rather than a
+// dedicated route. buildIds is already in the collection's own saved
+// order (CollectionBuild rows ordered by id asc -- same "id order = slot
+// order" convention GroupTeam/TeamBuild already rely on).
+export type CollectionItem = {
+  id: number;
+  name: string;
+  buildIds: number[];
+};
+
+export function toOverlapCheckBuild(build: BuildItem): OverlapCheckBuild {
+  return {
+    buildId: build.id,
+    ownedCharacterId: build.ownedCharacterId,
+    exclusivityGroup: build.exclusivityGroup,
+    ownedWeaponId: build.ownedWeaponId,
+    ownedArtifactIds: build.artifacts.flatMap((a) => (a.ownedArtifactId !== null ? [a.ownedArtifactId] : [])),
+  };
+}
+
+// Narrows the full owned-builds list down to the ones actually pickable
+// into the in-progress collection draft, given which builds are already
+// selected. Unlike weapon/artifact reuse (flagged but never blocked, same
+// as a Team/Group can drift into after the fact -- see
+// computeCollectionConflicts below), a duplicate-character or
+// exclusivityGroup conflict (e.g. two Traveler elements) is prevented
+// from ever being CREATED in the first place: a not-yet-selected build is
+// removed from the list entirely, not just dimmed, once its own character
+// (or exclusivity group) already has a build selected -- the user's own
+// explicit call: showing it anyway "just adds unnecessary info". An
+// ALREADY-selected build always stays in the list regardless (so it can
+// still be deselected), even in the hypothetical case its own character
+// somehow conflicts with another already-selected one (shouldn't happen,
+// since this same exclusion is what prevents that selection from ever
+// being made to begin with).
+export function availableCollectionBuilds(allBuilds: BuildItem[], selectedBuildIds: number[]): BuildItem[] {
+  const selectedIdSet = new Set(selectedBuildIds);
+  const selectedOverlapBuilds = allBuilds.filter((build) => selectedIdSet.has(build.id)).map(toOverlapCheckBuild);
+
+  return allBuilds.filter((build) => {
+    if (selectedIdSet.has(build.id)) return true;
+    const conflicts = detectOverlaps([...selectedOverlapBuilds, toOverlapCheckBuild(build)]);
+    return !conflicts.some(
+      (conflict) =>
+        (conflict.type === "duplicate-character" || conflict.type === "exclusivity-conflict") &&
+        conflict.buildIds.includes(build.id)
+    );
+  });
+}
+
+// Narrowed, display-ready version of detectOverlaps' own OverlapConflict --
+// same shape and same reasoning as TeamConflict (teams/filter-sort.ts):
+// only shared-weapon/shared-artifact ever come back, since
+// availableCollectionBuilds above already prevents a duplicate-character/
+// exclusivityGroup conflict from ever being selected into a collection to
+// begin with -- there's nothing here for describeCollectionConflict to
+// ever need to describe for those two types. Hand-kept-in-sync with
+// TeamConflict rather than shared directly -- BuildItem and BuildOption
+// (teams/filter-sort.ts) are different types for the rest of their own
+// fields, same reason filterAndSortBuilds/filterAndSortBuildOptions are
+// also two separate functions rather than one.
+export type CollectionConflict =
+  | { type: "shared-weapon"; ownedWeaponId: number; buildIds: number[] }
+  | { type: "shared-artifact"; ownedArtifactId: number; slot: ArtifactSlot; buildIds: number[] };
+
+// Detects conflicts WITHIN an already-saved collection's own current
+// builds (a build's weapon/artifacts can change later, from this same
+// page, after it's already sitting in a collection -- same drift
+// computeTeamConflicts' own comment describes for Teams) -- not the
+// live "would adding this build create one" check availableCollectionBuilds
+// already does before a pick is ever committed.
+export function computeCollectionConflicts(members: BuildItem[]): CollectionConflict[] {
+  const overlapBuilds = members.map(toOverlapCheckBuild);
+  const conflicts: CollectionConflict[] = [];
+
+  for (const conflict of detectOverlaps(overlapBuilds)) {
+    if (conflict.type === "shared-weapon") {
+      conflicts.push({ type: "shared-weapon", ownedWeaponId: conflict.ownedWeaponId, buildIds: conflict.buildIds });
+    } else if (conflict.type === "shared-artifact") {
+      const slot = members.flatMap((member) => member.artifacts).find((a) => a.ownedArtifactId === conflict.ownedArtifactId)?.slot;
+      if (slot) conflicts.push({ type: "shared-artifact", ownedArtifactId: conflict.ownedArtifactId, slot, buildIds: conflict.buildIds });
+    }
+  }
+
+  return conflicts;
+}
+
+// Same flags shape as buildConflictFlags (teams/filter-sort.ts), for the
+// same reason -- BuildPortrait/BuildCard's own weaponConflict/
+// artifactConflict props need a plain boolean/id-list, not the raw
+// conflict objects.
+export function buildCollectionConflictFlags(
+  buildId: number,
+  conflicts: CollectionConflict[]
+): { weaponConflict: boolean; conflictingArtifactIds: number[] } {
+  let weaponConflict = false;
+  const conflictingArtifactIds: number[] = [];
+  for (const conflict of conflicts) {
+    if (!conflict.buildIds.includes(buildId)) continue;
+    if (conflict.type === "shared-weapon") weaponConflict = true;
+    else conflictingArtifactIds.push(conflict.ownedArtifactId);
+  }
+  return { weaponConflict, conflictingArtifactIds };
+}
+
+export type CollectionConflictPart =
+  | { type: "build"; characterName: string; buildName: string }
+  | { type: "text"; text: string };
+
+// Same shape and wording as describeTeamConflict (teams/filter-sort.ts)
+// -- see CollectionConflict's own comment on why this is a hand-kept-in-
+// sync duplicate rather than a shared function.
+export function describeCollectionConflict(conflict: CollectionConflict, members: BuildItem[]): CollectionConflictPart[] {
+  const involved = conflict.buildIds
+    .map((id) => members.find((member) => member.id === id))
+    .filter((member): member is BuildItem => member !== undefined);
+
+  const parts: CollectionConflictPart[] = [];
+  involved.forEach((member, index) => {
+    if (index > 0) parts.push({ type: "text", text: " and " });
+    parts.push({ type: "build", characterName: member.characterName, buildName: member.name });
+  });
+  parts.push({
+    type: "text",
+    text:
+      conflict.type === "shared-weapon"
+        ? " have the same weapon equipped"
+        : ` have the same artifact - ${conflict.slot} equipped`,
+  });
+
+  return parts;
 }

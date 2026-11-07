@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { Element, WeaponType } from "@/generated/prisma/enums";
-import { filterAndSortBuilds, type BuildItem } from "./filter-sort";
+import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
+import {
+  filterAndSortBuilds,
+  availableCollectionBuilds,
+  computeCollectionConflicts,
+  buildCollectionConflictFlags,
+  describeCollectionConflict,
+  type BuildItem,
+} from "./filter-sort";
 
 function buildItem(overrides: Partial<BuildItem>): BuildItem {
   return {
@@ -12,6 +19,7 @@ function buildItem(overrides: Partial<BuildItem>): BuildItem {
     characterElement: Element.Pyro,
     characterRarity: 5,
     characterWeaponType: WeaponType.Polearm,
+    exclusivityGroup: null,
     ownedWeaponId: null,
     weaponName: null,
     weaponIconUrl: null,
@@ -146,5 +154,103 @@ describe("filterAndSortBuilds", () => {
       });
       expect(result).toEqual([]);
     });
+  });
+});
+
+describe("availableCollectionBuilds", () => {
+  const hutaoMainDps = buildItem({ id: 1, name: "Main DPS", characterName: "Hu Tao", ownedCharacterId: 1, ownedWeaponId: 10 });
+  const hutaoAltBuild = buildItem({ id: 2, name: "Alt Build", characterName: "Hu Tao", ownedCharacterId: 1 });
+  const xingqiuSupport = buildItem({ id: 3, name: "Support", characterName: "Xingqiu", ownedCharacterId: 2, ownedWeaponId: 10 });
+  const allBuilds = [hutaoMainDps, hutaoAltBuild, xingqiuSupport];
+
+  it("returns every build when nothing is selected yet", () => {
+    expect(availableCollectionBuilds(allBuilds, [])).toEqual(allBuilds);
+  });
+
+  // The whole point of this function -- a not-yet-selected build is
+  // removed ENTIRELY (not dimmed) once its own character already has a
+  // build selected, per the user's own explicit call that showing it
+  // anyway "just adds unnecessary info".
+  it("removes every OTHER build of an already-selected build's own character", () => {
+    const result = availableCollectionBuilds(allBuilds, [1]);
+    expect(result.map((b) => b.id)).toEqual([1, 3]);
+  });
+
+  it("keeps an already-selected build in the list regardless (so it can still be deselected)", () => {
+    const result = availableCollectionBuilds(allBuilds, [1, 2]);
+    expect(result.map((b) => b.id)).toContain(1);
+  });
+
+  it("does NOT exclude a build that only shares a weapon (not a character) with an already-selected one", () => {
+    // Weapon/artifact reuse is flagged, never blocked at selection time --
+    // only character/exclusivity conflicts are prevented outright.
+    const result = availableCollectionBuilds(allBuilds, [1]);
+    expect(result.map((b) => b.id)).toContain(3);
+  });
+
+  it("removes every other Traveler element once one is already selected", () => {
+    const travelerAnemo = buildItem({
+      id: 1,
+      name: "Anemo Build",
+      characterName: "Traveler (Female) (Anemo)",
+      ownedCharacterId: 1,
+      exclusivityGroup: "traveler",
+    });
+    const travelerPyro = buildItem({
+      id: 2,
+      name: "Pyro Build",
+      characterName: "Traveler (Female) (Pyro)",
+      ownedCharacterId: 2,
+      exclusivityGroup: "traveler",
+    });
+    const result = availableCollectionBuilds([travelerAnemo, travelerPyro, xingqiuSupport], [1]);
+    expect(result.map((b) => b.id)).toEqual([1, 3]);
+  });
+});
+
+describe("computeCollectionConflicts / buildCollectionConflictFlags / describeCollectionConflict", () => {
+  it("flags two builds sharing the same owned weapon", () => {
+    const members = [
+      buildItem({ id: 1, ownedCharacterId: 1, ownedWeaponId: 10 }),
+      buildItem({ id: 2, ownedCharacterId: 2, ownedWeaponId: 10 }),
+    ];
+    const conflicts = computeCollectionConflicts(members);
+    expect(conflicts).toEqual([{ type: "shared-weapon", ownedWeaponId: 10, buildIds: [1, 2] }]);
+    expect(buildCollectionConflictFlags(1, conflicts)).toEqual({ weaponConflict: true, conflictingArtifactIds: [] });
+  });
+
+  it("flags two builds sharing the same owned artifact, with its own slot", () => {
+    const members = [
+      buildItem({
+        id: 1,
+        name: "Main DPS",
+        characterName: "Hu Tao",
+        ownedCharacterId: 1,
+        artifacts: [{ slot: ArtifactSlot.Circlet, ownedArtifactId: 20, setName: null, mainStatName: null, iconUrl: null }],
+      }),
+      buildItem({
+        id: 2,
+        name: "Support",
+        characterName: "Xingqiu",
+        ownedCharacterId: 2,
+        artifacts: [{ slot: ArtifactSlot.Circlet, ownedArtifactId: 20, setName: null, mainStatName: null, iconUrl: null }],
+      }),
+    ];
+    const conflicts = computeCollectionConflicts(members);
+    expect(conflicts).toEqual([{ type: "shared-artifact", ownedArtifactId: 20, slot: ArtifactSlot.Circlet, buildIds: [1, 2] }]);
+    expect(describeCollectionConflict(conflicts[0], members)).toEqual([
+      { type: "build", characterName: "Hu Tao", buildName: "Main DPS" },
+      { type: "text", text: " and " },
+      { type: "build", characterName: "Xingqiu", buildName: "Support" },
+      { type: "text", text: " have the same artifact - Circlet equipped" },
+    ]);
+  });
+
+  it("returns nothing for builds with no overlap", () => {
+    const members = [
+      buildItem({ id: 1, ownedCharacterId: 1, ownedWeaponId: 10 }),
+      buildItem({ id: 2, ownedCharacterId: 2, ownedWeaponId: 20 }),
+    ];
+    expect(computeCollectionConflicts(members)).toEqual([]);
   });
 });

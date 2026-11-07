@@ -20,3 +20,13 @@ export type CreateBuildErrors = {
   ownedCharacterId?: string[];
   name?: string[];
 };
+
+// Same rule as CreateTeamSchema/CreateGroupSchema (teams/schemas.ts) -- a
+// collection's own name field is the same kind of plain, user-typed label.
+export const CreateCollectionSchema = z.object({
+  name: z.string().trim().min(1, "Name is required.").max(50, "Name must be 50 characters or fewer."),
+});
+
+export type CreateCollectionErrors = {
+  name?: string[];
+};

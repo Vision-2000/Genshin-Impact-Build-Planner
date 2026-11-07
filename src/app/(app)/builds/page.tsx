@@ -12,13 +12,16 @@ import {
   type OwnedCharacterOption,
   type OwnedWeaponOption,
   type OwnedArtifactOption,
+  type CollectionItem,
 } from "./filter-sort";
 
 export const metadata: Metadata = {
   title: "Builds",
 };
 
-const HELP_TEXT = `This page shows the builds you've assembled for your owned characters. Click "Create build" to assemble a new one; click an existing card to rename it, change its weapon/artifacts, or delete it (deleting pulls it out of any team or roster it's in).`;
+const HELP_TEXT = `This page shows the builds you've assembled for your owned characters. Click "Create build" to assemble a new one; click an existing card to rename it, change its weapon/artifacts, or delete it (deleting pulls it out of any team or collection it's in).
+
+Collections save a combination of builds meant to be used together across a whole roster (e.g. everyone you'd bring on a full account-wide check). Click "Create collection" to switch into collection mode and pick which builds belong -- picking a build of a character hides every other build of that same character, since only one can ever be active at once. The dropdown above the list lets you view a saved collection on its own, or switch back to "All builds". While viewing one, long-press a build's card to edit it without leaving collection mode.`;
 
 export default async function BuildsPage({
   searchParams,
@@ -34,7 +37,7 @@ export default async function BuildsPage({
   const { edit } = await searchParams;
   const initialEditBuildId = edit !== undefined && Number.isInteger(Number(edit)) ? Number(edit) : null;
 
-  const [ownedCharacters, ownedWeapons, ownedArtifacts, builds] = await Promise.all([
+  const [ownedCharacters, ownedWeapons, ownedArtifacts, builds, collections] = await Promise.all([
     prisma.ownedCharacter.findMany({
       where: { gameProfileId: profile.id, isOwned: true },
       include: {
@@ -83,6 +86,16 @@ export default async function BuildsPage({
         ownedCharacter: { include: { character: true } },
         ownedWeapon: { include: { weapon: true } },
         buildArtifacts: { include: { ownedArtifact: { include: { artifactSet: true, mainStat: true } } } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.collection.findMany({
+      where: { gameProfileId: profile.id },
+      include: {
+        // orderBy: id asc -- a collection's own "order selected" display
+        // (see CollectionBuild's own schema comment) is this row order,
+        // same reasoning as Groups' own groupTeams orderBy (teams/page.tsx).
+        collectionBuilds: { orderBy: { id: "asc" } },
       },
       orderBy: { name: "asc" },
     }),
@@ -183,6 +196,12 @@ export default async function BuildsPage({
 
   const buildItems = builds.map(toBuildItem);
 
+  const collectionItems: CollectionItem[] = collections.map((collection) => ({
+    id: collection.id,
+    name: collection.name,
+    buildIds: collection.collectionBuilds.map((cb) => cb.buildId),
+  }));
+
   return (
     <div className="min-h-full bg-primary-page">
       <div className="mx-auto max-w-[110rem] p-4">
@@ -206,6 +225,7 @@ export default async function BuildsPage({
           artifacts={artifactOptions}
           initialBuilds={buildItems}
           initialEditBuildId={initialEditBuildId}
+          initialCollections={collectionItems}
         />
       </div>
     </div>

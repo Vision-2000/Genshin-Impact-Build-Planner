@@ -23,11 +23,13 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/artifacts", label: "Artifacts", children: [{ href: "/artifacts/add", label: "Add" }] },
   // No "Create" child route -- creating a build now opens a modal directly
   // on this page (see OwnedBuildManager's own "Create build" button)
-  // instead of navigating to a dedicated /builds/create page.
+  // instead of navigating to a dedicated /builds/create page. Collections
+  // (a saved combination of Builds, the build-level equivalent of Teams'
+  // own Groups) are managed from within this page itself -- "collection
+  // mode" -- rather than a dedicated route either, for the same reason.
   { href: "/builds", label: "Builds" },
   // Groups (a saved combination of Teams) are managed from within this
   // page itself -- "group mode" (team-manager.tsx) -- rather than a
   // dedicated route, so there's no separate nav entry for them.
   { href: "/teams", label: "Teams" },
-  { href: "/rosters", label: "Rosters" },
 ];

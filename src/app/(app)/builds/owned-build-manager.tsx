@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ArtifactSlot, Element, WeaponType } from "@/generated/prisma/enums";
 import { rarityGradientClasses } from "@/lib/rarity-colors";
 import { paginate } from "@/lib/paginate";
@@ -14,7 +14,16 @@ import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
 import type { SortDirection } from "@/lib/sort";
 import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
 import { ElementFilterRow } from "../characters/element-filter-row";
-import { updateBuildName, updateBuildWeapon, setBuildArtifact, deleteBuild, getBuildContainerNames } from "./actions";
+import {
+  updateBuildName,
+  updateBuildWeapon,
+  setBuildArtifact,
+  deleteBuild,
+  getBuildContainerNames,
+  createCollection,
+  updateCollection,
+  deleteCollection,
+} from "./actions";
 import { ArtifactSlotPicker } from "./artifact-slot-picker";
 import { CharacterSlotPicker } from "./character-slot-picker";
 import { WeaponSlotPicker } from "./weapon-slot-picker";
@@ -22,12 +31,18 @@ import { BuildStatsSummary } from "./build-stats-summary";
 import { BuildCatalog, readDraft, DRAFT_KEY } from "./build-catalog";
 import {
   filterAndSortBuilds,
+  filterBuilds,
   activeSetEffectsFromArtifacts,
+  availableCollectionBuilds,
+  computeCollectionConflicts,
+  buildCollectionConflictFlags,
+  describeCollectionConflict,
   type BuildItem,
   type BuildSortKey,
   type OwnedArtifactOption,
   type OwnedCharacterOption,
   type OwnedWeaponOption,
+  type CollectionItem,
 } from "./filter-sort";
 
 const SLOTS = Object.values(ArtifactSlot);
@@ -64,21 +79,132 @@ type BuildEditDraft = {
   slots: SlotSelections;
 };
 
+// How long (ms) a press has to be held on a card while in collection mode
+// before it's treated as "edit this build instead of toggling it" -- see
+// BuildCard's own long-press handling below.
+const LONG_PRESS_DURATION_MS = 550;
+
+// A small ring overlay tracking an in-progress long press, 0 (just
+// started) to 1 (about to fire) -- the user's own requested "short
+// circular progress bar to indicate time required", rather than a plain
+// spinner that gives no sense of how much longer to hold. -rotate-90 on
+// the <svg> is what makes the stroke sweep clockwise from the top (SVG's
+// own 0deg is 3 o'clock otherwise); strokeDashoffset is driven straight
+// from `progress`, no animation library needed since the parent already
+// re-renders every animation frame while a press is active.
+function PressProgressRing({ progress }: { progress: number }) {
+  const size = 40;
+  const strokeWidth = 4;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="white"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - progress)}
+        />
+      </svg>
+    </div>
+  );
+}
+
 // Display-only grid card, same treatment as the other pages: character
 // portrait as the hero image, rarity-tinted border. Below it, the weapon
 // icon and a flower icon per active artifact set effect. Clicking the card
 // opens the edit modal (same click-to-open pattern as WeaponCard/
 // ArtifactCard); deleting a build happens from inside that modal
 // (BuildEditor's own "Delete build" button), not on the card itself.
+//
+// Outside collection mode, a plain click always opens the edit modal --
+// BuildCard has just the one click target (unlike TeamCard's rename
+// field/4 slots/buttons), so there's no stopPropagation dance needed the
+// way TeamCard's own groupSelection needs. In collection mode
+// (collectionSelection non-null), a plain click instead toggles this
+// build into/out of the in-progress draft -- the user's own explicit
+// call that showing a picked build's own OTHER same-character builds as
+// still-clickable "just adds unnecessary info" is handled one level up,
+// in availableCollectionBuilds (filter-sort.ts), which removes them from
+// the list passed down here entirely; this component only ever sees
+// builds that are actually still pickable (plus whichever one it's
+// currently rendering, if already selected). A long press (held past
+// LONG_PRESS_DURATION_MS) is the one way left to still edit a build
+// without leaving collection mode, per the user's own request -- a
+// pointerup/leave/cancel before that threshold cancels back to a normal
+// click instead.
 function BuildCard({
   build,
   isActive,
   onEdit,
+  collectionSelection,
+  weaponConflict = false,
+  artifactConflict = false,
 }: {
   build: BuildItem;
   isActive: boolean;
   onEdit: () => void;
+  collectionSelection?: { selected: boolean; onToggle: () => void };
+  weaponConflict?: boolean;
+  artifactConflict?: boolean;
 }) {
+  const [pressProgress, setPressProgress] = useState(0);
+  const pressStartRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  // Set the instant the long press actually fires onEdit, so the click
+  // event the browser still dispatches right after pointerup can be
+  // swallowed instead of ALSO toggling selection -- cleared the next time
+  // a press starts.
+  const longPressFiredRef = useRef(false);
+
+  function cancelPress() {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    pressStartRef.current = null;
+    setPressProgress(0);
+  }
+
+  function tick() {
+    const start = pressStartRef.current;
+    if (start === null) return;
+    const progress = Math.min(1, (performance.now() - start) / LONG_PRESS_DURATION_MS);
+    setPressProgress(progress);
+    if (progress >= 1) {
+      longPressFiredRef.current = true;
+      cancelPress();
+      onEdit();
+      return;
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
+  function handlePointerDown(event: ReactPointerEvent) {
+    if (!collectionSelection || event.button !== 0) return;
+    longPressFiredRef.current = false;
+    pressStartRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
+  function handleClick() {
+    if (longPressFiredRef.current) {
+      // The long press already opened the editor -- this is just the
+      // browser's own trailing click from the same gesture, not a new,
+      // separate click meant to toggle selection.
+      longPressFiredRef.current = false;
+      return;
+    }
+    if (collectionSelection) collectionSelection.onToggle();
+    else onEdit();
+  }
+
   return (
     <li className="relative">
       {/* flex row, not stacked -- BuildPortrait's own character icon (2x2
@@ -92,16 +218,21 @@ function BuildCard({
           active set effects, there's no more reason for that second row
           to exist as a separate block at all. */}
       <div
-        onClick={onEdit}
+        onClick={handleClick}
+        onPointerDown={handlePointerDown}
+        onPointerUp={cancelPress}
+        onPointerLeave={cancelPress}
+        onPointerCancel={cancelPress}
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
           if (event.key !== "Enter" && event.key !== " ") return;
           event.preventDefault();
-          onEdit();
+          if (collectionSelection) collectionSelection.onToggle();
+          else onEdit();
         }}
-        className={`flex w-full cursor-pointer overflow-hidden rounded-xl border-8 shadow hover:opacity-90 ${
-          isActive ? "border-blue-500" : "border-gray-600"
+        className={`flex w-full cursor-pointer touch-none select-none overflow-hidden rounded-xl border-8 shadow hover:opacity-90 ${
+          isActive ? "border-blue-500" : collectionSelection?.selected ? "border-green-500" : "border-gray-600"
         } ${rarityGradientClasses(build.characterRarity)}`}
       >
         <BuildPortrait
@@ -113,8 +244,11 @@ function BuildCard({
           weaponRarity={build.weaponRarity}
           characterWeaponType={build.characterWeaponType}
           activeSetEffects={build.activeSetEffects}
+          weaponConflict={weaponConflict}
+          artifactConflict={artifactConflict}
         />
       </div>
+      {pressProgress > 0 && <PressProgressRing progress={pressProgress} />}
     </li>
   );
 }
@@ -294,6 +428,7 @@ export function OwnedBuildManager({
   artifacts,
   initialBuilds,
   initialEditBuildId = null,
+  initialCollections,
 }: {
   // The page's own title block -- rendered on the same row as "Create
   // build", same header shape every other page uses (see page.tsx's own
@@ -308,6 +443,7 @@ export function OwnedBuildManager({
   // build's own BuildEditor already open, same as clicking its card
   // would. null (the default) for every other, ordinary page load.
   initialEditBuildId?: number | null;
+  initialCollections: CollectionItem[];
 }) {
   useRefreshOnBackNavigation();
   const [builds, setBuilds] = useState(initialBuilds);
@@ -324,8 +460,56 @@ export function OwnedBuildManager({
     setPrevInitialBuilds(initialBuilds);
     setBuilds(initialBuilds);
   }
+  // Same staleness fix, same reason, for the saved collections list.
+  const [collections, setCollections] = useState(initialCollections);
+  const [prevInitialCollections, setPrevInitialCollections] = useState(initialCollections);
+  if (initialCollections !== prevInitialCollections) {
+    setPrevInitialCollections(initialCollections);
+    setCollections(initialCollections);
+  }
   const [, startTransition] = useTransition();
   const { confirm } = useDialogs();
+
+  // null outside "collection mode"; set by "Create collection"/"Edit
+  // collection" below. Mirrors TeamManager's own groupDraft (teams/
+  // team-manager.tsx) -- collectionId is null while CREATING (nothing to
+  // update yet) and the saved collection's own id while editing. buildIds
+  // is the in-progress draft selection, in the order builds were added to
+  // it (appended on select, spliced out on deselect) -- what the saved
+  // collection's own "order selected" display (CollectionBuild's own
+  // schema comment) ends up reflecting once this is saved.
+  const [collectionDraft, setCollectionDraft] = useState<{
+    collectionId: number | null;
+    name: string;
+    buildIds: number[];
+  } | null>(null);
+  // A server-side error from the last save attempt -- distinct from the
+  // live validation below, which is purely derived from the current
+  // builds/draft and never itself an error object.
+  const [collectionSaveError, setCollectionSaveError] = useState<string | null>(null);
+  const inCollectionMode = collectionDraft !== null;
+
+  // Which dropdown entry is selected -- null is "All builds" (the
+  // default). Reset to null whenever the selected collection no longer
+  // exists (e.g. deleted in another tab), same render-time adjustment
+  // TeamManager's own selectedGroupId uses.
+  const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null);
+  if (selectedCollectionId !== null && !collections.some((c) => c.id === selectedCollectionId)) {
+    setSelectedCollectionId(null);
+  }
+  const selectedCollection =
+    selectedCollectionId !== null ? collections.find((c) => c.id === selectedCollectionId) : undefined;
+
+  // Whether the grid's own order currently carries meaning -- either
+  // viewing one specific saved collection (its own saved order), or
+  // editing one (selected-first, see displayedBuilds below) -- and so
+  // must NOT be disturbed by the ordinary sort dropdown. Creating a
+  // brand-new collection doesn't count: nothing is selected yet, so
+  // there's nothing worth bumping, same reasoning TeamManager's own
+  // displayedTeams comment gives for groupDraft.groupId === null.
+  const fixedOrderActive =
+    (!inCollectionMode && selectedCollection !== undefined) ||
+    (collectionDraft !== null && collectionDraft.collectionId !== null);
 
   // Two separate boxes (see BuildFilters' own comment on why they combine
   // as AND, not one shared box OR-ing build name against character name),
@@ -360,21 +544,94 @@ export function OwnedBuildManager({
     }
   }, []);
 
-  const filtered = filterAndSortBuilds(builds, {
-    buildNameSearch,
-    characterNameSearch,
-    elementFilter,
-    weaponTypeFilter,
-    rarityFilter,
-    sortKey,
-    sortDirection,
-  });
+  // While viewing one specific saved collection outside collection mode,
+  // the grid is scoped to exactly that collection's own builds, in ITS
+  // saved order; while editing one (collectionDraft.collectionId !==
+  // null), every currently-selected build is bumped to the top of the
+  // FULL list instead, in the draft's own order, so the ones the user
+  // came here to review/change are immediately visible rather than
+  // buried among every other build -- same two cases, same reasoning, as
+  // TeamManager's own displayedTeams (teams/team-manager.tsx). Creating a
+  // brand-new collection (collectionDraft.collectionId === null) falls
+  // through to the plain `builds` order instead -- nothing's selected yet
+  // to bump.
+  const orderedBuilds =
+    !inCollectionMode && selectedCollection
+      ? selectedCollection.buildIds
+          .map((buildId) => builds.find((b) => b.id === buildId))
+          .filter((b): b is BuildItem => b !== undefined)
+      : collectionDraft && collectionDraft.collectionId !== null
+        ? [...builds].sort((a, b) => {
+            const aIndex = collectionDraft.buildIds.indexOf(a.id);
+            const bIndex = collectionDraft.buildIds.indexOf(b.id);
+            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            return 0;
+          })
+        : builds;
+
+  // fixedOrderActive uses filterBuilds (filter only, no sort) so it never
+  // disturbs the saved/selected-first order just established above; every
+  // other case still goes through the ordinary filterAndSortBuilds, sort
+  // dropdown included (see its own row below, hidden while fixedOrderActive).
+  const filterCriteria = { buildNameSearch, characterNameSearch, elementFilter, weaponTypeFilter, rarityFilter };
+  const orderedAndFiltered = fixedOrderActive
+    ? filterBuilds(orderedBuilds, filterCriteria)
+    : filterAndSortBuilds(orderedBuilds, { ...filterCriteria, sortKey, sortDirection });
+
+  // Candidate exclusion while in collection mode -- hides (not dims) any
+  // not-yet-selected build that would conflict with the draft's current
+  // selection, per the user's own explicit call (availableCollectionBuilds'
+  // own comment). A no-op outside collection mode.
+  const filtered =
+    inCollectionMode && collectionDraft ? availableCollectionBuilds(orderedAndFiltered, collectionDraft.buildIds) : orderedAndFiltered;
+
   const { pageItems, pageCount, currentPage } = paginate(filtered, page, PAGE_SIZE);
   const editingBuild = editingId === null ? null : (builds.find((b) => b.id === editingId) ?? null);
   const editingCharacter = editingBuild
     ? (characters.find((c) => c.ownedCharacterId === editingBuild.ownedCharacterId) ?? null)
     : null;
   const activeId = editingId ?? pendingDeleteId;
+
+  // Live, non-blocking validation of the in-progress draft, via
+  // computeCollectionConflicts -- only ever shared-weapon/shared-artifact
+  // (duplicate-character/exclusivityGroup conflicts can't reach here at
+  // all, see availableCollectionBuilds' own comment), but still a hard
+  // block on Save, same as Groups' own groupDraftConflicts.
+  const collectionDraftMembers = collectionDraft
+    ? collectionDraft.buildIds.map((id) => builds.find((b) => b.id === id)).filter((b): b is BuildItem => b !== undefined)
+    : [];
+  const collectionDraftConflicts = collectionDraft ? computeCollectionConflicts(collectionDraftMembers) : [];
+
+  // Whether each saved collection's OWN current members have drifted into
+  // conflict since it was last saved (a build's weapon/artifacts can
+  // change after the fact, same reasoning computeTeamConflicts/
+  // computeCollectionConflicts already have) -- computed for every
+  // collection up front, same as TeamManager's own groupConflictById, so
+  // the dropdown itself can flag a drifted collection before it's opened.
+  const collectionConflictById = new Map(
+    collections.map((collection) => [
+      collection.id,
+      computeCollectionConflicts(
+        collection.buildIds.map((id) => builds.find((b) => b.id === id)).filter((b): b is BuildItem => b !== undefined)
+      ).length > 0,
+    ])
+  );
+
+  // Per-card conflict ring flags (BuildPortrait's own weaponConflict/
+  // artifactConflict props) -- the in-progress draft's own conflicts while
+  // in collection mode, or the selected saved collection's own (possibly
+  // drifted) conflicts while just viewing one, same source either way:
+  // conflicts are only ever meaningful against a specific set of members,
+  // never the full unscoped build list.
+  const activeCollectionConflicts = inCollectionMode
+    ? collectionDraftConflicts
+    : selectedCollection
+      ? computeCollectionConflicts(
+          selectedCollection.buildIds.map((id) => builds.find((b) => b.id === id)).filter((b): b is BuildItem => b !== undefined)
+        )
+      : [];
 
   // Commits BuildEditor's own staged draft all at once, only once Save is
   // actually clicked -- compares each field against the build's own
@@ -440,10 +697,10 @@ export function OwnedBuildManager({
 
   async function handleDelete(buildId: number) {
     setPendingDeleteId(buildId);
-    const { teamNames, rosterNames } = await getBuildContainerNames(buildId);
+    const { teamNames, collectionNames } = await getBuildContainerNames(buildId);
     const containerLabels = [
       ...teamNames.map((name) => `team "${name}"`),
-      ...rosterNames.map((name) => `roster "${name}"`),
+      ...collectionNames.map((name) => `collection "${name}"`),
     ];
     const message =
       containerLabels.length > 0
@@ -462,6 +719,90 @@ export function OwnedBuildManager({
       setBuilds((prev) => prev.filter((b) => b.id !== buildId));
       deleteBuild(buildId).catch(() => setBuilds(previous));
     });
+    // Deleting a build is reachable from collection mode too (via a long
+    // press into BuildEditor, see BuildCard's own comment) -- if it was
+    // part of the in-progress draft selection, drop it from there as
+    // well, same as TeamManager's own handleDelete does for groupDraft.
+    if (collectionDraft) {
+      setCollectionDraft((prev) => (prev ? { ...prev, buildIds: prev.buildIds.filter((id) => id !== buildId) } : prev));
+    }
+  }
+
+  function handleCreateCollection() {
+    setCollectionDraft({ collectionId: null, name: "New Collection", buildIds: [] });
+    setCollectionSaveError(null);
+  }
+
+  function handleEditCollection() {
+    if (!selectedCollection) return;
+    setCollectionDraft({ collectionId: selectedCollection.id, name: selectedCollection.name, buildIds: [...selectedCollection.buildIds] });
+    setCollectionSaveError(null);
+  }
+
+  // Only deletes the Collection/CollectionBuild rows -- same as deleting a
+  // Team/Group, this never touches the builds themselves, just the saved
+  // combination of them.
+  async function handleDeleteCollection() {
+    if (!selectedCollection) return;
+    const collectionId = selectedCollection.id;
+    const confirmed = await confirm(`Delete the collection "${selectedCollection.name}"? This can't be undone.`, {
+      title: "Delete collection",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    startTransition(() => {
+      const previous = collections;
+      setCollections((prev) => prev.filter((c) => c.id !== collectionId));
+      setSelectedCollectionId(null);
+      deleteCollection(collectionId).catch(() => setCollections(previous));
+    });
+  }
+
+  function handleCancelCollectionMode() {
+    setCollectionDraft(null);
+    setCollectionSaveError(null);
+  }
+
+  function handleToggleCollectionBuild(buildId: number) {
+    setCollectionDraft((prev) => {
+      if (!prev) return prev;
+      // Splice out on deselect, append on select -- same "order selected"
+      // reasoning TeamManager's own handleToggleGroupTeam gives: a build
+      // re-added after being removed goes back to the END of the order,
+      // not its old position.
+      const buildIds = prev.buildIds.includes(buildId)
+        ? prev.buildIds.filter((id) => id !== buildId)
+        : [...prev.buildIds, buildId];
+      return { ...prev, buildIds };
+    });
+  }
+
+  function handleSaveCollection() {
+    if (!collectionDraft) return;
+    const draft = collectionDraft;
+    startTransition(async () => {
+      const result =
+        draft.collectionId === null
+          ? await createCollection(draft.name, draft.buildIds)
+          : await updateCollection(draft.collectionId, draft.name, draft.buildIds);
+      if ("errors" in result) {
+        setCollectionSaveError(result.errors.name?.[0] ?? "Couldn't save this collection.");
+        return;
+      }
+      if ("error" in result) {
+        setCollectionSaveError(result.error);
+        return;
+      }
+      const saved: CollectionItem = { id: result.collection.id, name: result.collection.name, buildIds: draft.buildIds };
+      setCollections((prev) => {
+        const next = prev.some((c) => c.id === saved.id) ? prev.map((c) => (c.id === saved.id ? saved : c)) : [...prev, saved];
+        return [...next].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setSelectedCollectionId(saved.id);
+      setCollectionDraft(null);
+      setCollectionSaveError(null);
+    });
   }
 
   return (
@@ -469,39 +810,46 @@ export function OwnedBuildManager({
       <div className="flex items-center justify-between gap-3">
         {header}
 
-        {/* pt-3/pb-2 (not py-2.5) -- same Arial line-height fix as every
-            other text-centered control in this app, see
-            build-stats-summary.tsx's own comment on the root cause. */}
-        <button
-          type="button"
-          onClick={() => {
-            // A deliberate click here is a fresh session, not a
-            // continuation of whatever draft the mount effect above might
-            // otherwise restore -- clear it first so BuildCatalog starts
-            // blank. Returning to a leftover draft (e.g. after following a
-            // picker's own "add it" link and coming back) goes through
-            // that mount effect instead, never through this click handler.
-            try {
-              sessionStorage.removeItem(DRAFT_KEY);
-            } catch {
-              // Ignore -- worst case the draft (if any) gets restored anyway.
-            }
-            setCreating(true);
-          }}
-          className="flex items-center gap-1.5 rounded-lg border px-4 pb-2 pt-3 text-sm font-semibold hover:bg-black/5"
-        >
-          {/* The "+" and this text are flex siblings (items-center) at
-              different font sizes/line-heights (text-base leading-none
-              vs this text's own default text-sm), so items-center
-              centers each independently -- the button's own pt-3/pb-2
-              above shifts the whole row, not their position relative to
-              each other. mt-0.5 nudges the text down and -mt-0.5 nudges
-              the "+" up by the same amount to meet it, same small-nudge
-              pattern used throughout this app for a badge/icon sitting
-              next to plain text. */}
-          <span className="-mt-0.5 text-base leading-none">+</span>
-          <span className="mt-0.5">Create build</span>
-        </button>
+        {/* Hidden while viewing a specific collection outside collection
+            mode -- creating a plain build there wouldn't belong to the
+            collection being viewed, which would read as it silently
+            vanishing. Same condition as TeamManager's own "New Team"
+            button (teams/team-manager.tsx). pt-3/pb-2 (not py-2.5) -- same
+            Arial line-height fix as every other text-centered control in
+            this app, see build-stats-summary.tsx's own comment on the
+            root cause. */}
+        {(inCollectionMode || !selectedCollection) && (
+          <button
+            type="button"
+            onClick={() => {
+              // A deliberate click here is a fresh session, not a
+              // continuation of whatever draft the mount effect above might
+              // otherwise restore -- clear it first so BuildCatalog starts
+              // blank. Returning to a leftover draft (e.g. after following a
+              // picker's own "add it" link and coming back) goes through
+              // that mount effect instead, never through this click handler.
+              try {
+                sessionStorage.removeItem(DRAFT_KEY);
+              } catch {
+                // Ignore -- worst case the draft (if any) gets restored anyway.
+              }
+              setCreating(true);
+            }}
+            className="flex items-center gap-1.5 rounded-lg border px-4 pb-2 pt-3 text-sm font-semibold hover:bg-black/5"
+          >
+            {/* The "+" and this text are flex siblings (items-center) at
+                different font sizes/line-heights (text-base leading-none
+                vs this text's own default text-sm), so items-center
+                centers each independently -- the button's own pt-3/pb-2
+                above shifts the whole row, not their position relative to
+                each other. mt-0.5 nudges the text down and -mt-0.5 nudges
+                the "+" up by the same amount to meet it, same small-nudge
+                pattern used throughout this app for a badge/icon sitting
+                next to plain text. */}
+            <span className="-mt-0.5 text-base leading-none">+</span>
+            <span className="mt-0.5">Create build</span>
+          </button>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -526,16 +874,144 @@ export function OwnedBuildManager({
             }}
             className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
           />
-          <select
-            value={sortKey}
-            onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
-            className="h-[38px] rounded border bg-white px-2 text-sm text-black"
-          >
-            <option value="obtained">Sort: Added</option>
-            <option value="character">Sort: Character</option>
-          </select>
-          <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+          {/* Hidden whenever the grid's own order already carries meaning
+              (a saved collection's own order, or selected-first while
+              editing one) -- fixedOrderActive's own comment above. */}
+          {!fixedOrderActive && (
+            <>
+              <select
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value as BuildSortKey)}
+                className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+              >
+                <option value="obtained">Sort: Added</option>
+                <option value="character">Sort: Character</option>
+              </select>
+              <SortDirectionToggle direction={sortDirection} onChange={setSortDirection} />
+            </>
+          )}
         </div>
+
+        {/* "Collection mode" -- see collectionDraft's own comment. Same
+            shape as TeamManager's own group-mode panel/dropdown row
+            (teams/team-manager.tsx), minus the team-indirection layer. */}
+        {collectionDraft ? (
+          <div
+            className={`space-y-2 rounded-lg border bg-blue-500/5 p-3 ${
+              collectionDraftConflicts.length > 0 || collectionDraft.buildIds.length === 0 ? "border-red-500" : "border-blue-500"
+            }`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-sm font-semibold" htmlFor="collection-draft-name">
+                Collection name:
+              </label>
+              <input
+                id="collection-draft-name"
+                type="text"
+                autoFocus
+                value={collectionDraft.name}
+                onChange={(event) => setCollectionDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+                className="w-64 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
+              />
+              <span className="text-sm text-gray-500 dark:text-gray-300">
+                {collectionDraft.buildIds.length} build{collectionDraft.buildIds.length === 1 ? "" : "s"} selected
+              </span>
+              <div className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelCollectionMode}
+                  className="rounded border bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCollection}
+                  disabled={
+                    collectionDraftConflicts.length > 0 || collectionDraft.name.trim() === "" || collectionDraft.buildIds.length === 0
+                  }
+                  className="rounded border border-white bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-black"
+                >
+                  Save collection
+                </button>
+              </div>
+            </div>
+            {/* Live, not a save-time response -- re-evaluated on every
+                selection change. Weapon/artifact-only (duplicate-character/
+                exclusivityGroup conflicts can't reach here, see
+                availableCollectionBuilds' own comment), one line per
+                conflict via describeCollectionConflict. */}
+            {collectionDraftConflicts.length > 0 && (
+              <ul className="space-y-1 text-sm text-red-500">
+                {collectionDraftConflicts.map((conflict, index) => (
+                  <li key={index}>
+                    {describeCollectionConflict(conflict, collectionDraftMembers).map((part, partIndex) =>
+                      part.type === "build" ? (
+                        <span key={partIndex}>
+                          {part.characterName} (<em>{part.buildName}</em>)
+                        </span>
+                      ) : (
+                        <span key={partIndex}>{part.text}</span>
+                      )
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {collectionDraft.buildIds.length === 0 && (
+              <p className="text-sm text-red-500">A collection must contain at least one build.</p>
+            )}
+            {collectionSaveError && <p className="text-sm text-red-500">{collectionSaveError}</p>}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedCollectionId ?? ""}
+              onChange={(event) => {
+                setSelectedCollectionId(event.target.value === "" ? null : Number(event.target.value));
+                setPage(1);
+              }}
+              className="h-[38px] rounded border bg-white px-2 text-sm text-black"
+            >
+              <option value="">All builds</option>
+              {collections.map((collection) => (
+                <option
+                  key={collection.id}
+                  value={collection.id}
+                  className={collectionConflictById.get(collection.id) ? "text-red-600" : undefined}
+                >
+                  {collection.name}
+                  {collectionConflictById.get(collection.id) ? " (conflict)" : ""}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleCreateCollection}
+              className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <span className="text-sm leading-none">+</span> Create collection
+            </button>
+            {selectedCollection && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleEditCollection}
+                  className="rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  Edit collection
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteCollection}
+                  className="rounded-full border border-red-600 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-600/10"
+                >
+                  Delete collection
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Same character-page filters (element/weapon type/rarity), just
             matched against each build's own character -- see
@@ -582,14 +1058,24 @@ export function OwnedBuildManager({
           <p className="text-sm text-gray-500">No builds match these filters.</p>
         ) : (
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {pageItems.map((build) => (
-              <BuildCard
-                key={build.id}
-                build={build}
-                isActive={build.id === activeId}
-                onEdit={() => setEditingId(build.id)}
-              />
-            ))}
+            {pageItems.map((build) => {
+              const conflictFlags = buildCollectionConflictFlags(build.id, activeCollectionConflicts);
+              return (
+                <BuildCard
+                  key={build.id}
+                  build={build}
+                  isActive={build.id === activeId}
+                  onEdit={() => setEditingId(build.id)}
+                  collectionSelection={
+                    collectionDraft
+                      ? { selected: collectionDraft.buildIds.includes(build.id), onToggle: () => handleToggleCollectionBuild(build.id) }
+                      : undefined
+                  }
+                  weaponConflict={conflictFlags.weaponConflict}
+                  artifactConflict={conflictFlags.conflictingArtifactIds.length > 0}
+                />
+              );
+            })}
           </ul>
         )}
 
@@ -617,7 +1103,15 @@ export function OwnedBuildManager({
             characters={characters}
             weapons={weapons}
             artifacts={artifacts}
-            onCreated={(build) => setBuilds((prev) => [...prev, build])}
+            onCreated={(build) => {
+              setBuilds((prev) => [...prev, build]);
+              // Auto-selects a freshly created build into the in-progress
+              // collection draft, per TeamManager's own identical
+              // handleCreate behavior for a freshly created team.
+              if (collectionDraft) {
+                setCollectionDraft((prev) => (prev ? { ...prev, buildIds: [...prev.buildIds, build.id] } : prev));
+              }
+            }}
             onClose={() => setCreating(false)}
           />
         )}

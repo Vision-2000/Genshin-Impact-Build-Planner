@@ -12,7 +12,7 @@ export function DeleteProfileButton({ profileId, profileName }: { profileId: num
     // The confirm() wait is unbounded (it resolves whenever the user gets
     // around to clicking something), so it stays outside startTransition --
     // transitions are for work that resolves soon, not for gating on a human.
-    const message = `Delete profile "${profileName}"? This will permanently delete everything saved under it -- owned characters, weapons, artifacts, builds, teams, rosters, and groups. This can't be undone.`;
+    const message = `Delete profile "${profileName}"? This will permanently delete everything saved under it -- owned characters, weapons, artifacts, builds, teams, collections, and groups. This can't be undone.`;
     const confirmed = await confirm(message, { title: "Delete profile", confirmLabel: "Delete", danger: true });
     if (!confirmed) return;
     startTransition(() => {

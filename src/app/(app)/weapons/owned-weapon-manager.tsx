@@ -275,7 +275,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
         }}
       />
 
-      {/* min-h-8 -- same fix as the Teams/Builds/Rosters/Artifacts
+      {/* min-h-8 -- same fix as the Teams/Builds/Artifacts
           pages' own top row: without a reserved height, crossing into a
           2nd page grows this row (PaginationNavButtons' own buttons are
           taller than the count text alone) and visibly shifts the grid
