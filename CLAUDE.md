@@ -4,7 +4,8 @@
 A personal portfolio project (job-hunting for entry-level software engineer roles).
 Solves a real problem: Genshin Impact has no in-game way to save character builds,
 so this app tracks owned characters/weapons/artifacts, saves builds, assembles teams
-and rosters, and flags resource conflicts across a multi-team lineup.
+and collections of builds, groups multiple teams together, and flags resource
+conflicts across all of them.
 
 Unofficial fan project. Not affiliated with or endorsed by HoYoverse. Don't imply
 official affiliation anywhere in the UI or README.
@@ -163,11 +164,12 @@ the app or the seed script.
 - Team — up to 4 builds (cap enforced in app code, not the DB)
 - TeamBuild — join table; denormalizes owned_character_id so the DB can enforce
   UNIQUE(team_id, owned_character_id) directly
-- Roster — same shape as Team, no build cap
-- RosterBuild — same denormalization pattern as TeamBuild
-- Lineup — a saved combination of Teams only (Rosters are always validated alone,
-  never combined)
-- LineupTeam — join table
+- Collection — same shape as Team, no build cap (renamed from Roster -- see Key
+  decisions on why)
+- CollectionBuild — same denormalization pattern as TeamBuild
+- Group — a saved combination of Teams only (Collections are always validated
+  alone, never combined) (renamed from Lineup -- see Key decisions)
+- GroupTeam — join table
 
 ## Key decisions — these were deliberated, don't re-derive or second-guess them
 - All data is private per user. No sharing/social features of any kind.
@@ -188,30 +190,58 @@ the app or the seed script.
 - Artifact filters are boolean only ("has a Crit Rate substat"), never range-based.
   "Highest X" is handled by sorting, not filtering.
 - "Main stat X excludes substat X" is frontend validation, not a DB constraint.
-- Deleting a Build cascades out of any Team/Roster it's in — but show a
-  confirmation first, naming the affected teams/rosters (and any Lineups built on
-  top of them).
-- Editing a Build that would break a Team/Roster gives the user two paths:
-  (a) save as a copy, leaving the original and its team/roster memberships
+- Deleting a Build cascades out of any Team/Collection it's in — but show a
+  confirmation first, naming the affected teams/collections (and any Groups
+  built on top of them).
+- Editing a Build that would break a Team/Collection gives the user two paths:
+  (a) save as a copy, leaving the original and its team/collection memberships
   untouched, or (b) force-edit, which removes the build only from the specific
-  teams/rosters where the edit actually creates a conflict — checked per
+  teams/collections where the edit actually creates a conflict — checked per
   container, not globally, since the same edit might be fine in one team and
   conflict in another.
-- Team/Roster overlap checks default to ephemeral — nothing is saved by default.
-  Saving as a named Lineup is optional, only allowed if the check currently
-  passes, and always re-validated live when viewed later (never cached), since
-  the underlying builds can change after a Lineup is saved.
+- Team/Collection overlap checks default to ephemeral — nothing is saved by
+  default. Saving as a named Group (a combination of Teams) is optional, only
+  allowed if the check currently passes, and always re-validated live when
+  viewed later (never cached), since the underlying builds can change after a
+  Group is saved.
 - Overlap-detection (shared weapon/artifact reuse across a set of builds) is one
-  generic function over "a set of builds" — reused for in-progress team/roster
-  selection warnings, full validation, and saved Lineup display. Do not
-  reimplement this per screen. All composition checks are hard blocks, not
+  generic function over "a set of builds" — reused for in-progress team/
+  collection selection warnings, full validation, and saved Group display. Do
+  not reimplement this per screen. All composition checks are hard blocks, not
   advisory warnings — shared weapon and shared artifact reuse across builds in
-  the same team/roster are blocked exactly like duplicate-character and
+  the same team/collection are blocked exactly like duplicate-character and
   exclusivityGroup collisions are. "Warnings" above describes the UI moment
   (surfaced live during selection), not a lower severity.
-- A build can be reused across multiple teams/rosters simultaneously.
-- A build can never contain the same character twice within one team/roster —
-  this is what the denormalized owned_character_id + unique constraint enforces.
+- A build can be reused across multiple teams/collections simultaneously.
+- A build can never contain the same character twice within one team/collection
+  — this is what the denormalized owned_character_id + unique constraint
+  enforces.
+- Group (formerly Lineup) and Collection (formerly Roster) are both internal
+  "modes" toggled on an existing page -- Teams' own "group mode" and Builds'
+  own "collection mode" -- not separate /groups or /collections routes. Both
+  started as standalone pages and were folded in once it became clear a Group
+  is nothing more than a saved selection of the SAME Teams already listed on
+  the Teams page (and a Collection the same for Builds on the Builds page), so
+  a dedicated route would just duplicate that same list behind a second URL.
+  Roster was renamed to Collection specifically because "roster" was already
+  taken: `/characters/roster` is the unrelated "every character, toggle
+  ownership" page, and reusing the word for a second, structurally different
+  feature would be confusing in both the UI and this document. Lineup was
+  renamed to Group for symmetry with that same rename, not because "Lineup"
+  collided with anything of its own.
+- Collection mode's own candidate picker (`availableCollectionBuilds`,
+  builds/filter-sort.ts) removes a build from the pickable list ENTIRELY, not
+  just dims it, the instant picking it would create a duplicate-character or
+  exclusivityGroup conflict with an already-selected build -- there's
+  deliberately no error message for that conflict type in collection mode at
+  all, since it can never be reached. Weapon/artifact reuse is the opposite:
+  flagged live (a red ring on the affected card, a message in the collection-
+  mode panel) but never blocks a pick, same "hard block on Save, not on
+  selection" treatment group mode already gives it. Editing a build while
+  still inside collection mode, without losing the in-progress draft, is
+  reached by a long press on its card (held past a short delay, shown via a
+  circular progress ring) -- a deliberate alternative to a plain click, which
+  collection mode already uses to toggle a build's own selection.
 - Master data (Character, Weapon, ArtifactSet, StatType and all their child
   tables) is sourced entirely from `data-source/{characters,weapons,
   artifact-sets,stat-types}.json` — hand-maintained JSON that a separate
@@ -264,7 +294,7 @@ the app or the seed script.
   regardless of element or gender, and the base uniqueness constraint doesn't
   know all 14 rows are related. Fixed with a nullable `exclusivityGroup`
   field on `Character`: null for every normal character (no behavior change),
-  set to the single shared value `"traveler"` for all 14 rows. Team/Roster
+  set to the single shared value `"traveler"` for all 14 rows. Team/Collection
   composition checks (both the live warning during build selection and full
   validation) must also block on a shared non-null `exclusivityGroup` between
   builds already present, not just on owned_character_id. If a future
@@ -692,18 +722,22 @@ the app or the seed script.
    on top of it
 10. Teams — assemble builds, enforce per-character uniqueness, show overlap
     warnings live during selection
-11. Rosters — same pattern as Teams, no build cap
-12. Lineups — save Team combinations; ephemeral-vs-saved validation
+11. Collections (originally built as a standalone Rosters page, later folded
+    into Builds' own "collection mode" -- see Key decisions) — same pattern
+    as Teams, no build cap
+12. Groups (originally built as a standalone Lineups page, later folded into
+    Teams' own "group mode" -- see Key decisions) — save Team combinations;
+    ephemeral-vs-saved validation
 13. Visual polish, deploy to Vercel, README
 
 ## Deferred / not designed yet — don't build ahead of these
 - Build editing's copy-vs-force-edit prompt when an edit would break a Team
   it already belongs to (now that overlap checks are hard blocks, an
   unguarded edit could leave a team in a state full validation would reject).
-  Editing a Build is a direct save for now. Revisit alongside or after
-  Rosters.
+  Editing a Build is a direct save for now. Revisit now that Teams, Groups,
+  and Collections all exist.
 - Home page task/reminder list
-- Custom validation rules for Lineups (e.g. Imaginary Theatre's 3-element +
+- Custom validation rules for Groups (e.g. Imaginary Theatre's 3-element +
   guest-character restrictions per season)
 - Damage simulation, elemental resonance display, and everything that
   requires (talent multiplier tables classified by scaling stat/hit type,
