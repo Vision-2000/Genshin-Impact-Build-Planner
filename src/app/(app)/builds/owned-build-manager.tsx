@@ -82,7 +82,14 @@ type BuildEditDraft = {
 // How long (ms) a press has to be held on a card while in collection mode
 // before it's treated as "edit this build instead of toggling it" -- see
 // BuildCard's own long-press handling below.
-const LONG_PRESS_DURATION_MS = 550;
+const LONG_PRESS_DURATION_MS = 600;
+// The ring stays invisible for this long after a press starts, before it
+// begins filling over the remaining LONG_PRESS_DURATION_MS - this delay --
+// an ordinary quick click/tap is well under this, so it never flashes the
+// ring at all. Without it, pressProgress ticks up from 0 on the very first
+// animation frame, so even a plain click briefly rendered the ring for one
+// frame -- which read as a jarring flicker rather than "nothing happened".
+const RING_APPEAR_DELAY_MS = 150;
 
 // A small ring overlay tracking an in-progress long press, 0 (just
 // started) to 1 (about to fire) -- the user's own requested "short
@@ -175,14 +182,20 @@ function BuildCard({
   function tick() {
     const start = pressStartRef.current;
     if (start === null) return;
-    const progress = Math.min(1, (performance.now() - start) / LONG_PRESS_DURATION_MS);
-    setPressProgress(progress);
-    if (progress >= 1) {
+    const elapsed = performance.now() - start;
+    if (elapsed >= LONG_PRESS_DURATION_MS) {
       longPressFiredRef.current = true;
       cancelPress();
       onEdit();
       return;
     }
+    // Stays at 0 (ring hidden, see pressProgress' own render check below)
+    // until RING_APPEAR_DELAY_MS has passed, then fills over whatever
+    // duration remains -- the total time-to-fire is still
+    // LONG_PRESS_DURATION_MS either way, only the ring's own visibility is
+    // delayed.
+    const visibleDuration = LONG_PRESS_DURATION_MS - RING_APPEAR_DELAY_MS;
+    setPressProgress(Math.max(0, elapsed - RING_APPEAR_DELAY_MS) / visibleDuration);
     rafRef.current = requestAnimationFrame(tick);
   }
 
