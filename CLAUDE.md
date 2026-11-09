@@ -1,4 +1,4 @@
-# Project: Genshin Impact build tracker
+# Project: Genshin Impact Build Planner
 
 ## What this is
 A personal portfolio project (job-hunting for entry-level software engineer roles).
@@ -537,10 +537,9 @@ the app or the seed script.
 - Final-stats calculation is scoped to aggregate stat totals (HP/ATK/DEF/EM/
   Crit Rate/Crit DMG/Energy Recharge/elemental DMG%) summed from character
   base + weapon + artifacts — not full damage-per-hit output. Actual damage
-  needs talent multiplier tables classified by scaling stat/hit type, enemy
-  stats/RES, and the elemental reaction system on top of this; that's a
-  separate, much larger effort and stays under "Damage simulation" in
-  Deferred, not folded into this work.
+  would need talent multiplier tables classified by scaling stat/hit type,
+  enemy stats/RES, and the elemental reaction system on top of this; that's
+  a separate, much larger effort that's not planned for this project.
 - Static/always-on stat bonuses from passive talents, constellations,
   weapon passives, and artifact 2pc/4pc effects are modeled as small
   relational child tables (TalentStatBonus, ConstellationStatBonus,
@@ -734,32 +733,9 @@ the app or the seed script.
 13. Visual polish, deploy to Vercel, README
 
 ## Deferred / not designed yet — don't build ahead of these
-- Build editing's copy-vs-force-edit prompt when an edit would break a Team
-  it already belongs to (now that overlap checks are hard blocks, an
-  unguarded edit could leave a team in a state full validation would reject).
-  Editing a Build is a direct save for now. Revisit now that Teams, Groups,
-  and Collections all exist.
 - Home page task/reminder list
 - Custom validation rules for Groups (e.g. Imaginary Theatre's 3-element +
   guest-character restrictions per season)
-- Damage simulation, elemental resonance display, and everything that
-  requires (talent multiplier tables classified by scaling stat/hit type,
-  enemy stats/RES, the elemental reaction system). The aggregate stat totals
-  from build order step 8 are a prerequisite for this, not this itself.
-- Unlockable "bonus" passives some characters get outside the normal kit
-  (e.g. Nicole's Hexerei-only "Witch's Eve Rite: Light in the Darkness",
-  unlocked via a quest, active only with 2+ Hexerei party members; Diona
-  and Fischl are reported to have their own equivalents). Originally shelved
-  because genshin-db (the project's only data source at the time) had zero
-  coverage of these, and wiring in a second live source for a handful of
-  characters wasn't worth it. That blocker no longer applies: master data
-  now comes from a Claude session reading Lunaris/Project Amber/HoYoWiki
-  directly (see Key decisions), and characters.json already contains
-  "Witch's Eve Rite"/Hexerei text, confirmed present. Still not verified:
-  whether it's modeled with the right conditional-unlock semantics
-  (quest-gated, party-composition-gated) or just imported as an ordinary
-  Passive talent row, which may not be enough to represent "active only
-  with 2+ Hexerei party members." Revisit before treating this as done.
 
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over
