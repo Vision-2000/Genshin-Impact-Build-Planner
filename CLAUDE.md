@@ -679,17 +679,20 @@ the app or the seed script.
   with a build worth tracking.
 - Exaiphanes Blade has a special leveling mechanic tied to an in-game
   "statues unlocked" counter — level, ascension phase, and refinement
-  aren't independently settable for this one weapon, only 7 specific
-  combinations are valid (a theoretical state 7 exists but its values are
-  still unknown, so it's deliberately not offered). Not a stored field,
-  same treatment as the Traveler buff: `EXAIPHANES_BLADE_STATES` and
-  `isExaiphanesBlade()` in `src/lib/weapon-scaling.ts`. In
+  aren't independently settable for this one weapon, only 8 specific
+  combinations are valid (state 7, fully unlocked, was TBA and
+  deliberately not offered until its values were confirmed 2026-11-09 --
+  see `data-source/master-data-formulas.txt` section 3). Not a stored
+  field, same treatment as the Traveler buff: `EXAIPHANES_BLADE_STATES`
+  and `isExaiphanesBlade()` in `src/lib/weapon-scaling.ts`. In
   `owned-weapon-manager.tsx`'s progression editor, this one weapon swaps
   its normal independent level slider / ascension diamonds / refinement
-  slider for a single "Statues Unlocked" diamond selector (0-6) that sets
-  all three together — ATK, secondary stat, and passive text still come
-  from the ordinary formulas at whichever state is picked, nothing else
-  about this weapon is special.
+  slider for a single "Statues Unlocked" diamond selector (0-7,
+  `EXAIPHANES_BLADE_STATES.length - 1` -- stays in sync automatically if
+  a further state is ever added) that sets all three together — ATK,
+  secondary stat, and passive text still come from the ordinary formulas
+  at whichever state is picked, nothing else about this weapon is
+  special.
 - Hover-card detail popovers (see build order) are sequenced after master
   data completeness, not before — the point of building them is to absorb
   the stats/talents/effects data landing on top of the current cards, so

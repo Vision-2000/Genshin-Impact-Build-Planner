@@ -8851,6 +8851,79 @@
     ]
   },
   {
+    "id": 4207,
+    "name": "Starsealed Edict",
+    "weaponType": "Catalyst",
+    "rarity": 5,
+    "secondaryStatId": 10,
+    "passiveName": "Dawnstar's Flowing Trail",
+    "iconUrl": "https://enka.network/ui/UI_EquipIcon_Catalyst_Chernaya_Awaken.png",
+    "splashUrl": "https://enka.network/ui/UI_Gacha_EquipIcon_Catalyst_Chernaya.png",
+    "attackTier": 1,
+    "baseSecondaryStatValue": 19.2,
+    "attackCurveRarity": null,
+    "maxRefinement": 5,
+    "passiveDescriptionTemplate": "Increases CRIT DMG by {0}%. The equipping character gains the Crystal Compounding effect when they use their Elemental Skill, increasing Elemental Mastery by {1} for 20s. During this time, the equipping character gains a Law of Combustion stack when a nearby party member triggers an Elemental Reaction. Each stack increases Elemental Mastery by an additional {2}. Max 3 stacks. These stacks last until Crystal Compounding ends or the equipping character uses their Elemental Skill again.\nRadiance: Stellar-Conduct: Each Law of Combustion stack also increases the equipping character's Stellar-Conduct CRIT DMG by {3}%.\nThese effects can be triggered even when the equipping character is off-field.",
+    "secondaryStat": {
+      "id": 10,
+      "name": "Crit DMG%"
+    },
+    "refinementEffects": [],
+    "refinementValues": [
+      {
+        "id": 1905,
+        "weaponId": 4207,
+        "slotIndex": 0,
+        "curveType": "Linear",
+        "baseValue": 24,
+        "slope": 6,
+        "customValues": []
+      },
+      {
+        "id": 1906,
+        "weaponId": 4207,
+        "slotIndex": 1,
+        "curveType": "Linear",
+        "baseValue": 48,
+        "slope": 12,
+        "customValues": []
+      },
+      {
+        "id": 1907,
+        "weaponId": 4207,
+        "slotIndex": 2,
+        "curveType": "Linear",
+        "baseValue": 24,
+        "slope": 6,
+        "customValues": []
+      },
+      {
+        "id": 1908,
+        "weaponId": 4207,
+        "slotIndex": 3,
+        "curveType": "Linear",
+        "baseValue": 12,
+        "slope": 3,
+        "customValues": []
+      }
+    ],
+    "statBonuses": [
+      {
+        "id": 1962,
+        "weaponId": 4207,
+        "statTypeId": 10,
+        "curveType": "Linear",
+        "baseValue": 24,
+        "slope": 6,
+        "customValues": [],
+        "statType": {
+          "id": 10,
+          "name": "Crit DMG%"
+        }
+      }
+    ]
+  },
+  {
     "id": 183,
     "name": "Sturdy Bone",
     "weaponType": "Sword",

@@ -150,14 +150,14 @@ export function computeWeaponSecondaryStat(baseSecondaryStatValue: number, level
 
 // Exaiphanes Blade has a special leveling mechanic tied to an in-game
 // "statues unlocked" counter -- level, ascensionPhase, and refinement
-// aren't independently settable for this one weapon; only these 6
-// combinations are valid (a further state exists but its values are
-// still TBA, so it's deliberately not offered yet). ATK/secondary-stat/
-// passive-text still come from the normal formulas above at whichever
-// state is picked -- nothing else about this weapon is special. Not a
-// stored field; handled here by name, the same treatment as the
-// Traveler story buff (see src/lib/character-scaling.ts). See
-// data-source/master-data-formulas.txt section 3.
+// aren't independently settable for this one weapon; only these 8
+// combinations are valid (state 7, fully unlocked, was TBA until
+// 2026-11-09 -- see data-source/master-data-formulas.txt section 3 for
+// the resolved values and when each state was confirmed). ATK/secondary-
+// stat/passive-text still come from the normal formulas above at
+// whichever state is picked -- nothing else about this weapon is
+// special. Not a stored field; handled here by name, the same treatment
+// as the Traveler story buff (see src/lib/character-scaling.ts).
 export function isExaiphanesBlade(name: string): boolean {
   return name === "Exaiphanes Blade";
 }
@@ -169,14 +169,16 @@ export const EXAIPHANES_BLADE_STATES: { ascensionPhase: number; level: number; r
   { ascensionPhase: 3, level: 60, refinement: 2 },
   { ascensionPhase: 5, level: 80, refinement: 3 },
   { ascensionPhase: 6, level: 90, refinement: 3 },
+  { ascensionPhase: 6, level: 90, refinement: 4 },
+  { ascensionPhase: 6, level: 90, refinement: 5 },
 ];
 
 // Universal default for a freshly-added weapon: max level, base refinement
 // -- lets the add-weapon catalog show (and quick-add) every weapon at a
 // representative "fully leveled" state without the user configuring
 // anything first. Exaiphanes Blade has no (level 90, refinement 1)
-// combination among its 6 valid states above -- its last state (level 90,
-// its highest refinement, R3) is the closest equivalent: the most
+// combination among its 8 valid states above -- its last state (level 90,
+// its highest refinement, R5) is the closest equivalent: the most
 // upgraded this weapon can be shown at, same spirit as every other
 // weapon's own "fully leveled" default.
 export function defaultWeaponProgression(name: string): { level: number; ascensionPhase: number; refinement: number } {
