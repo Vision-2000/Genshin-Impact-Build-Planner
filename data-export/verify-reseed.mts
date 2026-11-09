@@ -242,7 +242,10 @@ const TABLES = [
   "weapon_stat_bonuses", "artifact_sets", "artifact_set_stat_bonuses",
   "stat_types", "owned_characters", "owned_weapons", "owned_artifacts",
   "owned_artifact_substats", "builds", "build_artifacts", "teams",
-  "team_builds", "rosters", "roster_builds", "lineups", "lineup_teams",
+  // rosters/roster_builds/lineups/lineup_teams renamed to
+  // collections/collection_builds/groups/group_teams (see CLAUDE.md's Key
+  // decisions on the Roster->Collection/Lineup->Group rename).
+  "team_builds", "collections", "collection_builds", "groups", "group_teams",
 ];
 
 async function main() {
