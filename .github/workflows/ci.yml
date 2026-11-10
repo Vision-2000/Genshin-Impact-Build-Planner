@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # prisma generate (this project's own postinstall script) reads
+      # DATABASE_URL via prisma.config.ts, but never actually opens a
+      # connection at generate time -- it only needs the schema's model
+      # shapes. None of the vitest suite touches a real database either
+      # (every test is a pure function test, no src/lib/prisma.ts import
+      # anywhere under *.test.ts). This dummy value exists purely so
+      # nothing throws on an undefined env var; it's never connected to.
+      DATABASE_URL: "postgresql://user:password@localhost:5432/ci"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm test
