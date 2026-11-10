@@ -28,6 +28,11 @@ jobs:
 
       - run: npm run lint
 
+      # npm's "pretypecheck" script (package.json) runs `next typegen`
+      # first -- several routes use LayoutProps/PageProps, Next's own
+      # generated, route-aware prop types, normally written to
+      # .next/types by `next build`/`next dev` and otherwise undefined on
+      # a fresh checkout (the TS2304 failure this fixes).
       - run: npm run typecheck
 
       - run: npm test
