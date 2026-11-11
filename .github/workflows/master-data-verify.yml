@@ -12,13 +12,24 @@ name: Master Data Verify
 # before master-data-sync has been run against that same branch's target
 # -- that's not a bug, it's this job doing its job: the db and the source
 # genuinely don't agree yet.
+#
+# Job named verify-master-data, NOT verify -- ci.yml already has its own
+# job literally named "verify" (lint/typecheck/test). GitHub's Check Runs
+# identify a check by job name alone, not workflow+job together, so two
+# same-named jobs across different workflows collide into what looks
+# like a single check -- confirmed the hard way: Vercel's Deployment
+# Checks could only ever bind to one of the two "verify" jobs (ci.yml's,
+# which passes regardless of data-source content), so this workflow
+# failing never actually blocked a production promotion the way it was
+# supposed to. See https://vercel.com/docs/deployment-checks's own
+# "avoid using the same name for actions across multiple workflows" note.
 
 on:
   push:
     branches: [staging, main]
 
 jobs:
-  verify:
+  verify-master-data:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_DATABASE_URL || secrets.STAGING_DATABASE_URL }}
