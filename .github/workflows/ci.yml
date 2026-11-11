@@ -36,3 +36,28 @@ jobs:
       - run: npm run typecheck
 
       - run: npm test
+
+  # Applies any pending migration to the real database -- once per push
+  # (not once per Vercel build/retry, which is why this lives here and
+  # not in package.json's own build script; that one still runs `prisma
+  # migrate deploy` too, but by the time Vercel builds, this job has
+  # already applied it, so that run just finds nothing pending and
+  # no-ops). Only for an actual push to staging/main, never a pull
+  # request, and only after lint/typecheck/test pass.
+  migrate:
+    needs: verify
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_DATABASE_URL || secrets.STAGING_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma migrate deploy

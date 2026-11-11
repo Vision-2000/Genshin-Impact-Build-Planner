@@ -1,5 +1,7 @@
-// One-off verification after the genshin-db -> hand-maintained-JSON reseed
-// (see CLAUDE.md's Key decisions). Checks three things against the LIVE db:
+// Verification after a genshin-db -> hand-maintained-JSON reseed (see
+// CLAUDE.md's Key decisions), now also reused as the actual gate behind
+// the master-data-verify/master-data-sync GitHub Actions workflows --
+// see their own comments for how. Checks three things against the LIVE db:
 //   1. data-export/{characters,weapons,artifact-sets,stat-types}.json (a
 //      fresh dump, produced by export-master-data.mts) is identical to
 //      data-source/{same}.json EXCEPT at fields that were literally
@@ -11,6 +13,8 @@
 //   3. Every table's autoincrement sequence is currently positioned so the
 //      NEXT value it hands out won't collide with any row that already
 //      exists -- read-only (pg_sequences), never calls nextval().
+// Exits non-zero if any of the three fails -- a CI gate needs a real exit
+// code, not just console output a human would otherwise have to read.
 import "dotenv/config";
 import fs from "fs";
 import path from "path";
@@ -292,6 +296,12 @@ async function main() {
   console.log(`JSON fidelity issues: ${issues.length}`);
   console.log(`Resolved-id sanity: ${idSanityOk ? "OK" : "ISSUES"}`);
   console.log(`Sequence health: ${sequenceOk ? "OK" : "ISSUES"}`);
+
+  if (issues.length > 0 || !idSanityOk || !sequenceOk) {
+    console.log();
+    console.log("FAILED -- see above.");
+    process.exitCode = 1;
+  }
 }
 
 main();

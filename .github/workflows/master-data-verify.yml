@@ -1,0 +1,37 @@
+name: Master Data Verify
+
+# Automatic, read-only drift check: confirms the live database's master
+# data (Character/Weapon/ArtifactSet/StatType and their child tables)
+# still matches data-source/*.json exactly (modulo an UNKNOWN id that's
+# since been resolved -- see verify-reseed.mts's own comment). Runs on
+# every push to staging/main since it's cheap and read-only -- it can
+# never corrupt anything, unlike an actual reseed (see master-data-sync.yml
+# for that, which stays manual on purpose).
+#
+# Expected to go red right after a data-source update is pushed but
+# before master-data-sync has been run against that same branch's target
+# -- that's not a bug, it's this job doing its job: the db and the source
+# genuinely don't agree yet.
+
+on:
+  push:
+    branches: [staging, main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_DATABASE_URL || secrets.STAGING_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx tsx data-export/export-master-data.mts
+
+      - run: npx tsx data-export/verify-reseed.mts

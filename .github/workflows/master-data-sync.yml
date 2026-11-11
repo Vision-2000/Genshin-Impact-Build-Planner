@@ -1,0 +1,97 @@
+name: Master Data Sync
+
+# The one place a master-data update actually gets WRITTEN to a
+# database -- deliberately manual (workflow_dispatch only), so a
+# real DB mutation always needs an explicit human click, never an
+# automatic reaction to a push. This is also the only way a
+# DATABASE_URL secret is ever used from somewhere other than a
+# contributor's own machine -- see the project's own "no manual
+# commands against prod from a local terminal" rule.
+#
+# No "which database" input -- the target is just whichever branch this
+# is dispatched against (staging -> staging db, main -> production db),
+# the same branch/secret mapping ci.yml and master-data-verify.yml
+# already use. This also makes "staging only ever syncs from staging's
+# own data-source" a structural guarantee rather than something a human
+# has to pick correctly, and removes the need for a separate "only let
+# production target main" guard -- production can only ever be the
+# target when the dispatch itself came from main.
+#
+# Seeds the target from data-source/*.json (the already-reviewed source
+# of truth -- the review happens before this ever runs, at the point
+# data-source/*.json was committed), then re-exports and verifies the
+# result. Only on a clean verify does it commit any newly-resolved ids
+# back into data-source/*.json; a persistent mismatch after seeding
+# fails the job instead of retrying or committing anything.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: master-data-sync-${{ github.ref_name }}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ github.ref_name == 'main' && secrets.PRODUCTION_DATABASE_URL || secrets.STAGING_DATABASE_URL }}
+    steps:
+      # Dispatching this from some other branch would otherwise sync
+      # staging from that branch's own (possibly experimental,
+      # not-yet-merged) data-source content -- restrict to the two
+      # branches that actually have a real target database.
+      - name: Only staging or main are valid dispatch targets
+        if: github.ref_name != 'staging' && github.ref_name != 'main'
+        run: |
+          echo "Refusing to sync from ref '${{ github.ref_name }}' -- dispatch this from staging or main." >&2
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Seed from data-source
+        run: npx prisma db seed
+
+      - name: Export fresh master data
+        run: npx tsx data-export/export-master-data.mts
+
+      # Fails the job here (and skips every step below) on any
+      # unexpected difference -- including a mismatch that's STILL
+      # there after the seed above, which would mean something's
+      # genuinely wrong. Nothing gets committed in that case.
+      - name: Verify export matches data-source
+        run: npx tsx data-export/verify-reseed.mts
+
+      - name: Copy resolved ids back into data-source
+        run: |
+          cp data-export/characters.json data-source/characters.json
+          cp data-export/weapons.json data-source/weapons.json
+          cp data-export/artifact-sets.json data-source/artifact-sets.json
+          cp data-export/stat-types.json data-source/stat-types.json
+          rm -f data-export/characters.json data-export/weapons.json data-export/artifact-sets.json data-export/stat-types.json
+
+      - name: Commit resolved ids (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data-source/characters.json data-source/weapons.json data-source/artifact-sets.json data-source/stat-types.json
+          if git diff --cached --quiet; then
+            echo "No UNKNOWN ids were resolved -- nothing to commit."
+          else
+            git commit -m "Resolve UNKNOWN ids after syncing master data on ${{ github.ref_name }}" \
+              -m "Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+            # Explicit refspec, not a bare `git push` -- actions/checkout
+            # can leave HEAD detached rather than attached to a local
+            # branch depending on how this was dispatched, so this names
+            # the destination branch unambiguously regardless.
+            git push origin HEAD:${{ github.ref_name }}
+          fi
