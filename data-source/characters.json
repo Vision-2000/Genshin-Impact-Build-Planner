@@ -26,7 +26,7 @@
         "characterId": 1,
         "slot": "NormalAttack",
         "name": "Bish-Bash-Bosh Repair",
-        "description": "<gold>Normal Attack</gold>\nPerforms up to 3 consecutive strikes.\n\n<gold>Charged Attack</gold>\nDrains Stamina over time to perform continuous spinning attacks against all nearby opponents.\nAt the end of the sequence, performs a more powerful slash. \n\n<gold>Plunging Attack</gold>\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.",
+        "description": "<gold>Normal Attack</gold>\nPerforms up to 3 consecutive strikes.\n\n<gold>Charged Attack</gold>\nDrains Stamina over time to perform continuous spinning attacks against all nearby opponents.\nAt the end of the sequence, performs a more powerful slash. \n\n<gold>Plunging Attack</gold>\nPlunges from mid-air to strike the ground below, damaging opponents along the path and dealing AoE DMG upon impact.1",
         "iconUrl": "https://enka.network/ui/Skill_A_04.png",
         "attributes": [
           {
