@@ -14,6 +14,98 @@ official affiliation anywhere in the UI or README.
 - PostgreSQL hosted on Neon
 - Deploy target: Vercel
 
+## Deployment & CI
+- **Environments**: two separate Neon database branches -- `staging`
+  (forked from production) and production itself -- fronted by two
+  Vercel environments (Preview for the `staging` git branch, Production
+  for `main`). Vercel's own Function Region and Neon's database region
+  must match (`ap-southeast-1`, Singapore) -- a mismatch here cost 3-7
+  seconds per page load/save before being caught: every authenticated
+  page does at least 2-3 sequential DB round trips (session lookup,
+  profile lookup, the page's own query), and a build/artifact save can
+  be a dozen+ round trips once Prisma's own nested-write transactions
+  are counted -- each one paying full cross-region latency compounds
+  fast.
+- **Git workflow**: `main` is production, `staging` is staging. Every
+  change reaches `main` by merging `staging` into it (a fast-forward,
+  verified locally before pushing) -- never a direct commit or push
+  straight to `main`. No GitHub branch-protection rule enforces this
+  (would need a public repo on a paid plan here); it's a discipline the
+  user and Claude both follow deliberately. Code changes additionally
+  go: test locally -> user approves -> commit only (no push) -> push
+  only once asked -> user verifies on the staging deployment -> merge
+  to main -> smoke-test production.
+- **GitHub Actions** (`.github/workflows/`):
+  - `ci.yml` -- a `verify` job (lint, typecheck, vitest) on every push
+    and pull request. A `migrate` job (needs `verify` to pass,
+    push-only, staging/main only) runs `prisma migrate deploy` against
+    the branch-matched secret -- the authoritative place migrations
+    apply, once per push rather than once per Vercel build/retry.
+  - `master-data-verify.yml` -- automatic, read-only, on every push to
+    staging/main: exports that branch's own db and diffs it against
+    `data-source/*.json`, failing loudly on any real mismatch (an
+    `UNKNOWN` id that's since resolved to a real integer doesn't
+    count). Job named `verify-master-data`, deliberately not `verify`
+    -- see the Deployment Checks gotcha below.
+  - `master-data-sync.yml` -- the only place a master-data update
+    actually WRITES to a database, deliberately manual
+    (`workflow_dispatch` only, no "which database" input -- the target
+    is just whichever branch it's dispatched against, so staging can
+    only ever sync from staging's own `data-source/`). Seeds from
+    `data-source/*.json`, re-exports, re-verifies, and only on a clean
+    verify commits any newly-resolved ids back into `data-source/*.json`
+    and pushes -- a persistent mismatch after seeding fails the job
+    instead of committing anything. Restricted to staging/main refs,
+    with a `concurrency` group per branch so two dispatches against the
+    same database can never race.
+  - A `workflow_dispatch` workflow, or a renamed job, only becomes
+    visible/selectable -- in GitHub's own "Run workflow" UI, and in
+    Vercel's Deployment Checks list -- once that exact file/job name
+    has actually run on the repo's default branch (`main`). Bit twice:
+    `master-data-sync.yml` didn't appear in the Actions sidebar until
+    merged to `main`, and a job rename in `master-data-verify.yml`
+    needed the same merge before Vercel could see the new name.
+- **Migrations need the DIRECT (non-pooled) Neon connection, not the
+  pooled one the app itself uses.** `prisma migrate deploy` acquires a
+  session-scoped Postgres advisory lock before applying anything; a
+  pooled/PgBouncer connection can hand different statements to
+  different backend sessions, so the lock acquisition itself times out
+  (P1002) regardless of whether anything is even pending. This broke
+  both the `migrate` GitHub Actions job (fixed by pointing its own
+  `STAGING_DATABASE_URL`/`PRODUCTION_DATABASE_URL` secrets at the direct
+  connection string instead -- these are CI-only secrets, never used
+  for the app's own runtime traffic, so there's no latency downside to
+  them being direct) and Vercel's own build command (fixed by removing
+  `prisma migrate deploy` from it entirely -- `package.json`'s `build`
+  script is just `next build`; the GitHub Actions `migrate` job is now
+  the sole place this runs). Prisma 7's `prisma.config.ts`-based
+  datasource config has no `directUrl` split the way the old
+  `schema.prisma`-based one did (checked `@prisma/config`'s own
+  `Datasource` type directly: only `url`/`shadowDatabaseUrl`), so this
+  couldn't be solved at the config level -- each caller just needs to
+  supply the right connection string for what it's doing.
+- **Vercel Deployment Checks** hold a production deployment's
+  promotion to the live domain until selected GitHub Actions checks
+  pass -- the build still happens either way, this only gates whether
+  it actually goes live. Two real gotchas hit setting this up:
+  - GitHub's own Check Runs identify a check by job name ALONE, not
+    workflow name + job name together -- two jobs in different
+    workflows that happen to share a name collide into what looks like
+    one check (this actually happened: `ci.yml`'s own `verify` job and
+    `master-data-verify.yml`'s job, before it was renamed, were both
+    literally named `verify`). Vercel silently bound to whichever one
+    it saw first, so a failing data-integrity check never actually
+    blocked a promotion the way it looked like it would. Every job name
+    used as a Deployment Check must be unique across every workflow in
+    the repo, not just within its own file.
+  - The same default-branch registration restriction noted above for
+    `workflow_dispatch` applies to a check name showing up as
+    selectable here too.
+- **Local dev's own `DATABASE_URL`** points at the staging Neon branch,
+  not production -- local experimentation (including anything
+  `migrate dev` or `db seed` might do) should never be able to touch
+  real data.
+
 ## Data model overview
 Grouped by domain. Master/reference tables are static game data, shared across all
 users, never user-editable. Sourced from `data-source/{characters,weapons,
@@ -697,6 +789,24 @@ the app or the seed script.
   the stats/talents/effects data landing on top of the current cards, so
   building the data first means the popover only needs to be built once,
   against real content, instead of guessing at its shape.
+- `body`'s `font-family` in `globals.css` used to hardcode
+  `Arial, Helvetica, sans-serif` — the literal create-next-app default —
+  despite `layout.tsx` loading Geist via `next/font` and `@theme inline`
+  already mapping `--font-sans` to it; nothing in the codebase ever
+  applied the `font-sans` utility, so Geist was silently dead code the
+  whole time. Fixed to `font-family: var(--font-sans), Arial, Helvetica,
+  sans-serif`, confirmed in the compiled CSS. This is the likely root
+  cause behind a whole class of hand-tuned pixel nudges elsewhere in this
+  codebase (search for "nudge" — mostly `mt-0.5`/`-mt-0.5` pairs and
+  `pt-3 pb-2`-style button padding) going visibly wrong when tested in a
+  different environment than wherever they were originally eyeballed:
+  `"Arial, Helvetica, sans-serif"` doesn't resolve to the same actual
+  glyphs across OS/browser (Windows renders real Arial, macOS substitutes
+  Helvetica, different line-height metrics), so a nudge tuned against
+  one was never guaranteed to hold up against the other — and now that
+  Geist (a self-hosted, deterministic font) actually renders, every
+  existing nudge needs re-checking against ITS metrics, not assumed
+  still correct. See Deferred below — this re-check hasn't happened yet.
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs
@@ -736,6 +846,30 @@ the app or the seed script.
 - Home page task/reminder list
 - Custom validation rules for Groups (e.g. Imaginary Theatre's 3-element +
   guest-character restrictions per season)
+
+## Known issues — found during testing, not yet fixed
+- Auth/profile pages (login/signup/`/profiles`) aren't up to the rest of
+  the app's own UI/UX standard, functionality included (profile
+  management specifically) — flagged for a rework, not yet scoped.
+- Pixel-nudge UI issues (misaligned text in buttons/dropdowns) that were
+  already fixed once reappeared when tested in a different environment.
+  Root cause found and fixed (see Key decisions: the Geist font was
+  silently dead code, `body` was rendering in a non-deterministic
+  Arial/Helvetica fallback instead) — but every individual nudge
+  (`grep -rn "nudge"` across `src/`) still needs re-checking against
+  Geist's own real metrics, not assumed correct just because the root
+  cause is fixed. Separately, still-unexplained: Teams page cards show
+  3 build slots per row instead of 4 in the affected environment — not
+  yet investigated, may or may not share the same root cause.
+- `build-catalog.tsx`'s own round-trip-survival draft (`DRAFT_KEY`,
+  `build-catalog-draft` in sessionStorage — restores the whole
+  create-build form, including which picker was open, after following
+  a link away and hitting Back) doesn't actually restore correctly when
+  that link was `character-slot-picker.tsx`'s own "Characters roster"
+  link specifically — the build modal doesn't stay/reopen the way it
+  does for the weapon/artifact add-flow links. Not yet root-caused;
+  believed to be a gap missed during that picker's own development
+  (confirmed locally, not something environment-specific).
 
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over
