@@ -33,7 +33,22 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* var(--font-sans) is Geist (see the @theme inline mapping above, and
+     the Geist/Geist_Mono next/font calls in layout.tsx that back it) --
+     this used to hardcode Arial/Helvetica instead, the literal
+     create-next-app default, which silently left Geist completely unused
+     despite being loaded. That stack also isn't deterministic across
+     OS/browser (Windows renders real Arial, macOS substitutes Helvetica,
+     with different line-height metrics) -- every manual pixel nudge
+     elsewhere in this codebase was tuned by eye against whichever one
+     happened to render in that session, which is why they don't hold up
+     in a different environment. Geist is self-hosted via next/font, so
+     it renders identically everywhere; Arial/Helvetica stay only as a
+     last-resort fallback if the variable is ever somehow unavailable.
+     Every existing nudge still needs re-checking against Geist's own
+     metrics, not assumed to still be correct now that the font itself
+     has changed. */
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
 /* Tailwind's built-in animate-pulse only dips to 50% opacity -- this fades
