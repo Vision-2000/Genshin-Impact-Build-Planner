@@ -342,7 +342,7 @@ function BuildEditor({
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-normal text-black"
+            className="rounded border bg-white px-2 py-1 text-sm font-normal text-black"
           />
         </label>
       }
@@ -870,7 +870,7 @@ export function OwnedBuildManager({
               setBuildNameSearch(event.target.value);
               setPage(1);
             }}
-            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
           />
           <input
             type="text"
@@ -880,7 +880,7 @@ export function OwnedBuildManager({
               setCharacterNameSearch(event.target.value);
               setPage(1);
             }}
-            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
           />
           {/* Hidden whenever the grid's own order already carries meaning
               (a saved collection's own order, or selected-first while
@@ -919,7 +919,7 @@ export function OwnedBuildManager({
                 autoFocus
                 value={collectionDraft.name}
                 onChange={(event) => setCollectionDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
-                className="w-64 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
+                className="w-64 rounded border bg-white px-2 py-1 text-sm text-black"
               />
               <span className="text-sm text-gray-500 dark:text-gray-300">
                 {collectionDraft.buildIds.length} build{collectionDraft.buildIds.length === 1 ? "" : "s"} selected

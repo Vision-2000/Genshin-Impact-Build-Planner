@@ -145,7 +145,7 @@ function TeamNameInput({ value, onCommit }: { value: string; onCommit: (value: s
       // team card itself was narrow (a multi-column grid), but now that
       // the card spans the full page width (see the "always 1 column"
       // comment below) it stretched this into an absurdly wide text box.
-      className="min-w-0 max-w-xs flex-1 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-medium text-black"
+      className="min-w-0 max-w-xs flex-1 rounded border bg-white px-2 py-1 text-sm font-medium text-black"
     />
   );
 }
@@ -1345,7 +1345,7 @@ export function TeamManager({
               setTeamNameSearch(event.target.value);
               setPage(1);
             }}
-            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
           />
           <input
             type="text"
@@ -1355,7 +1355,7 @@ export function TeamManager({
               setCharacterSearch(event.target.value);
               setPage(1);
             }}
-            className="w-72 rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+            className="w-72 rounded border bg-white px-3 py-2 text-sm text-black"
           />
         </div>
 
@@ -1386,7 +1386,7 @@ export function TeamManager({
                 autoFocus
                 value={groupDraft.name}
                 onChange={(event) => setGroupDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
-                className="w-64 rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm text-black"
+                className="w-64 rounded border bg-white px-2 py-1 text-sm text-black"
               />
               <span className="text-sm text-gray-500 dark:text-gray-300">
                 {groupDraft.teamIds.length} team{groupDraft.teamIds.length === 1 ? "" : "s"} selected

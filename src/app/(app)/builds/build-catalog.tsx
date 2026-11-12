@@ -260,7 +260,7 @@ export function BuildCatalog({
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="rounded border bg-white px-2 pb-0.5 pt-1.5 text-sm font-normal text-black"
+            className="rounded border bg-white px-2 py-1 text-sm font-normal text-black"
           />
         </label>
       }

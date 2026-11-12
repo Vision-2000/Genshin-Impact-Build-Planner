@@ -484,14 +484,14 @@ export function BuildSlotPicker({
               placeholder="Search by build name..."
               value={buildNameSearch}
               onChange={(event) => setBuildNameSearch(event.target.value)}
-              className="rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+              className="rounded border bg-white px-3 py-2 text-sm text-black"
             />
             <input
               type="text"
               placeholder="Search by character name..."
               value={characterNameSearch}
               onChange={(event) => setCharacterNameSearch(event.target.value)}
-              className="rounded border bg-white px-3 pb-1.5 pt-2.5 text-sm text-black"
+              className="rounded border bg-white px-3 py-2 text-sm text-black"
             />
             <select
               value={sortKey}
