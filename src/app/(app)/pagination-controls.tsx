@@ -22,18 +22,15 @@ export function PaginationNavButtons({ currentPage, pageCount, onPageChange }: P
 
   return (
     <div className="flex items-center gap-2">
-      {/* pb-0.5 pt-1.5 (not symmetric py-1) -- same Arial line-height fix
-          as this app's other small bordered text buttons (e.g. the
-          search boxes' own pb-0.5/pt-1.5): items-center alone left the
-          text reading visibly above true center. hover:bg-black/5
-          dark:hover:bg-white/10 -- same hover treatment every other
-          bordered button in this app gets (e.g. help-button.tsx); these
-          two never had ANY hover class before this component existed. */}
+      {/* hover:bg-black/5 dark:hover:bg-white/10 -- same hover treatment
+          every other bordered button in this app gets (e.g.
+          help-button.tsx); these two never had ANY hover class before
+          this component existed. */}
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={!hasPrevious}
-        className="rounded border px-3 pb-0.5 pt-1.5 text-sm hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
+        className="rounded border px-3 py-1 text-sm hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
       >
         Previous
       </button>
@@ -41,7 +38,7 @@ export function PaginationNavButtons({ currentPage, pageCount, onPageChange }: P
         type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={!hasNext}
-        className="rounded border px-3 pb-0.5 pt-1.5 text-sm hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
+        className="rounded border px-3 py-1 text-sm hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
       >
         Next
       </button>

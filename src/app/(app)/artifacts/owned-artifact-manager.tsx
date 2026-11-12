@@ -364,11 +364,7 @@ export function OwnedArtifactManager({
           than the count text alone) and visibly shifts the grid below it
           down. */}
       <div className="flex min-h-8 items-center justify-between gap-2">
-        {/* pt-1 -- the count text + Select all button as a GROUP read
-            higher than PaginationNavButtons beside them (same issue found
-            and fixed on the Weapons page) -- this nudges the whole group
-            down together rather than tuning each child individually. */}
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2">
           <p className="text-sm text-gray-500 dark:text-gray-300">
             {selectMode
               // Counts selections across every filtered page, not just the

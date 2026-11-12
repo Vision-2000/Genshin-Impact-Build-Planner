@@ -46,19 +46,15 @@ export default async function CharacterRosterPage() {
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-300">Managing ownership for {profile.name}</p>
         </div>
-        {/* pt-3/pb-2 (not py-2.5) -- same Arial line-height fix as every
-            other text-centered control in this app, see
-            build-stats-summary.tsx's own comment on the root cause. */}
         <Link
           href="/characters"
-          className="flex items-center gap-1.5 rounded-lg border px-4 pb-2 pt-3 text-sm font-semibold hover:bg-black/5"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
         >
-          {/* Own span, not part of the plain text -- same flex-sibling
-              alignment issue as the "+" buttons elsewhere (see
-              owned-build-manager.tsx's own "Create build" comment),
-              just a small upward nudge here rather than meeting the
-              text halfway. */}
-          <span className="-mt-0.5">←</span> Back to my characters
+          {/* leading-none on BOTH the arrow and the text -- same
+              flex-sibling line-height-mismatch fix as owned-build-manager.tsx's
+              own "Create build" comment. */}
+          <span className="leading-none">←</span>
+          <span className="leading-none">Back to my characters</span>
         </Link>
       </div>
       <CharacterRoster roster={roster} />

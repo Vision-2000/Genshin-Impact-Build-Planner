@@ -636,19 +636,6 @@ function TeamCard({
           >
             Move to top
           </button>
-          {/* py-1.5 (symmetric, no nudge) -- not the usual pt-2/pb-1
-              every other Delete button in this app uses. Both pt-2/pb-1
-              and a halved pt-[7px]/pb-[5px] still read as too low here,
-              confirmed visually each time, even though the className is
-              otherwise identical to buttons where pt-2/pb-1 looks right.
-              Same root cause as the set-effect badge rows in
-              build-stats-summary.tsx: the "correct" nudge amount isn't a
-              font constant, it's sensitive to this specific element's
-              own sub-pixel position, so it can genuinely need a
-              different (here, no) correction in a different layout
-              context. If this is still off, the fix may need to go the
-              other direction entirely (more bottom padding than top),
-              which no other instance in this app has ever needed. */}
           <button
             type="button"
             onClick={(event) => {
@@ -1563,11 +1550,8 @@ export function TeamManager({
               bordered rounded-lg "Create X" shape every other page uses)
               marks it as that different, lighter-weight kind of action
               rather than reusing a button shape that implies the same
-              modal/page pattern. pt-1 -- same fix as the Weapons/
-              Artifacts pages' own count+button row: this group read
-              higher than PaginationNavButtons beside it once they started
-              sharing a row. */}
-          <div className="flex items-center gap-3 pt-1">
+              modal/page pattern. */}
+          <div className="flex items-center gap-3">
             <p className="text-sm text-gray-500 dark:text-gray-300">
               {filtered.length} team{filtered.length === 1 ? "" : "s"}
             </p>

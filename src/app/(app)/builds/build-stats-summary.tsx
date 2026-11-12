@@ -202,9 +202,7 @@ export function BuildStatsSummary({
   // Flattened, one entry per rendered row (not per set) -- a 4pc-active
   // set contributes its own 2pc row too (see activeSetEffects' own
   // comment above on why), so this can be longer than activeSetEffects
-  // itself. Hoisted out of the JSX below so both the row count (the
-  // isOnlyRow nudge below) and the per-row index (the first-row-only
-  // vertical nudge below) are available without computing this twice.
+  // itself.
   const activeSetEffectRows = activeSetEffects.flatMap((effect) => {
     const pieces: (2 | 4)[] = effect.maxPiece === 4 ? [2, 4] : [2];
     return pieces.map((piece) => ({ setName: effect.setName, piece }));
@@ -440,35 +438,18 @@ export function BuildStatsSummary({
                     back down toward gap-y-0.5 rather than touching pt-2/
                     pb-2 again. */}
                 <ul className="flex flex-col gap-y-2">
-                  {activeSetEffectRows.map((row, index) => (
+                  {activeSetEffectRows.map((row) => (
                     <li key={`${row.setName}-${row.piece}`} className="flex items-center gap-1.5 text-foreground">
-                      {/* mt-0.5 -- same fix used elsewhere in
-                          this app for a badge sitting next to
-                          plain text: Arial's own line-height
-                          metrics aren't split evenly above/
-                          below the glyphs, so items-center
-                          alone still left this text reading
-                          slightly above true center next to
-                          the badge. */}
-                      <span className="mt-0.5">{row.setName}</span>
+                      {/* leading-none -- matches the badge span's own
+                          leading-none; items-center on the <li> centers
+                          each flex child's own line-height box, so a
+                          mismatched line-height (this plain text's
+                          default vs. the badge's leading-none) is what
+                          actually misaligns them, not anything font-
+                          specific. */}
+                      <span className="leading-none">{row.setName}</span>
                       <span className="flex h-5 w-5 items-center justify-center rounded border border-gray-600 bg-black/70 text-xs font-semibold leading-none text-white">
-                        {/* mt-0.5 only on the first row -- the 2nd row's
-                            own badge already lands centered on its own
-                            (applying the same nudge to both rows pushed
-                            the 2nd one down too far, since the two rows
-                            don't share the same sub-pixel vertical
-                            offset -- see the surrounding centering
-                            wrapper's own comment). ml-px only in the
-                            1-row case -- with only one row, the badge
-                            reads as sitting slightly left of true
-                            horizontal center; with 2 rows that isn't
-                            visible, so this only applies when this is
-                            the sole row. */}
-                        <span
-                          className={`${index === 0 ? "mt-0.5" : ""} ${activeSetEffectRows.length === 1 ? "ml-px" : ""}`}
-                        >
-                          {row.piece}
-                        </span>
+                        {row.piece}
                       </span>
                       </li>
                     ))}

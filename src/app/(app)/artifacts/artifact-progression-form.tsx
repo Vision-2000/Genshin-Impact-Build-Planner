@@ -356,14 +356,12 @@ export function ArtifactProgressionForm({
               // without also needing a dimmer font color. pl-2.5 pr-2 (not
               // px-2) -- matches the other rows' own overlay span padding
               // exactly (see its own comment below); px-2 alone sat
-              // slightly further left than those. pt-1 (no pb) -- Arial's
-              // own line-height metrics aren't split evenly above/below the
-              // glyphs, so items-center alone still left the text reading
-              // visibly above true center; shrinking the flex content box
-              // from the top only (not symmetrically) nudges the centered
-              // result down to compensate. Same fix, same amount, on the
-              // overlay span and the substat-type <select> below.
-              <span className="inline-flex h-8 w-[13rem] items-center rounded border border-gray-300 bg-gray-100 pl-2.5 pr-2 pt-1 text-sm text-black">
+              // slightly further left than those. leading-none -- without
+              // it, items-center centers the text's own line-height-inflated
+              // box rather than its glyphs, landing visibly above true
+              // center inside this fixed h-8 box. Same fix, same spot, on
+              // the overlay span and the substat-type <select> below.
+              <span className="inline-flex h-8 w-[13rem] items-center rounded border border-gray-300 bg-gray-100 pl-2.5 pr-2 text-sm leading-none text-black">
                 {mainStatName} {mainStatValueDisplay}
               </span>
             ) : (
@@ -424,9 +422,9 @@ export function ArtifactProgressionForm({
                   // plain span, since the browser adds its own extra
                   // internal inset on top of it; this nudges the overlay
                   // text right to match.
-                  // pt-1 (no pb) -- see the Flower/Feather span's own
+                  // leading-none -- see the Flower/Feather span's own
                   // comment above on why items-center alone isn't enough.
-                  <span className="pointer-events-none absolute inset-y-px left-px right-3 flex items-center truncate rounded-l bg-white pl-2.5 pr-2 pt-1 text-sm text-black">
+                  <span className="pointer-events-none absolute inset-y-px left-px right-3 flex items-center truncate rounded-l bg-white pl-2.5 pr-2 text-sm leading-none text-black">
                     {mainStatName} {mainStatValueDisplay}
                   </span>
                 )}
@@ -482,15 +480,7 @@ export function ArtifactProgressionForm({
                     onChange={(event) =>
                       handleSubstatTypeChange(index, event.target.value === "" ? null : Number(event.target.value))
                     }
-                    // pt-[5px] pb-[3px] (not symmetric py-1) -- same fix as
-                    // the main-stat row above: Arial's own line-height
-                    // metrics left the text reading visibly above center
-                    // even with even padding; more padding-top than
-                    // padding-bottom nudges the browser's own centering
-                    // down to compensate. A first attempt at pt-1.5/pb-0.5
-                    // (6px/2px) overcorrected -- this splits the difference
-                    // with the original symmetric py-1 (4px/4px).
-                    className="w-44 shrink-0 rounded border bg-white px-2 pb-[3px] pt-[5px] text-sm text-black"
+                    className="w-44 shrink-0 rounded border bg-white px-2 py-1 text-sm text-black"
                   >
                     <option value="">None</option>
                     {substatOptionsExcluding(index).map((option) => (

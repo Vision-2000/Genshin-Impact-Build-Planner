@@ -281,12 +281,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           taller than the count text alone) and visibly shifts the grid
           below it down. */}
       <div className="flex min-h-8 items-center justify-between gap-2">
-        {/* pt-1 -- the count text + Select all button as a GROUP read
-            higher than PaginationNavButtons beside them, even once each
-            one's own internal text-centering was sorted out -- this
-            nudges the whole group down together rather than re-tuning
-            each child individually again. */}
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2">
           <p className="text-sm text-gray-500 dark:text-gray-300">
             {selectMode
               // Counts only currently-visible selections against the visible

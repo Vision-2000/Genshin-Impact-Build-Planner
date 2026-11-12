@@ -827,10 +827,7 @@ export function OwnedBuildManager({
             mode -- creating a plain build there wouldn't belong to the
             collection being viewed, which would read as it silently
             vanishing. Same condition as TeamManager's own "New Team"
-            button (teams/team-manager.tsx). pt-3/pb-2 (not py-2.5) -- same
-            Arial line-height fix as every other text-centered control in
-            this app, see build-stats-summary.tsx's own comment on the
-            root cause. */}
+            button (teams/team-manager.tsx). */}
         {(inCollectionMode || !selectedCollection) && (
           <button
             type="button"
@@ -848,19 +845,17 @@ export function OwnedBuildManager({
               }
               setCreating(true);
             }}
-            className="flex items-center gap-1.5 rounded-lg border px-4 pb-2 pt-3 text-sm font-semibold hover:bg-black/5"
+            className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
           >
-            {/* The "+" and this text are flex siblings (items-center) at
-                different font sizes/line-heights (text-base leading-none
-                vs this text's own default text-sm), so items-center
-                centers each independently -- the button's own pt-3/pb-2
-                above shifts the whole row, not their position relative to
-                each other. mt-0.5 nudges the text down and -mt-0.5 nudges
-                the "+" up by the same amount to meet it, same small-nudge
-                pattern used throughout this app for a badge/icon sitting
-                next to plain text. */}
-            <span className="-mt-0.5 text-base leading-none">+</span>
-            <span className="mt-0.5">Create build</span>
+            {/* leading-none on BOTH spans, not just the "+" -- the two sit
+                at different font sizes (text-base vs text-sm) as flex
+                siblings, and items-center centers each one's own
+                line-height-inflated box, not its glyph. Mismatched
+                line-heights (leading-none vs the default ~1.5) is what
+                actually misaligns them; matching the line-height on both
+                is what fixes it, with no manual offset needed. */}
+            <span className="text-base leading-none">+</span>
+            <span className="leading-none">Create build</span>
           </button>
         )}
       </div>

@@ -42,20 +42,15 @@ export default async function ArtifactsPage() {
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-300">Managing artifacts for {profile.name}</p>
         </div>
-        {/* pt-3/pb-2 (not py-2.5) -- same Arial line-height fix as every
-            other text-centered control in this app, see
-            build-stats-summary.tsx's own comment on the root cause. */}
         <Link
           href="/artifacts/add"
-          className="flex items-center gap-1.5 rounded-lg border px-4 pb-2 pt-3 text-sm font-semibold hover:bg-black/5"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
         >
-          {/* "+" and this text are flex siblings at different font
-              sizes/line-heights, so items-center centers each
-              independently -- mt-0.5/-mt-0.5 nudge the two to meet in
-              the middle, see owned-build-manager.tsx's own "Create
-              build" comment on why. */}
-          <span className="-mt-0.5 text-base leading-none">+</span>
-          <span className="mt-0.5">Add artifact</span>
+          {/* leading-none on BOTH spans -- see owned-build-manager.tsx's
+              own "Create build" comment on why that's what actually
+              fixes the mismatch, not a manual mt-0.5/-mt-0.5 offset. */}
+          <span className="text-base leading-none">+</span>
+          <span className="leading-none">Add artifact</span>
         </Link>
       </div>
       <OwnedArtifactManager statTypes={statTypeOptions} initialOwnedArtifacts={owned} />
