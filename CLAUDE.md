@@ -806,7 +806,25 @@ the app or the seed script.
   one was never guaranteed to hold up against the other — and now that
   Geist (a self-hosted, deterministic font) actually renders, every
   existing nudge needs re-checking against ITS metrics, not assumed
-  still correct. See Deferred below — this re-check hasn't happened yet.
+  still correct. Re-checked and fixed across every button/icon/input
+  nudge found (both the ones with an explanatory "nudge" comment and a
+  second, entirely undocumented group of 20 asymmetric-padding text
+  inputs found the same way) — see Known issues below for the one
+  remaining, separately-unexplained case (Teams page card width).
+- `build-catalog.tsx`'s own round-trip-survival draft (`DRAFT_KEY`) only
+  persists/restores when the draft actually has content -- its own
+  "is this empty" check (`characterId === null && name === "" &&
+  weaponId === null && Object.keys(slots).length === 0`) deliberately
+  doesn't count a picker's own `*PickerOpen` flag as "content" on its
+  own. So opening a picker (e.g. via its own "can't find it, add one
+  elsewhere" link) on an otherwise completely blank create-build form
+  clears the draft right before navigating away instead of saving it,
+  and nothing reopens on Back -- while doing the exact same thing after
+  already picking a character (or anything else) correctly persists and
+  restores, for any picker's link alike. Confirmed not specific to any
+  one picker; kept as-is deliberately (Eugene's own call, 2026-11-12) --
+  a user actively restores content that was worth not losing, not a
+  near-empty form they'd probably rather start over.
 
 ## Build order — follow this sequence, don't skip ahead
 1. Scaffold project, connect Prisma to Neon, confirm first migration runs
@@ -851,25 +869,10 @@ the app or the seed script.
 - Auth/profile pages (login/signup/`/profiles`) aren't up to the rest of
   the app's own UI/UX standard, functionality included (profile
   management specifically) — flagged for a rework, not yet scoped.
-- Pixel-nudge UI issues (misaligned text in buttons/dropdowns) that were
-  already fixed once reappeared when tested in a different environment.
-  Root cause found and fixed (see Key decisions: the Geist font was
-  silently dead code, `body` was rendering in a non-deterministic
-  Arial/Helvetica fallback instead) — but every individual nudge
-  (`grep -rn "nudge"` across `src/`) still needs re-checking against
-  Geist's own real metrics, not assumed correct just because the root
-  cause is fixed. Separately, still-unexplained: Teams page cards show
-  3 build slots per row instead of 4 in the affected environment — not
-  yet investigated, may or may not share the same root cause.
-- `build-catalog.tsx`'s own round-trip-survival draft (`DRAFT_KEY`,
-  `build-catalog-draft` in sessionStorage — restores the whole
-  create-build form, including which picker was open, after following
-  a link away and hitting Back) doesn't actually restore correctly when
-  that link was `character-slot-picker.tsx`'s own "Characters roster"
-  link specifically — the build modal doesn't stay/reopen the way it
-  does for the weapon/artifact add-flow links. Not yet root-caused;
-  believed to be a gap missed during that picker's own development
-  (confirmed locally, not something environment-specific).
+- Teams page cards showed 3 build slots per row instead of 4 in the
+  affected environment -- not yet investigated, may or may not share the
+  pixel-nudge/dead-Geist-font root cause below (fixed for every OTHER
+  nudge already found).
 
 ## Priorities for this project
 - Portfolio piece for job interviews: prefer code that's easy to explain over
