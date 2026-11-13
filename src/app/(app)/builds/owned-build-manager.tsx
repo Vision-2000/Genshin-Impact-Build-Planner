@@ -993,7 +993,7 @@ export function OwnedBuildManager({
             <button
               type="button"
               onClick={handleCreateCollection}
-              className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+              className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
             >
               {/* PlusIcon, not the Unicode "+" -- see its own comment. */}
               <PlusIcon />
