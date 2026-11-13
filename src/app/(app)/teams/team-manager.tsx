@@ -13,6 +13,7 @@ import { useRefreshOnBackNavigation, wasBackNavigation } from "@/lib/use-refresh
 import { useDialogs } from "@/components/dialog-provider";
 import { MouseFollowTooltip } from "@/components/mouse-follow-tooltip";
 import { BuildPortrait } from "@/components/build-portrait";
+import { PlusIcon } from "@/components/plus-icon";
 import { BuildDetailModal } from "../builds/build-detail-modal";
 import { ELEMENT_ICON_URL } from "../characters/element-icons";
 import { PaginationControls, PaginationNavButtons } from "../pagination-controls";
@@ -1503,7 +1504,9 @@ export function TeamManager({
               onClick={handleCreateGroup}
               className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
             >
-              <span className="text-sm leading-none">+</span> Create group
+              {/* PlusIcon, not the Unicode "+" -- see its own comment. */}
+              <PlusIcon />
+              <span className="leading-none">Create group</span>
             </button>
             {selectedGroup && (
               <>
@@ -1568,7 +1571,9 @@ export function TeamManager({
                 onClick={handleCreate}
                 className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
               >
-                <span className="text-sm leading-none">+</span> New Team
+                {/* PlusIcon, not the Unicode "+" -- see its own comment. */}
+                <PlusIcon />
+                <span className="leading-none">New Team</span>
               </button>
             )}
           </div>

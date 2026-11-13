@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArtifactSetPiece } from "@/generated/prisma/enums";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { ArrowLeftIcon } from "@/components/arrow-left-icon";
 import { HelpButton } from "@/components/help-button";
 import { ArtifactCatalog } from "./artifact-catalog";
 import type { ArtifactSetCatalogItem, StatTypeOption } from "../filter-sort";
@@ -70,14 +71,12 @@ export default async function AddArtifactPage() {
           href="/artifacts"
           className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
         >
-          {/* leading-none on BOTH the arrow and the text -- same
-              flex-sibling line-height-mismatch fix as owned-build-manager.tsx's
-              own "Create build" comment: items-center centers each flex
-              child's own line-height box, not its glyph, so two mismatched
-              line-heights (one default, one not) never actually line up
-              no matter how they're nudged. Matching leading-none on both
-              removes the mismatch instead of compensating for it. */}
-          <span className="leading-none">←</span>
+          {/* ArrowLeftIcon, not the Unicode "←" -- a Unicode arrow is
+              drawn on the font's own math axis, which doesn't line up
+              with plain text's optical center no matter how leading-none/
+              line-height is tuned (confirmed directly: that was tried
+              first and still read as off). See its own comment. */}
+          <ArrowLeftIcon />
           <span className="leading-none">Back to my artifacts</span>
         </Link>
       </div>

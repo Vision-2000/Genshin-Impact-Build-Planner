@@ -3,6 +3,7 @@ import Link from "next/link";
 import { WeaponType } from "@/generated/prisma/enums";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { ArrowLeftIcon } from "@/components/arrow-left-icon";
 import { HelpButton } from "@/components/help-button";
 import { defaultWeaponProgression } from "@/lib/weapon-scaling";
 import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
@@ -67,10 +68,10 @@ export default async function AddWeaponPage({
           href="/weapons"
           className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
         >
-          {/* leading-none on BOTH the arrow and the text -- same
-              flex-sibling line-height-mismatch fix as owned-build-manager.tsx's
-              own "Create build" comment. */}
-          <span className="leading-none">←</span>
+          {/* ArrowLeftIcon, not the Unicode "←" -- see its own comment
+              on why a Unicode arrow can't be reliably centered against
+              plain text via CSS alone. */}
+          <ArrowLeftIcon />
           <span className="leading-none">Back to my weapons</span>
         </Link>
       </div>

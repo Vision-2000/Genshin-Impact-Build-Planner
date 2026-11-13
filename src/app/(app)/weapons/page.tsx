@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireActiveProfile } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { HelpButton } from "@/components/help-button";
+import { PlusIcon } from "@/components/plus-icon";
 import { computeWeaponHoverDetail } from "@/lib/weapon-hover-detail";
 import { OwnedWeaponManager } from "./owned-weapon-manager";
 import type { OwnedWeaponItem } from "./filter-sort";
@@ -68,10 +69,10 @@ export default async function WeaponsPage() {
           href="/weapons/add"
           className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
         >
-          {/* leading-none on BOTH spans -- see owned-build-manager.tsx's
-              own "Create build" comment on why that's what actually
-              fixes the mismatch, not a manual mt-0.5/-mt-0.5 offset. */}
-          <span className="text-base leading-none">+</span>
+          {/* PlusIcon, not the Unicode "+" -- see its own comment on why
+              a Unicode glyph can't be reliably centered against plain
+              text via CSS alone. */}
+          <PlusIcon />
           <span className="leading-none">Add weapon</span>
         </Link>
       </div>

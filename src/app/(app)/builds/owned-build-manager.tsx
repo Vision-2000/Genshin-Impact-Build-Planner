@@ -8,6 +8,7 @@ import { useRefreshOnBackNavigation } from "@/lib/use-refresh-on-back-navigation
 import { useDialogs } from "@/components/dialog-provider";
 import { Modal } from "@/components/modal";
 import { BuildPortrait } from "@/components/build-portrait";
+import { PlusIcon } from "@/components/plus-icon";
 import { RarityFilterRow } from "@/components/rarity-filter-row";
 import { SortDirectionToggle } from "@/components/sort-direction-toggle";
 import { WeaponTypeFilterRow } from "@/components/weapon-type-filter-row";
@@ -847,14 +848,10 @@ export function OwnedBuildManager({
             }}
             className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
           >
-            {/* leading-none on BOTH spans, not just the "+" -- the two sit
-                at different font sizes (text-base vs text-sm) as flex
-                siblings, and items-center centers each one's own
-                line-height-inflated box, not its glyph. Mismatched
-                line-heights (leading-none vs the default ~1.5) is what
-                actually misaligns them; matching the line-height on both
-                is what fixes it, with no manual offset needed. */}
-            <span className="text-base leading-none">+</span>
+            {/* PlusIcon, not the Unicode "+" -- see its own comment on
+                why a Unicode glyph can't be reliably centered against
+                plain text via CSS alone. */}
+            <PlusIcon />
             <span className="leading-none">Create build</span>
           </button>
         )}
@@ -998,7 +995,9 @@ export function OwnedBuildManager({
               onClick={handleCreateCollection}
               className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
             >
-              <span className="text-sm leading-none">+</span> Create collection
+              {/* PlusIcon, not the Unicode "+" -- see its own comment. */}
+              <PlusIcon />
+              <span className="leading-none">Create collection</span>
             </button>
             {selectedCollection && (
               <>
