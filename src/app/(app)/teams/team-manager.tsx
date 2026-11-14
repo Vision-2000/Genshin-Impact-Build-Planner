@@ -57,7 +57,7 @@ const PAGE_SIZE = 10;
 // each of BuildPortrait's own weapon/artifact-effects icons is a third of
 // that width (~139px). The card grid is a single column (see the "always
 // 1 column" comment below), so there's no column width to stay under.
-const SLOT_SIZE_CLASS = "aspect-[3/2] w-[26rem]";
+const SLOT_SIZE_CLASS = "aspect-[3/2] w-full";
 // A team is a perfectly valid, real in-game state with 0 builds in it (a
 // party slot can sit empty) -- "Create team" no longer prompts for a name
 // up front, it just makes one of these immediately and lets
@@ -650,7 +650,7 @@ function TeamCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {slotBuildIds.map((buildId, index) => {
           // Every OTHER filled slot's own build, excluding this slot's own
           // current pick -- fed to this slot's own BuildSlotPicker so it
