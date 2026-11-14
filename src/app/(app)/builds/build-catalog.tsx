@@ -15,14 +15,13 @@ import type { BuildItem, OwnedArtifactOption, OwnedCharacterOption, OwnedWeaponO
 const SLOTS = Object.values(ArtifactSlot);
 
 // Weapon + all 5 artifact slots share one row here (unlike their own usual
-// 224x224, each on its own row/section) -- a fixed, compact size (not
-// 224x224) leaves enough room for all 6 boxes (plus the character splash
-// column and its own padding) to stay on that one line rather than
-// wrapping. Fixed, not viewport-relative -- this form now always renders
-// inside OwnedBuildManager's own width-capped "create build" Modal, same
-// as BuildEditor's own EDITOR_SLOT_SIZE_CLASS there, not a full-width page
-// a vw-based size could track.
-const SLOT_SIZE_CLASS = "h-32 w-32";
+// 224x224, each on its own row/section) -- a compact aspect-square box
+// that fills its own grid column (see the grid-cols-6 row below) instead
+// of a fixed pixel size, so all 6 boxes shrink together with the Modal's
+// own width (which still narrows on small screens despite being width-
+// capped) rather than the artifact group wrapping below Weapon once a
+// fixed-width row stopped fitting.
+const SLOT_SIZE_CLASS = "aspect-square w-full";
 
 type SlotSelections = Partial<Record<ArtifactSlot, number>>;
 // Same per-slot shape as SlotSelections, one open/closed flag per artifact
@@ -331,12 +330,12 @@ export function BuildCatalog({
                   8px short of it. */}
               <div className="flex flex-1 flex-col gap-4 px-4 pb-2 pt-2">
                 {/* Weapon and Artifacts keep their own separate labels, each
-                    directly above its own box(es), but both groups sit side
-                    by side in one flex row -- compact (boxSizeClassName, down
-                    from the usual 224x224) enough that the boxes themselves
-                    still land on one shared line. */}
-                <div className="flex flex-wrap gap-4">
-                  <div>
+                    directly above its own box(es), but both groups share one
+                    grid-cols-6 row (1 column for Weapon, 5 for Artifacts) so
+                    all 6 boxes scale down together as the row narrows instead
+                    of the Artifacts group wrapping below Weapon as a block. */}
+                <div className="grid grid-cols-6 gap-4">
+                  <div className="col-span-1">
                     {/* mb-1 -- matches CharacterSlotPicker's own gap-1 between
                         its "Character" label and its box, so the boxes line
                         up at the same height too, not just the label text. */}
@@ -364,9 +363,9 @@ export function BuildCatalog({
                     />
                   </div>
 
-                  <div>
+                  <div className="col-span-5">
                     <p className="mb-1 text-base font-bold">Artifacts</p>
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-5 gap-2">
                       {SLOTS.map((slot) => (
                         <ArtifactSlotPicker
                           key={slot}

@@ -53,11 +53,11 @@ const PAGE_SIZE = 60;
 // build's own rarity filter is really its character's.
 const RARITIES = [5, 4];
 // Compact size for the edit modal's own weapon/artifact slots -- same
-// fixed-size reasoning (and same value) as BuildCatalog's own
-// SLOT_SIZE_CLASS: both forms sit inside a width-capped Modal, so a fixed
-// size that's guaranteed to fit alongside 5 artifact slots at the modal's
-// own max width is more robust than anything viewport-relative.
-const EDITOR_SLOT_SIZE_CLASS = "h-32 w-32";
+// reasoning (and same value) as BuildCatalog's own SLOT_SIZE_CLASS: an
+// aspect-square box filling its own grid-cols-6 column, so all 6 boxes
+// shrink together with the Modal's own width instead of the Artifacts
+// group wrapping below Weapon once a fixed-width row stopped fitting.
+const EDITOR_SLOT_SIZE_CLASS = "aspect-square w-full";
 
 function toggleInSet<T>(set: ReadonlySet<T>, value: T): Set<T> {
   const next = new Set(set);
@@ -380,8 +380,8 @@ function BuildEditor({
             padding, see its own comment) lands flush with the splash
             art's bottom instead of stopping 8px short of it. */}
         <div className="flex flex-1 flex-col gap-4 px-4 pb-2 pt-2">
-          <div className="flex flex-wrap gap-4">
-            <div>
+          <div className="grid grid-cols-6 gap-4">
+            <div className="col-span-1">
               <p className="mb-1 text-base font-bold">Weapon</p>
               <WeaponSlotPicker
                 weaponType={character.weaponType}
@@ -399,9 +399,9 @@ function BuildEditor({
               />
             </div>
 
-            <div>
+            <div className="col-span-5">
               <p className="mb-1 text-base font-bold">Artifacts</p>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {SLOTS.map((slot) => (
                   <ArtifactSlotPicker
                     key={slot}

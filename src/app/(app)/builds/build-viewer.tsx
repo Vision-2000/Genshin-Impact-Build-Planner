@@ -15,7 +15,7 @@ const SLOTS = Object.values(ArtifactSlot);
 // Same value as BuildEditor's own EDITOR_SLOT_SIZE_CLASS
 // (owned-build-manager.tsx) -- this is meant to look identical to it, not
 // a different size.
-const SLOT_SIZE_CLASS = "h-32 w-32";
+const SLOT_SIZE_CLASS = "aspect-square w-full";
 
 // Read-only counterpart to BuildEditor (owned-build-manager.tsx) -- same
 // character-splash/weapon/artifacts/stats layout, built from the same
@@ -59,8 +59,8 @@ export function BuildViewer({
           BuildStatsSummary's own stretched bottom edge up with the splash
           art's, not 8px short of it. */}
       <div className="flex flex-1 flex-col gap-4 px-4 pb-2 pt-2">
-        <div className="flex flex-wrap gap-4">
-          <div>
+        <div className="grid grid-cols-6 gap-4">
+          <div className="col-span-1">
             <p className="mb-1 text-base font-bold">Weapon</p>
             {/* No real weapon equipped falls back to the character's own
                 1-star starter weapon, same DEFAULT_WEAPON treatment
@@ -81,9 +81,9 @@ export function BuildViewer({
             </ul>
           </div>
 
-          <div>
+          <div className="col-span-5">
             <p className="mb-1 text-base font-bold">Artifacts</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {SLOTS.map((slot) => {
                 const artifact = artifacts.find((a) => a.slot === slot);
                 return (
