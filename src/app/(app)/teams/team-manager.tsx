@@ -1513,16 +1513,16 @@ export function TeamManager({
                 <button
                   type="button"
                   onClick={handleEditGroup}
-                  className="rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
                 >
-                  Edit group
+                  <span className="leading-none">Edit group</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleDeleteGroup}
-                  className="rounded-full border border-red-600 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-600/10"
+                  className="flex items-center rounded-full border border-red-600 px-4 py-1.5 text-sm font-semibold text-red-500 hover:bg-red-600/10"
                 >
-                  Delete group
+                  <span className="leading-none">Delete group</span>
                 </button>
               </>
             )}

@@ -1004,16 +1004,16 @@ export function OwnedBuildManager({
                 <button
                   type="button"
                   onClick={handleEditCollection}
-                  className="rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
                 >
-                  Edit collection
+                  <span className="leading-none">Edit collection</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleDeleteCollection}
-                  className="rounded-full border border-red-600 px-4 py-1.5 text-sm font-semibold text-red-500 hover:bg-red-600/10"
+                  className="flex items-center rounded-full border border-red-600 px-4 py-1.5 text-sm font-semibold text-red-500 hover:bg-red-600/10"
                 >
-                  Delete collection
+                  <span className="leading-none">Delete collection</span>
                 </button>
               </>
             )}
