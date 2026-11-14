@@ -846,7 +846,7 @@ export function OwnedBuildManager({
               }
               setCreating(true);
             }}
-            className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+            className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
           >
             {/* PlusIcon, not the Unicode "+" -- see its own comment on
                 why a Unicode glyph can't be reliably centered against
@@ -1004,14 +1004,14 @@ export function OwnedBuildManager({
                 <button
                   type="button"
                   onClick={handleEditCollection}
-                  className="rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                  className="rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   Edit collection
                 </button>
                 <button
                   type="button"
                   onClick={handleDeleteCollection}
-                  className="rounded-full border border-red-600 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-600/10"
+                  className="rounded-full border border-red-600 px-4 py-1.5 text-sm font-semibold text-red-500 hover:bg-red-600/10"
                 >
                   Delete collection
                 </button>
