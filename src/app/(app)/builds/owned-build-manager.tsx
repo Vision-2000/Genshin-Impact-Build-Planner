@@ -846,7 +846,7 @@ export function OwnedBuildManager({
               }
               setCreating(true);
             }}
-            className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+            className="flex items-center gap-1.5 cursor-pointer appearance-none rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
           >
             {/* PlusIcon, not the Unicode "+" -- see its own comment on
                 why a Unicode glyph can't be reliably centered against
