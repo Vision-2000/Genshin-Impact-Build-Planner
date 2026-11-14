@@ -530,7 +530,7 @@ export function BuildSlotPicker({
             />
           </div>
 
-          <p className="shrink-0 text-sm text-gray-500">
+          <p className="shrink-0 text-sm text-gray-300">
             Need another build? Create one on the{" "}
             <Link href="/builds" className="underline hover:text-foreground">
               Builds page
@@ -565,7 +565,7 @@ export function BuildSlotPicker({
               />
             ))}
           </ul>
-          {candidates.length === 0 && <p className="shrink-0 p-2 text-sm text-gray-500">No builds match this search.</p>}
+          {candidates.length === 0 && <p className="shrink-0 p-2 text-sm text-gray-300">No builds match this search.</p>}
         </div>
       </Modal>
 

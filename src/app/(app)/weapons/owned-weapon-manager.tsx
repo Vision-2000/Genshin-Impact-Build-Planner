@@ -282,7 +282,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
           below it down. */}
       <div className="flex min-h-8 items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-sm text-gray-500 dark:text-gray-300">
+          <p className="text-sm text-gray-300">
             {selectMode
               // Counts only currently-visible selections against the visible
               // total -- `selectedIds.size` itself (used for the Delete
@@ -323,7 +323,7 @@ export function OwnedWeaponManager({ initialOwnedWeapons }: { initialOwnedWeapon
             hoverDetail={weapon.hoverDetail}
           />
         ))}
-        {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
+        {filtered.length === 0 && <p className="text-sm text-gray-300">No weapons match these filters.</p>}
       </ul>
 
       <PaginationControls currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />

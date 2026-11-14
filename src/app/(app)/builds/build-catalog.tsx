@@ -276,7 +276,7 @@ export function BuildCatalog({
     >
       <div className="space-y-4">
         {characters.length === 0 ? (
-          <p className="text-base text-gray-500">
+          <p className="text-base text-gray-300">
             Own a character on the{" "}
             <Link href="/characters" className="underline hover:text-foreground">
               Characters page

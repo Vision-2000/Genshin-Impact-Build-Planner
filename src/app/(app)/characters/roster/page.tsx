@@ -45,11 +45,11 @@ export default async function CharacterRosterPage() {
             <h1 className="text-2xl font-semibold">Character roster</h1>
             <HelpButton title="Character roster help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-300">Managing ownership for {profile.name}</p>
+          <p className="text-sm text-gray-300">Managing ownership for {profile.name}</p>
         </div>
         <Link
           href="/characters"
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
         >
           {/* ArrowLeftIcon, not the Unicode "←" -- see its own comment
               on why a Unicode arrow can't be reliably centered against

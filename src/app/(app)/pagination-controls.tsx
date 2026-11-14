@@ -22,15 +22,14 @@ export function PaginationNavButtons({ currentPage, pageCount, onPageChange }: P
 
   return (
     <div className="flex items-center gap-2">
-      {/* hover:bg-black/5 dark:hover:bg-white/10 -- same hover treatment
-          every other bordered button in this app gets (e.g.
-          help-button.tsx); these two never had ANY hover class before
-          this component existed. */}
+      {/* hover:bg-white/10 -- same hover treatment every other bordered
+          button in this app gets (e.g. help-button.tsx); these two never
+          had ANY hover class before this component existed. */}
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={!hasPrevious}
-        className="rounded border px-3 py-1 text-sm hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
+        className="rounded border px-3 py-1 text-sm hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
       >
         Previous
       </button>
@@ -38,7 +37,7 @@ export function PaginationNavButtons({ currentPage, pageCount, onPageChange }: P
         type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={!hasNext}
-        className="rounded border px-3 py-1 text-sm hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10"
+        className="rounded border px-3 py-1 text-sm hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
       >
         Next
       </button>
@@ -56,7 +55,7 @@ export function PaginationControls({ currentPage, pageCount, onPageChange }: Pag
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-500">
+      <span className="text-sm text-gray-300">
         Page {currentPage} of {pageCount}
       </span>
       <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={onPageChange} />

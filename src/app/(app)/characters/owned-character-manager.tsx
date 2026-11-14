@@ -800,7 +800,7 @@ function CharacterProgressionEditor({
           // the moment data resolves and this one-line placeholder gets
           // replaced by the real (much taller) content, the same class of
           // jump the level-100 button and the stats box had earlier.
-          <p className="flex min-h-9 items-center text-sm text-gray-500">Loading...</p>
+          <p className="flex min-h-9 items-center text-sm text-gray-300">Loading...</p>
         ) : (
           <ConstellationIcons
             element={selectedElement}
@@ -818,7 +818,7 @@ function CharacterProgressionEditor({
           // (40px, its own pt-1 included) + 3 gaps of space-y-2 (8px) --
           // the common case (a character with at least one passive); same
           // reasoning as Constellation's min-h-9 above.
-          <p className="flex min-h-[172px] items-center text-sm text-gray-500">Loading...</p>
+          <p className="flex min-h-[172px] items-center text-sm text-gray-300">Loading...</p>
         ) : (
           <TalentsSection
             data={data}
@@ -991,7 +991,7 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
       <WeaponTypeFilterRow weaponTypeFilter={weaponTypeFilter} onToggle={toggleWeaponType} />
       <RarityFilterRow rarities={RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 
-      <p className="text-sm text-gray-500 dark:text-gray-300">
+      <p className="text-sm text-gray-300">
         {filtered.length} character{filtered.length === 1 ? "" : "s"}
       </p>
 
@@ -1015,7 +1015,7 @@ export function OwnedCharacterManager({ initialOwnedCharacters }: { initialOwned
             onSelect={() => setEditingId(character.id)}
           />
         ))}
-        {filtered.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
+        {filtered.length === 0 && <p className="text-sm text-gray-300">No characters match these filters.</p>}
       </ul>
 
       {/* fitContent -- the stats box (now w-fit, sized per character's own

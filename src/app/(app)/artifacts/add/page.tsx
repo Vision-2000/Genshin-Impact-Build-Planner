@@ -65,11 +65,11 @@ export default async function AddArtifactPage() {
             <h1 className="text-2xl font-semibold">Add an artifact</h1>
             <HelpButton title="Add artifact help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-300">Adding artifacts for {profile.name}</p>
+          <p className="text-sm text-gray-300">Adding artifacts for {profile.name}</p>
         </div>
         <Link
           href="/artifacts"
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
         >
           {/* ArrowLeftIcon, not the Unicode "←" -- a Unicode arrow is
               drawn on the font's own math axis, which doesn't line up

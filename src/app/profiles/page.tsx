@@ -35,7 +35,7 @@ export default async function ProfilesPage() {
         {profiles.map((profile) => (
           <li key={profile.id} className="space-y-2 rounded border p-3">
             <p className="font-medium break-words">{profile.name}</p>
-            {profile.uid && <p className="text-sm text-gray-500">UID: {profile.uid}</p>}
+            {profile.uid && <p className="text-sm text-gray-300">UID: {profile.uid}</p>}
             <div className="flex items-center gap-3">
               {profile.id === activeProfileId ? (
                 <span className="text-sm font-medium text-green-600">Active</span>
@@ -46,7 +46,7 @@ export default async function ProfilesPage() {
             </div>
           </li>
         ))}
-        {profiles.length === 0 && <p className="text-sm text-gray-500">No profiles yet — create one below.</p>}
+        {profiles.length === 0 && <p className="text-sm text-gray-300">No profiles yet — create one below.</p>}
       </ul>
 
       <CreateProfileForm />

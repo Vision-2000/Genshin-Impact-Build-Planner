@@ -15,7 +15,7 @@ export function Modal({
   children,
   maxWidthClassName = "max-w-md",
   fitContent = false,
-  closeButtonClassName = "text-gray-500 hover:bg-black/5 hover:text-foreground",
+  closeButtonClassName = "text-gray-300 hover:bg-white/10 hover:text-foreground",
   hideCloseButton = false,
 }: {
   open: boolean;

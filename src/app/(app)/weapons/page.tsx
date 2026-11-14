@@ -63,11 +63,11 @@ export default async function WeaponsPage() {
             <h1 className="text-2xl font-semibold">Weapons</h1>
             <HelpButton title="Weapons page help" text={HELP_TEXT} />
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-300">Managing weapons for {profile.name}</p>
+          <p className="text-sm text-gray-300">Managing weapons for {profile.name}</p>
         </div>
         <Link
           href="/weapons/add"
-          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+          className="flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
         >
           {/* PlusIcon, not the Unicode "+" -- see its own comment on why
               a Unicode glyph can't be reliably centered against plain

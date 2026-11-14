@@ -217,7 +217,7 @@ export default async function BuildsPage({
                 <h1 className="text-2xl font-semibold">Builds</h1>
                 <HelpButton title="Builds page help" text={HELP_TEXT} />
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-300">Managing builds for {profile.name}</p>
+              <p className="text-sm text-gray-300">Managing builds for {profile.name}</p>
             </div>
           }
           characters={characterOptions}

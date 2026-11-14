@@ -23,7 +23,7 @@ export function Sidebar() {
             <Link
               href={item.href}
               className={`block rounded px-3 py-2 text-sm ${
-                isActive ? "bg-foreground text-background" : "hover:bg-black/5"
+                isActive ? "bg-foreground text-background" : "hover:bg-white/10"
               }`}
             >
               {item.label}
@@ -34,9 +34,8 @@ export function Sidebar() {
               // arrow-prefixed style -- pl-6 instead of px-3's own pl-3
               // for a plain left indent (no arrow glyph to line up
               // against anything), plus the inactive state's own dimmed
-              // text-gray-500/dark:text-gray-400 kept as a second,
-              // non-indent way to tell a child link apart from a parent
-              // one at a glance.
+              // text-gray-400 kept as a second, non-indent way to tell a
+              // child link apart from a parent one at a glance.
               <div className="mt-0.5 space-y-0.5">
                 {item.children.map((child) => {
                   const isChildActive = pathname === child.href;
@@ -47,7 +46,7 @@ export function Sidebar() {
                       className={`block rounded py-2 pl-6 pr-3 text-sm ${
                         isChildActive
                           ? "bg-foreground text-background"
-                          : "text-gray-500 hover:bg-black/5 dark:text-gray-400"
+                          : "text-gray-400 hover:bg-white/10"
                       }`}
                     >
                       {child.label}
@@ -62,13 +61,13 @@ export function Sidebar() {
 
       <div className="space-y-1 border-t pt-1">
         <form action={changeProfile}>
-          <button type="submit" className="w-full rounded px-3 py-2 text-left text-sm hover:bg-black/5">
+          <button type="submit" className="w-full rounded px-3 py-2 text-left text-sm hover:bg-white/10">
             Change Profile
           </button>
         </form>
 
         <form action={logout}>
-          <button type="submit" className="w-full rounded px-3 py-2 text-left text-sm hover:bg-black/5">
+          <button type="submit" className="w-full rounded px-3 py-2 text-left text-sm hover:bg-white/10">
             Log out
           </button>
         </form>

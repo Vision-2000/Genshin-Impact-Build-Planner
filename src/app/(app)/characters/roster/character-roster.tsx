@@ -136,7 +136,7 @@ export function CharacterRoster({ roster }: { roster: CharacterRosterItem[] }) {
         onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
       />
 
-      <p className="text-sm text-gray-500 dark:text-gray-300">
+      <p className="text-sm text-gray-300">
         {filtered.length} character{filtered.length === 1 ? "" : "s"}
       </p>
 
@@ -154,7 +154,7 @@ export function CharacterRoster({ roster }: { roster: CharacterRosterItem[] }) {
             onSelect={() => handleToggleOwnership(character.id, !character.isOwned)}
           />
         ))}
-        {filtered.length === 0 && <p className="text-sm text-gray-500">No characters match these filters.</p>}
+        {filtered.length === 0 && <p className="text-sm text-gray-300">No characters match these filters.</p>}
       </ul>
     </div>
   );

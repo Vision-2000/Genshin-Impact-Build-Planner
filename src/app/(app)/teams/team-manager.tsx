@@ -1389,7 +1389,7 @@ export function TeamManager({
                 onChange={(event) => setGroupDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
                 className="w-64 rounded border bg-white px-2 py-1 text-sm text-black"
               />
-              <span className="text-sm text-gray-500 dark:text-gray-300">
+              <span className="text-sm text-gray-300">
                 {groupDraft.teamIds.length} team{groupDraft.teamIds.length === 1 ? "" : "s"} selected
               </span>
               <div className="ml-auto flex gap-2">
@@ -1502,7 +1502,7 @@ export function TeamManager({
             <button
               type="button"
               onClick={handleCreateGroup}
-              className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+              className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-white/10"
             >
               {/* PlusIcon, not the Unicode "+" -- see its own comment. */}
               <PlusIcon />
@@ -1513,7 +1513,7 @@ export function TeamManager({
                 <button
                   type="button"
                   onClick={handleEditGroup}
-                  className="flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-white/10"
                 >
                   <span className="leading-none">Edit group</span>
                 </button>
@@ -1555,7 +1555,7 @@ export function TeamManager({
               rather than reusing a button shape that implies the same
               modal/page pattern. */}
           <div className="flex items-center gap-3">
-            <p className="text-sm text-gray-500 dark:text-gray-300">
+            <p className="text-sm text-gray-300">
               {filtered.length} team{filtered.length === 1 ? "" : "s"}
             </p>
             {/* Hidden while viewing a specific group outside group mode --
@@ -1569,7 +1569,7 @@ export function TeamManager({
               <button
                 type="button"
                 onClick={handleCreate}
-                className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                className="flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-white/10"
               >
                 {/* PlusIcon, not the Unicode "+" -- see its own comment. */}
                 <PlusIcon />
@@ -1587,7 +1587,7 @@ export function TeamManager({
             than a 2nd/3rd column would leave on anything short of a very
             wide monitor. */}
         {pageItems.length === 0 ? (
-          <p className="text-sm text-gray-500">No teams match this search.</p>
+          <p className="text-sm text-gray-300">No teams match this search.</p>
         ) : (
           <ul className="grid grid-cols-1 gap-4">
             {pageItems.map((team) => (

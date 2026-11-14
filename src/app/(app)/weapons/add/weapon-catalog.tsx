@@ -139,7 +139,7 @@ export function WeaponCatalog({
         onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
       />
 
-      <p className="text-sm text-gray-500 dark:text-gray-300">
+      <p className="text-sm text-gray-300">
         {filtered.length} weapon{filtered.length === 1 ? "" : "s"}
       </p>
 
@@ -158,7 +158,7 @@ export function WeaponCatalog({
             onSelect={() => setCustomizingId(weapon.id)}
           />
         ))}
-        {filtered.length === 0 && <p className="text-sm text-gray-500">No weapons match these filters.</p>}
+        {filtered.length === 0 && <p className="text-sm text-gray-300">No weapons match these filters.</p>}
       </ul>
 
       <Modal

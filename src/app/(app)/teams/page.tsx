@@ -142,7 +142,7 @@ export default async function TeamsPage() {
                 <h1 className="text-2xl font-semibold">Teams</h1>
                 <HelpButton title="Teams page help" text={HELP_TEXT} />
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-300">Managing teams for {profile.name}</p>
+              <p className="text-sm text-gray-300">Managing teams for {profile.name}</p>
             </div>
           }
           builds={buildOptions}

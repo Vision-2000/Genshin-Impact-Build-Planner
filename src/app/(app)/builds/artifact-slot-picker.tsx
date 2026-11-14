@@ -391,7 +391,7 @@ export function ArtifactSlotPicker({
             ))}
           </div>
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-300">
             Cannot find a piece? Add one on the{" "}
             <Link href="/artifacts/add" className="underline hover:text-foreground">
               Add artifact page
@@ -426,7 +426,7 @@ export function ArtifactSlotPicker({
               />
             ))}
           </ul>
-          {filtered.length === 0 && <p className="p-2 text-sm text-gray-500">No artifacts match this search.</p>}
+          {filtered.length === 0 && <p className="p-2 text-sm text-gray-300">No artifacts match this search.</p>}
         </div>
       </Modal>
     </>

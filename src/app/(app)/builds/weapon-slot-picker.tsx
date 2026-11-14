@@ -265,7 +265,7 @@ export function WeaponSlotPicker({
             onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
           />
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-300">
             Cannot find a weapon? Add one on the{" "}
             <Link
               href={weaponType ? `/weapons/add?weaponType=${weaponType}` : "/weapons/add"}
@@ -326,7 +326,7 @@ export function WeaponSlotPicker({
               />
             ))}
           </ul>
-          {filtered.length === 0 && <p className="p-2 text-sm text-gray-500">No weapons match this search.</p>}
+          {filtered.length === 0 && <p className="p-2 text-sm text-gray-300">No weapons match this search.</p>}
         </div>
       </Modal>
     </>

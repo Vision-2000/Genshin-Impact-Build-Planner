@@ -450,7 +450,7 @@ export function WeaponProgressionForm({
           )}
 
           {!data ? (
-            <p className="text-sm text-gray-500">Loading...</p>
+            <p className="text-sm text-gray-300">Loading...</p>
           ) : (
             <>
               <BaseStatsSection data={data} level={level} ascensionPhase={ascensionPhase} secondaryStatName={secondaryStatName} />

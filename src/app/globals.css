@@ -1,15 +1,28 @@
 @import "tailwindcss";
 
+/* This app only ever renders its dark palette -- these used to be the
+   :root default, overridden by a @media (prefers-color-scheme: dark)
+   block for visitors whose OS/browser preferred dark. That meant the
+   app's actual look depended on the visitor's own system setting, unlike
+   the reference sites this was compared against, which render identically
+   regardless of it. Dropped the light values and the media query entirely;
+   these are now the only colors that exist, so there's nothing left to
+   switch on. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Without this, native browser chrome (scrollbars, default form widget
+     styling) still follows the visitor's own OS/browser light-dark
+     setting independently of this page's own colors -- declaring the
+     scheme explicitly locks that in too. */
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
   /* Full-page tint so a "manage" page (owned items, editable -- Characters,
      Weapons, Artifacts, Builds) reads as visually distinct at a glance from
      its "add"/roster counterpart (catalog or ownership-toggle only), without
      needing per-card changes. Applied to a full-bleed wrapper around each
      page's own max-width content, not the cards themselves. */
-  --primary-page: #dbeafe;
-  --secondary-page: #ffedd5;
+  --primary-page: #0e1f37;
+  --secondary-page: #381408;
 }
 
 @theme inline {
@@ -19,15 +32,6 @@
   --color-secondary-page: var(--secondary-page);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --primary-page: #0e1f37;
-    --secondary-page: #381408;
-  }
 }
 
 body {

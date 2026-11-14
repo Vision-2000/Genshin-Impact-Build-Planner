@@ -133,14 +133,14 @@ export function ArtifactCatalog({
 
       <RarityFilterRow rarities={ARTIFACT_RARITIES} rarityFilter={rarityFilter} onToggle={toggleRarity} />
 
-      <p className="text-sm text-gray-500 dark:text-gray-300">
+      <p className="text-sm text-gray-300">
         {filtered.length} set{filtered.length === 1 ? "" : "s"}
       </p>
 
       {/* Empty-state message replaces the <ul> rather than sitting inside
           it -- a <ul> may only directly contain <li>. */}
       {filtered.length === 0 ? (
-        <p className="text-sm text-gray-500">No sets match this search.</p>
+        <p className="text-sm text-gray-300">No sets match this search.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {filtered.map((set) => {

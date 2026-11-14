@@ -82,7 +82,7 @@ export function BuildDetailModal({
   // top-right row despite the height difference -- see Modal's own
   // headerActions comment.
   const headerButtonClassName =
-    "flex h-7 items-center whitespace-nowrap rounded border px-2 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10";
+    "flex h-7 items-center whitespace-nowrap rounded border px-2 text-xs font-semibold hover:bg-white/10";
 
   const headerActions =
     buildId !== null ? (

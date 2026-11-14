@@ -365,7 +365,7 @@ export function OwnedArtifactManager({
           down. */}
       <div className="flex min-h-8 items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-sm text-gray-500 dark:text-gray-300">
+          <p className="text-sm text-gray-300">
             {selectMode
               // Counts selections across every filtered page, not just the
               // one currently shown -- `selectedIds.size` itself (used for
@@ -392,7 +392,7 @@ export function OwnedArtifactManager({
       {/* Empty-state message replaces the <ul> rather than sitting inside
           it -- a <ul> may only directly contain <li>. */}
       {pageItems.length === 0 ? (
-        <p className="text-sm text-gray-500">No artifacts match these filters.</p>
+        <p className="text-sm text-gray-300">No artifacts match these filters.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {pageItems.map((artifact) => (

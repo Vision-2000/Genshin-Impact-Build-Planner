@@ -280,7 +280,7 @@ export function CharacterSlotPicker({
             onToggle={(rarity) => setRarityFilter((prev) => toggleInSet(prev, rarity))}
           />
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-300">
             Cannot find a character? Mark them owned on the{" "}
             <Link href="/characters/roster" className="underline hover:text-foreground">
               Characters roster
@@ -315,7 +315,7 @@ export function CharacterSlotPicker({
               />
             ))}
           </ul>
-          {filtered.length === 0 && <p className="p-2 text-sm text-gray-500">No characters match this search.</p>}
+          {filtered.length === 0 && <p className="p-2 text-sm text-gray-300">No characters match this search.</p>}
         </div>
       </Modal>
       )}

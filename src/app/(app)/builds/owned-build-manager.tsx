@@ -846,7 +846,7 @@ export function OwnedBuildManager({
               }
               setCreating(true);
             }}
-            className="flex items-center gap-1.5 cursor-pointer appearance-none rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-black/5"
+            className="flex items-center gap-1.5 cursor-pointer appearance-none rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
           >
             {/* PlusIcon, not the Unicode "+" -- see its own comment on
                 why a Unicode glyph can't be reliably centered against
@@ -918,7 +918,7 @@ export function OwnedBuildManager({
                 onChange={(event) => setCollectionDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
                 className="w-64 rounded border bg-white px-2 py-1 text-sm text-black"
               />
-              <span className="text-sm text-gray-500 dark:text-gray-300">
+              <span className="text-sm text-gray-300">
                 {collectionDraft.buildIds.length} build{collectionDraft.buildIds.length === 1 ? "" : "s"} selected
               </span>
               <div className="ml-auto flex gap-2">
@@ -993,7 +993,7 @@ export function OwnedBuildManager({
             <button
               type="button"
               onClick={handleCreateCollection}
-              className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+              className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-white/10"
             >
               {/* PlusIcon, not the Unicode "+" -- see its own comment. */}
               <PlusIcon />
@@ -1004,7 +1004,7 @@ export function OwnedBuildManager({
                 <button
                   type="button"
                   onClick={handleEditCollection}
-                  className="flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-white/10"
                 >
                   <span className="leading-none">Edit collection</span>
                 </button>
@@ -1052,7 +1052,7 @@ export function OwnedBuildManager({
             and visibly shifts the grid below it down. Same fix as the
             Teams page's own top row. */}
         <div className="flex min-h-8 items-center justify-between gap-3">
-          <p className="text-sm text-gray-500 dark:text-gray-300">
+          <p className="text-sm text-gray-300">
             {filtered.length} build{filtered.length === 1 ? "" : "s"}
           </p>
           <PaginationNavButtons currentPage={currentPage} pageCount={pageCount} onPageChange={setPage} />
@@ -1062,7 +1062,7 @@ export function OwnedBuildManager({
             inside it -- a <ul> may only directly contain <li>, and a <p>
             there reads to screen readers as a one-item list. */}
         {pageItems.length === 0 ? (
-          <p className="text-sm text-gray-500">No builds match these filters.</p>
+          <p className="text-sm text-gray-300">No builds match these filters.</p>
         ) : (
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {pageItems.map((build) => {
