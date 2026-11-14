@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireSession, getActiveProfileIdCookie } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logout } from "../(auth)/actions";
@@ -38,7 +39,9 @@ export default async function ProfilesPage() {
             {profile.uid && <p className="text-sm text-gray-300">UID: {profile.uid}</p>}
             <div className="flex items-center gap-3">
               {profile.id === activeProfileId ? (
-                <span className="text-sm font-medium text-green-600">Active</span>
+                <Link href="/characters" className="text-sm font-medium text-green-600 underline">
+                  Active
+                </Link>
               ) : (
                 <SelectProfileButton profileId={profile.id} />
               )}
