@@ -16,7 +16,13 @@ resource conflicts live while you're assembling them instead of after you've
 already committed. You can also make your daily farming easier to plan by looking
 at the teams/builds and finding out which part needs improvements.
 
-**Live demo:** _to be added_
+**Live demo:** https://genshin-impact-build-planner.vercel.app
+
+Demo account (pre-filled with a sample profile — characters, weapons,
+artifacts, builds, teams, and a group already set up):
+
+- **Email:** `demo@example.com`
+- **Password:** `Demo2026!`
 
 > Unofficial fan project. Not affiliated with or endorsed by HoYoverse.
 
@@ -32,6 +38,20 @@ at the teams/builds and finding out which part needs improvements.
   you pick
 - **Groups** — save a combination of teams meant to be run together, meant for 
   Spiral Abyss and Stygian Onslaught 
+
+## Screenshots
+
+| Owned characters | Build editor |
+| --- | --- |
+| ![Owned characters list](docs/screenshots/characters.png) | ![Build editor with final stats](docs/screenshots/build-editor.png) |
+
+| Team assembly (conflict detection) | Collections |
+| --- | --- |
+| ![Team assembly with a live conflict warning](docs/screenshots/team-conflict.png) | ![Collection of builds](docs/screenshots/collections.png) |
+
+| Groups |
+| --- |
+| ![Saved group of teams](docs/screenshots/groups.png) |
 
 ## Planned features
 
