@@ -51,7 +51,9 @@ artifacts, builds, teams, and a group already set up):
 | --- | --- |
 | ![Collection of builds](docs/screenshots/collections.png) | ![Saved group of teams](docs/screenshots/groups.png) |
 
-![Team assembly with a live conflict warning](docs/screenshots/team-conflict.png)
+| Team assembly (conflict detection) |
+| --- |
+| ![Team assembly with a live conflict warning](docs/screenshots/team-conflict.png) |
 
 ## Tech stack
 
