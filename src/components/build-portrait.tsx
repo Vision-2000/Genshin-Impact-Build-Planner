@@ -14,9 +14,15 @@ import { ArtifactSetEffectsIcon } from "./artifact-set-effects-icon";
 // card (build-slot-picker.tsx), both of which want a build's full equipped
 // loadout visible at a glance, not just its character. A 3-wide/2-tall
 // rectangle: the character icon is 2x2 units (w-2/3, aspect-square), the
-// weapon+artifact-effects icons stacked beside it are 1x1 units each
-// (w-1/3, aspect-square, flush with no gap so their combined height
-// matches the character icon's own). Only the inner content -- sizing
+// weapon+artifact-effects icons stacked beside it are 1x1 units each,
+// flush with no gap so their combined height matches the character
+// icon's own. That column is flex-1 (grows to fill whatever's left),
+// not a sibling w-1/3 -- two independent percentage widths on flex
+// siblings each round to a device pixel on their own, with no guarantee
+// they sum back to exactly 100%, which left a hairline gap at the
+// card's right edge on some widths; flex-grow instead computes the
+// column's size as "container minus the fixed 2/3 tile", so it's
+// exact by construction. Only the inner content -- sizing
 // (the outer box's own width/aspect ratio), the clickable shell, its
 // border/rarity-gradient background, and any active-state styling are all
 // the caller's own concern, same as ArtifactSetEffectsIcon leaves its own
@@ -119,7 +125,7 @@ export function BuildPortrait({
         </div>
       </div>
 
-      <div className="flex w-1/3 flex-col">
+      <div className="flex flex-1 flex-col">
         {/* No real weapon chosen falls back to the character's own 1-star
             starter weapon -- same as WeaponSlotPicker's empty state (see
             DEFAULT_WEAPON's own comment), not a blank slot. No rounded of
