@@ -25,6 +25,8 @@ artifacts, builds, teams, and a group already set up):
 - **Password:** `Demo2026!`
 
 > Unofficial fan project. Not affiliated with or endorsed by HoYoverse.
+>
+> Built to get hands-on with React/Next.js.
 
 ## Features
 
@@ -45,20 +47,11 @@ artifacts, builds, teams, and a group already set up):
 | --- | --- |
 | ![Owned characters list](docs/screenshots/characters.png) | ![Build editor with final stats](docs/screenshots/build-editor.png) |
 
-| Team assembly (conflict detection) | Collections |
+| Collections | Groups |
 | --- | --- |
-| ![Team assembly with a live conflict warning](docs/screenshots/team-conflict.png) | ![Collection of builds](docs/screenshots/collections.png) |
+| ![Collection of builds](docs/screenshots/collections.png) | ![Saved group of teams](docs/screenshots/groups.png) |
 
-| Groups |
-| --- |
-| ![Saved group of teams](docs/screenshots/groups.png) |
-
-## Planned features
-
-- **Per-content validation rules** — e.g. Imaginarium Theater's seasonal
-  3-element and guest-character restrictions, enforced automatically on a Group
-- **Home page dashboard** — an at-a-glance task/reminder list instead of
-  landing straight on Characters
+![Team assembly with a live conflict warning](docs/screenshots/team-conflict.png)
 
 ## Tech stack
 
