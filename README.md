@@ -2,19 +2,16 @@
 
 A full-stack web app for tracking owned Genshin Impact characters, weapons, and
 artifacts, assembling builds and teams, and catching conflicts (shared
-weapons/artifacts, duplicate characters) before they happen in-game.
+weapons/artifacts, duplicate characters).
 
-Genshin Impact has no in-game way to save a character build, so switching a
+The game Genshin Impact has no built-in feature to save a character build, so switching a
 character between roles —e.g. a DPS set for one team, a support set for another —
 means re-equipping its artifacts from memory every time, which gets tedious
-fast for any player who keeps multiple builds per character. If weapons and 
-artifacts are shared across characters, the player might not notice until 
-actually trying to equip for an upcoming Spiral Abyss or Imaginarium Theater run. 
-This project solves these problems: builds are saved per character and reused
-instead of rebuilt from scratch, Teams/Groups/Collections flag shared-
-resource conflicts live while you're assembling them instead of after you've
-already committed. You can also make your daily farming easier to plan by looking
-at the teams/builds and finding out which part needs improvements.
+fast for any player who keeps multiple builds per character. This project aims to 
+solve this problem by allowing users to replicate their game data and create builds
+for characters, which can be referenced by the user to equip the correct weapons/artifacts.
+Additionally, users can form teams from their created builds and verify that there
+are no overlapping characters/weapons/artifacts in the team. 
 
 **Live demo:** https://genshin-impact-build-planner.vercel.app
 
@@ -102,3 +99,17 @@ Then open [http://localhost:3000](http://localhost:3000) and create an account.
   reasoning and the formula reference in `data-source/master-data-formulas.txt`.
 - **`prisma/seed.ts`** imports already-classified JSON, with a verification script
   (`data-export/verify-reseed.mts`) confirming every reseed is lossless.
+
+## Credits
+
+This project is unofficial and uses no official HoYoverse API. Game data, images,
+and UI inspiration came from:
+
+- [Lunaris](https://lunaris.moe/) and [HoYoWiki](https://wiki.hoyolab.com) — master
+  data reference (characters, weapons, artifact sets)
+- [Genshin Impact Wiki (Fandom)](https://genshin-impact.fandom.com) — stat/formula
+  reference, including the full attribute list
+- [Enka.Network](https://enka.network) — character, weapon, and artifact icon images,
+  and inspiration for character builds UI
+- [Prydwen](https://www.prydwen.gg/genshin-impact/) — layout reference for the sidebar
+  navigation and card-grid pages
