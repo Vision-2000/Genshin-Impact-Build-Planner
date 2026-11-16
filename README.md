@@ -52,6 +52,17 @@ artifacts, builds, teams, and a group already set up):
 | --- |
 | ![Team assembly with a live conflict warning](docs/screenshots/team-conflict.png) |
 
+## Roadmap
+
+Ideas I may get to if time permits:
+
+- **Per-content validation rules** — e.g. Imaginarium Theater's seasonal
+  3-element and guest-character restrictions, enforced automatically on a Collection
+- **Home page dashboard** — an at-a-glance task/reminder list instead of
+  landing straight on Characters
+- **Support for other games with a similar build system** — e.g. Honkai: Star
+  Rail, Zenless Zone Zero, Wuthering Waves
+
 ## Tech stack
 
 - **Next.js** (App Router, Server Components/Actions) + **React** + **TypeScript**
